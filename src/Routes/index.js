@@ -1,0 +1,32 @@
+import { Routes, Route, Navigate } from "react-router-dom";
+
+import Dashboard from "../Pages/Dashboard";
+import BranchAnalysis from "../Pages/BranchAnalysis";
+import CustomerAnalysis from "../Pages/CustomerAnalysis";
+import ChannelAnalysis from "../Pages/ChannelAnalysis";
+import AppLayout from "../Layout";
+
+const AppRoutes = () => {
+  return (
+    <Routes>
+      <Route index element={<AppLayout content={<Dashboard />} />} />
+      <Route
+        path="branch-analysis"
+        element={<AppLayout content={<BranchAnalysis />} />}
+      />
+      <Route
+        path="customer-analysis"
+        element={<AppLayout content={<CustomerAnalysis />} />}
+      />
+      <Route
+        path="channel-analysis"
+        element={<AppLayout content={<ChannelAnalysis />} />}
+      />
+
+      {/* Catch-all redirect */}
+      <Route path="*" element={<Navigate to="/" />} />
+    </Routes>
+  );
+};
+
+export default AppRoutes;

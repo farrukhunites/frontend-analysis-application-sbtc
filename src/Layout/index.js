@@ -1,16 +1,22 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
 import { Button, Layout, theme } from "antd";
+import { useNavigate } from "react-router-dom";
 import Sidebar from "./Sidebar";
+
 const { Header, Content } = Layout;
-const AppLayout = () => {
+
+const AppLayout = ({ content }) => {
   const [collapsed, setCollapsed] = useState(false);
+  const navigate = useNavigate();
+
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
+
   return (
     <Layout style={{ minHeight: "100vh" }}>
-      <Sidebar collapsed={collapsed} />
+      <Sidebar collapsed={collapsed} onNavigate={navigate} />
       <Layout>
         <Header style={{ padding: 0, background: colorBgContainer }}>
           <Button
@@ -33,10 +39,11 @@ const AppLayout = () => {
             borderRadius: borderRadiusLG,
           }}
         >
-          Content
+          {content}
         </Content>
       </Layout>
     </Layout>
   );
 };
+
 export default AppLayout;
