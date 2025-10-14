@@ -1,9 +1,8 @@
 import {
-  DashboardFilled,
+  AimOutlined,
+  BranchesOutlined,
   DashboardOutlined,
-  UploadOutlined,
   UserOutlined,
-  VideoCameraOutlined,
 } from "@ant-design/icons";
 import { Menu, Layout } from "antd";
 import "./style.css";
@@ -29,17 +28,17 @@ const Sidebar = ({ collapsed }) => {
           },
           {
             key: "2",
-            icon: <VideoCameraOutlined />,
+            icon: <BranchesOutlined />,
             label: "Branch Analysis",
           },
           {
             key: "3",
-            icon: <UploadOutlined />,
+            icon: <UserOutlined />,
             label: "Customer Analysis",
           },
           {
             key: "4",
-            icon: <UploadOutlined />,
+            icon: <AimOutlined />,
             label: "Channel Analysis",
           },
         ]}
