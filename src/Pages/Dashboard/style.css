@@ -9,7 +9,7 @@
 
 .dashboard .tab-card {
   flex: 1;
-  background: white;
+  background: #fafafa;
   border-radius: 12px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
   padding: 18px 22px;
@@ -76,4 +76,14 @@
 .dashboard .tab-subtext {
   font-size: 14px;
   color: #777;
+}
+
+.dashboard .row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.dashboard .row .graph {
+  flex: 1;
 }
