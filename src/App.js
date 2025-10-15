@@ -1,11 +1,14 @@
 import "./App.css";
 import { BrowserRouter } from "react-router-dom";
 import AppRoutes from "./Routes";
+import { DateFilterProvider } from "./Contexts/DateFilterContext";
 
 function App() {
   return (
     <BrowserRouter>
-      <AppRoutes />
+      <DateFilterProvider>
+        <AppRoutes />
+      </DateFilterProvider>
     </BrowserRouter>
   );
 }

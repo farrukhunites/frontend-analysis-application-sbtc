@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
-import { Button, Layout, theme } from "antd";
+
+import { Layout, theme } from "antd";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "./Sidebar";
+import Navbar from "./Navbar";
 
-const { Header, Content } = Layout;
+const { Content } = Layout;
 
 const AppLayout = ({ content }) => {
   const [collapsed, setCollapsed] = useState(false);
@@ -18,18 +19,11 @@ const AppLayout = ({ content }) => {
     <Layout style={{ minHeight: "100vh" }}>
       <Sidebar collapsed={collapsed} onNavigate={navigate} />
       <Layout>
-        <Header style={{ padding: 0, background: colorBgContainer }}>
-          <Button
-            type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
-            style={{
-              fontSize: "16px",
-              width: 64,
-              height: 64,
-            }}
-          />
-        </Header>
+        <Navbar
+          collapsed={collapsed}
+          setCollapsed={setCollapsed}
+          colorBgContainer={colorBgContainer}
+        />
         <Content
           style={{
             margin: "24px 16px",

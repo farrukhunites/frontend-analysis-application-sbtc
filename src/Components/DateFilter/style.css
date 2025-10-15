@@ -1,0 +1,42 @@
+.date-filter {
+  display: flex;
+  align-items: center;
+}
+.date-filter .ant-space {
+  border: 1px solid #ccc;
+  border-radius: 8px;
+}
+
+.date-filter .ant-space .ant-space-item {
+  border-right: 1px solid #ccc;
+  display: flex;
+  height: 34px !important;
+}
+
+.date-filter .ant-space-gap-col-small {
+  column-gap: 0px !important;
+}
+
+.date-filter .ant-btn,
+.date-filter .ant-picker {
+  border: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+  border-radius: 0px !important;
+}
+
+.date-filter .ant-picker-range-separator svg {
+  color: black !important;
+}
+
+.date-filter .ant-picker input::placeholder {
+  color: black !important;
+}
+
+.date-filter .ant-picker input {
+  color: black !important;
+}
+
+.date-filter .ant-space input {
+  max-width: 70px;
+}
