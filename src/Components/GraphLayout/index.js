@@ -9,6 +9,7 @@ const GraphLayout = ({
   labels = [],
   series = [],
   extraCols = [],
+  showTable = true,
 }) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
 
@@ -27,12 +28,20 @@ const GraphLayout = ({
       dataIndex: s.name,
       key: s.name,
       sorter: (a, b) => (a[s.name] ?? 0) - (b[s.name] ?? 0), // numeric sort
+      render: (value) =>
+        typeof value === "number"
+          ? value.toLocaleString("en-US") // adds thousand separators
+          : value,
     })),
     ...extraCols.map((col) => ({
       title: col.name,
       dataIndex: col.name,
       key: col.name,
       sorter: (a, b) => (a[col.name] ?? 0) - (b[col.name] ?? 0), // numeric sort
+      render: (value) =>
+        typeof value === "number"
+          ? value.toLocaleString("en-US") // adds thousand separators
+          : value,
     })),
   ];
 
@@ -58,11 +67,13 @@ const GraphLayout = ({
         }}
       >
         <div className="graph-title">{title}</div>
-        <Button
-          type="text"
-          icon={<InfoCircleOutlined />}
-          onClick={handleOpenModal}
-        />
+        {showTable && (
+          <Button
+            type="text"
+            icon={<InfoCircleOutlined />}
+            onClick={handleOpenModal}
+          />
+        )}
       </div>
       <div className="chart-wrapper">{children}</div>
 

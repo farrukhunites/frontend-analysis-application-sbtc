@@ -9,6 +9,7 @@ const DonutChart = ({
   series,
   units = [],
   extraCols = [],
+  showTable = true,
 }) => {
   const options = {
     chart: {
@@ -40,6 +41,7 @@ const DonutChart = ({
       labels={labels}
       series={series}
       extraCols={extraCols}
+      showTable={showTable}
     >
       <Chart options={options} series={series} type="donut" height={310} />
     </GraphLayout>

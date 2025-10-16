@@ -226,6 +226,7 @@ const Dashboard = () => {
             ]}
             units={["%"]}
             series={[60, 10, 9, 15, 6]}
+            showTable={false}
           />
         </div>
       </div>
