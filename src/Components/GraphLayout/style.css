@@ -12,3 +12,8 @@
   line-height: 24px;
   margin-bottom: 8px;
 }
+
+.graph-layout .additional-components {
+  display: flex;
+  gap: 20px;
+}

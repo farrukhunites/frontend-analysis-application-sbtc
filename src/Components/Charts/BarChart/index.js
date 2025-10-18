@@ -10,6 +10,7 @@ const BarChart = ({
   units = [],
   dottedline = [],
   extraCols = [],
+  addOnComponent = null,
 }) => {
   if (labels.length < 1) {
     return (
@@ -134,6 +135,7 @@ const BarChart = ({
       labels={labels}
       series={series}
       extraCols={extraCols}
+      addOnComponent={addOnComponent}
     >
       <ReactApexChart
         height={300}

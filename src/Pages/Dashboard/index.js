@@ -11,6 +11,9 @@ import LineChart from "../../Components/Charts/LineChart";
 import AreaChart from "../../Components/Charts/AreaChart";
 import BarChart from "../../Components/Charts/BarChart";
 import DonutChart from "../../Components/Charts/DonutChart";
+import { useState } from "react";
+import { Select } from "antd";
+import { Option } from "antd/es/mentions";
 
 const Dashboard = () => {
   const tabs = [
@@ -57,6 +60,22 @@ const Dashboard = () => {
     },
   ];
 
+  const weeklyData = {
+    "Week 1": [100000, 120000, 90000, 110000, 95000, 105000],
+    "Week 2": [150000, 160000, 140000, 155000, 148000, 152000],
+    "Week 3": [180000, 190000, 175000, 185000, 182000, 188000],
+    "Week 4": [170000, 165000, 172000, 168000, 160000, 175000],
+    "Week 5": [200000, 210000, 205000, 215000, 208000, 212000],
+  };
+
+  const [selectedWeek, setSelectedWeek] = useState("Week 1");
+
+  const handleWeekChange = (value) => {
+    setSelectedWeek(value);
+  };
+
+  const weekLabels = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu"];
+
   return (
     <div className="dashboard">
       <div className="top-tabs-container">
@@ -88,22 +107,62 @@ const Dashboard = () => {
         <div className="graph">
           <BarChart
             graphTitle="Weekly Sales"
-            labels={[
-              "Saturday",
-              "Sunday",
-              "Monday",
-              "Tuesday",
-              "Wednesday",
-              "Thursday",
-            ]}
+            labels={["Week 1", "Week 2", "Week 3", "Week 4", "Week 5"]}
             colourTheme={["#3f51b5"]}
             units={["pcs"]}
             series={[
               {
                 name: "Indomie Sales",
-                data: [1000001, 1523457, 1987653, 1765431, 2012345, 2234567],
+                data: [1000001, 1523457, 1987653, 1765431, 2012345],
               },
             ]}
+          />
+        </div>
+
+        <div className="graph">
+          <BarChart
+            graphTitle="Daily Sales Trend"
+            labels={weekLabels}
+            colourTheme={["#007BFF"]}
+            units={["pcs"]}
+            series={[
+              {
+                name: "Indomie Sales",
+                data: weeklyData[selectedWeek],
+              },
+            ]}
+            addOnComponent={
+              <Select
+                defaultValue={selectedWeek}
+                style={{ marginBottom: "10px", width: "100%" }}
+                onChange={handleWeekChange}
+              >
+                {Object.keys(weeklyData).map((week) => (
+                  <Option key={week} value={week}>
+                    {week}
+                  </Option>
+                ))}
+              </Select>
+            }
+          />
+        </div>
+      </div>
+
+      <div className="row">
+        <div className="graph">
+          <DonutChart
+            graphTitle="Channel Sales Contribution"
+            labels={["WS", "RTA", "DSC", "KA", "HRC"]}
+            colourTheme={[
+              "#3f51b5",
+              "#28a745",
+              "#ff9800",
+              "#ffc107",
+              "#dc3545",
+            ]}
+            units={["%"]}
+            series={[60, 10, 9, 15, 6]}
+            showTable={false}
           />
         </div>
 
@@ -193,40 +252,6 @@ const Dashboard = () => {
                 ],
               },
             ]}
-          />
-        </div>
-      </div>
-
-      <div className="row">
-        <div className="graph">
-          <AreaChart
-            graphTitle="Category Contribution (pcs)"
-            labels={["CUP JUMBO", "CUP", "REGULAR", "JUMBO", "IMPORT", "SQN"]}
-            colourTheme={["#dc3545"]}
-            units={["pcs"]}
-            series={[
-              {
-                name: "Sales",
-                data: [805001, 912345, 1002345, 875001, 1105433, 950777],
-              },
-            ]}
-          />
-        </div>
-
-        <div className="graph">
-          <DonutChart
-            graphTitle="Channel Sales Contribution"
-            labels={["WS", "RTA", "DSC", "KA", "HRC"]}
-            colourTheme={[
-              "#3f51b5",
-              "#28a745",
-              "#ff9800",
-              "#ffc107",
-              "#dc3545",
-            ]}
-            units={["%"]}
-            series={[60, 10, 9, 15, 6]}
-            showTable={false}
           />
         </div>
       </div>
@@ -324,7 +349,7 @@ const Dashboard = () => {
 
         <div className="graph">
           <BarChart
-            graphTitle="Top 10 Customers Sales (RTA)"
+            graphTitle="Top 10 Customers Sales (RTA, RTI, MM)"
             labels={[
               "Customer A",
               "Customer B",
@@ -337,7 +362,7 @@ const Dashboard = () => {
               "Customer I",
               "Customer J",
             ]}
-            colourTheme={["#3f51b5"]} // Blue
+            colourTheme={["#3f51b5"]}
             units={["pcs"]}
             series={[
               {
@@ -377,6 +402,21 @@ const Dashboard = () => {
                   1200000, 1100000, 1350000, 850000, 950000, 1200000, 1300000,
                   1050000, 1400000, 1150000,
                 ],
+              },
+            ]}
+          />
+        </div>
+
+        <div className="graph">
+          <AreaChart
+            graphTitle="Category Contribution (pcs)"
+            labels={["CUP JUMBO", "CUP", "REGULAR", "JUMBO", "IMPORT", "SQN"]}
+            colourTheme={["#dc3545"]}
+            units={["pcs"]}
+            series={[
+              {
+                name: "Sales",
+                data: [805001, 912345, 1002345, 875001, 1105433, 950777],
               },
             ]}
           />
