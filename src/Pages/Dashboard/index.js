@@ -12,7 +12,7 @@ import AreaChart from "../../Components/Charts/AreaChart";
 import BarChart from "../../Components/Charts/BarChart";
 import DonutChart from "../../Components/Charts/DonutChart";
 import { useState } from "react";
-import { Select } from "antd";
+import { Select, Table } from "antd";
 import { Option } from "antd/es/mentions";
 
 const Dashboard = () => {

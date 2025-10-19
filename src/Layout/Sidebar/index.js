@@ -35,10 +35,10 @@ const Sidebar = ({ collapsed }) => {
       path: "/customer-analysis",
     },
     {
-      key: "4",
+      key: "5",
       icon: <AimOutlined />,
-      label: "Channel Analysis",
-      path: "/channel-analysis",
+      label: "Daily STT",
+      path: "/daily-stt",
     },
   ];
 

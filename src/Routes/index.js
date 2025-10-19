@@ -5,6 +5,7 @@ import BranchAnalysis from "../Pages/BranchAnalysis";
 import CustomerAnalysis from "../Pages/CustomerAnalysis";
 import ChannelAnalysis from "../Pages/ChannelAnalysis";
 import AppLayout from "../Layout";
+import DailySTT from "../Pages/DailySTT";
 
 const AppRoutes = () => {
   return (
@@ -22,6 +23,8 @@ const AppRoutes = () => {
         path="channel-analysis"
         element={<AppLayout content={<ChannelAnalysis />} />}
       />
+
+      <Route path="daily-stt" element={<AppLayout content={<DailySTT />} />} />
 
       {/* Catch-all redirect */}
       <Route path="*" element={<Navigate to="/" />} />

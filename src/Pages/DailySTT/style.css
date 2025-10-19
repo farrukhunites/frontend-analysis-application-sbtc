@@ -1,0 +1,16 @@
+.ant-table-thead > tr > th {
+  background-color: #0074cc !important;
+  color: white !important;
+  text-align: center !important;
+  font-weight: 600;
+}
+
+.subtotal-row {
+  background-color: #f2f2f2 !important;
+  font-weight: bold;
+}
+
+.grandtotal-row {
+  background-color: #ffe599 !important;
+  font-weight: bold;
+}
