@@ -12,10 +12,13 @@ import AreaChart from "../../Components/Charts/AreaChart";
 import BarChart from "../../Components/Charts/BarChart";
 import DonutChart from "../../Components/Charts/DonutChart";
 import { useState } from "react";
-import { Select, Table } from "antd";
+import { Select } from "antd";
 import { Option } from "antd/es/mentions";
+import { useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+
   const tabs = [
     {
       title: "Month to Date",
@@ -68,6 +71,20 @@ const Dashboard = () => {
     "Week 5": [200000, 210000, 205000, 215000, 208000, 212000],
   };
 
+  const customerByChannelData = {
+    JEDDAH: [120, 98, 150, 110, 75, 90, 60, 45, 80],
+    MAKKAH: [100, 90, 120, 95, 70, 85, 50, 40, 75],
+    MADINAH: [80, 70, 100, 85, 60, 65, 45, 30, 50],
+    // ...add all branches
+    all: [500, 450, 600, 400, 300, 350, 200, 150, 300], // for "All Branches"
+  };
+
+  const [selectedBranch, setSelectedBranch] = useState("all");
+
+  const handleBranchChange = (value) => {
+    setSelectedBranch(value);
+  };
+
   const [selectedWeek, setSelectedWeek] = useState("Week 1");
 
   const handleWeekChange = (value) => {
@@ -75,6 +92,56 @@ const Dashboard = () => {
   };
 
   const weekLabels = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu"];
+
+  const branches = ["All", "JEDDAH", "MAKKAH", "MADINAH", "RIYADH"];
+  const channels = ["All", "WS", "DSC", "KA", "HRC", "MM", "RTA", "RTI"];
+
+  // Mock series data: {branch: {channel: [orders per customer]}}
+  const ordersData = {
+    All: {
+      All: [5, 3, 8, 2],
+      WS: [2, 1, 3, 1],
+      DSC: [1, 2, 2, 1],
+    },
+    JEDDAH: {
+      All: [4, 2, 7, 3],
+      WS: [3, 1, 4, 2],
+      DSC: [1, 1, 3, 1],
+    },
+    MAKKAH: {
+      All: [6, 3, 9, 4],
+      WS: [4, 2, 5, 2],
+      DSC: [2, 1, 4, 2],
+    },
+    // ...other branches
+  };
+
+  const [selectedChannel, setSelectedChannel] = useState("All");
+
+  const handleChannelChange = (value) => setSelectedChannel(value);
+
+  const selectDiv = (
+    <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
+      <Select
+        value={selectedBranch}
+        placeholder="Select Branch"
+        style={{ width: 150 }}
+        onChange={handleBranchChange}
+        options={branches.map((b) => ({ label: b, value: b }))}
+      />
+      <Select
+        value={selectedChannel}
+        placeholder="Select Channel"
+        style={{ width: 150 }}
+        onChange={handleChannelChange}
+        options={channels.map((c) => ({ label: c, value: c }))}
+      />
+    </div>
+  );
+
+  const handleNavigateCustomer = () => {
+    navigate("/customer-analysis");
+  };
 
   return (
     <div className="dashboard">
@@ -419,6 +486,84 @@ const Dashboard = () => {
                 data: [805001, 912345, 1002345, 875001, 1105433, 950777],
               },
             ]}
+          />
+        </div>
+      </div>
+
+      <div className="row">
+        <div className="graph">
+          <LineChart
+            graphTitle="Number of Customers by Channel (YTD)"
+            labels={[
+              "BRN",
+              "DSC",
+              "ECM",
+              "HRC",
+              "KA",
+              "MM",
+              "RTA",
+              "RTI",
+              "WS",
+            ]}
+            colourTheme={["#3f51b5"]}
+            units={["Customers"]}
+            series={[
+              {
+                name: "Customers",
+                data: customerByChannelData[selectedBranch] || [],
+              },
+            ]}
+            addOnComponent={
+              <Select
+                value={selectedBranch}
+                placeholder="Select Branch"
+                style={{ width: 200, marginBottom: 10 }}
+                onChange={handleBranchChange}
+                options={[
+                  { label: "All Branches", value: "all" },
+                  { label: "JEDDAH", value: "JEDDAH" },
+                  { label: "MAKKAH", value: "MAKKAH" },
+                  { label: "MADINAH", value: "MADINAH" },
+                  { label: "TAIF", value: "TAIF" },
+                  { label: "YANBU", value: "YANBU" },
+                  { label: "TABUK", value: "TABUK" },
+                  { label: "SKAKA", value: "SKAKA" },
+                  { label: "GASIEM", value: "GASIEM" },
+                  { label: "RIYADH", value: "RIYADH" },
+                  { label: "KHARJ", value: "KHARJ" },
+                  { label: "DAWADMI", value: "DAWADMI" },
+                  { label: "HAIL", value: "HAIL" },
+                  { label: "KHOBAR", value: "KHOBAR" },
+                  { label: "JUBAIL", value: "JUBAIL" },
+                  { label: "HUFUF", value: "HUFUF" },
+                  { label: "HAFR BATIN", value: "HAFR BATIN" },
+                  { label: "KHAMIS MUSHAIT", value: "KHAMIS MUSHAIT" },
+                  { label: "JIZAN", value: "JIZAN" },
+                  { label: "NAJRAN", value: "NAJRAN" },
+                  { label: "QONFUDA", value: "QONFUDA" },
+                  { label: "BISHA", value: "BISHA" },
+                ]}
+              />
+            }
+          />
+        </div>
+
+        <div className="graph">
+          <BarChart
+            graphTitle="Orders per Customer"
+            labels={["Customer A", "Customer B", "Customer C", "Customer D"]}
+            colourTheme={["#28a745"]}
+            units={["Orders"]}
+            series={[
+              {
+                name: "Order Count",
+                data:
+                  ordersData[selectedBranch]?.[selectedChannel] ||
+                  ordersData["All"]["All"],
+              },
+            ]}
+            addOnComponent={selectDiv}
+            onClickFunction={handleNavigateCustomer}
           />
         </div>
       </div>

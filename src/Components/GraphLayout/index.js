@@ -12,6 +12,7 @@ const GraphLayout = ({
   extraCols = [],
   showTable = true,
   addOnComponent,
+  onClickFunction = null,
 }) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [searchText, setSearchText] = useState("");
@@ -104,6 +105,16 @@ const GraphLayout = ({
       dataIndex: "label",
       key: "label",
       ...getColumnSearchProps("label"),
+      render: (text, record) => (
+        <span
+          style={{ cursor: "pointer", color: "#1890ff" }}
+          onClick={() => {
+            onClickFunction?.();
+          }}
+        >
+          {text}
+        </span>
+      ),
     },
     ...series.map((s) => ({
       title: s.name,
