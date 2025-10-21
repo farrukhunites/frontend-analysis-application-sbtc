@@ -7,15 +7,34 @@ import {
   UserOutlined,
   DollarOutlined,
 } from "@ant-design/icons";
-import { Table, Tag } from "antd";
+import { Select, Table, Tag } from "antd";
 import "./style.css";
 import BarChart from "../../Components/Charts/BarChart";
+import { useState } from "react";
+import LineChart from "../../Components/Charts/LineChart";
+import RiyalIcon from "../../Utils/RiyalIcon";
+
+const { Option } = Select;
 
 const CustomerAnalysis = () => {
-  // Sample/mock customer data
-  const customer = {
+  const [selectedBranch, setSelectedBranch] = useState("JEDDAH");
+  const [selectedCustomer, setSelectedCustomer] = useState({
+    code: 1234,
     name: "Customer A",
-    branch: "JEDDAH",
+  });
+
+  const branches = ["JEDDAH", "MAKKAH", "MADINAH", "TAIF"];
+  const customers = [
+    { code: 1234, name: "Customer A" },
+    { code: 6598, name: "Customer B" },
+    { code: 7821, name: "Customer C" },
+  ];
+
+  // Customer info based on selection
+  const customer = {
+    name: selectedCustomer.name,
+    code: selectedCustomer.code,
+    branch: selectedBranch,
     channel: "WS",
     totalSales: 12500000,
     ytdSales: 4500000,
@@ -23,10 +42,13 @@ const CustomerAnalysis = () => {
     dryMonths: 2,
     salesman: "Osama Mohamed",
     contribution: 30,
+    pendingAmount: 54763,
+    pendingMonths: 5,
   };
 
   const tabs = [
     { title: "Customer Name", value: customer.name, icon: <UserOutlined /> },
+    { title: "Customer Code", value: customer.code, icon: <UserOutlined /> },
     { title: "Branch", value: customer.branch, icon: <AimOutlined /> },
     { title: "Channel", value: customer.channel, icon: <SlidersOutlined /> },
     {
@@ -48,8 +70,28 @@ const CustomerAnalysis = () => {
     { title: "Salesman", value: customer.salesman, icon: <UserOutlined /> },
     {
       title: "Contribution",
-      value: customer.contribution ? customer.contribution + " %" : "-",
+      value: customer?.contribution ? customer?.contribution + " %" : "-",
       icon: <LineChartOutlined />,
+    },
+    {
+      title: "Payment Pending",
+      value: customer?.pendingAmount ? (
+        <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <RiyalIcon /> {customer?.pendingAmount?.toLocaleString()}
+        </span>
+      ) : (
+        <span>
+          <RiyalIcon /> 0
+        </span>
+      ),
+      icon: <DollarOutlined />,
+    },
+    {
+      title: "Pending Since",
+      value: customer?.pendingMonths
+        ? `${customer?.pendingMonths} months`
+        : "No pending",
+      icon: <CalendarOutlined />,
     },
   ];
 
@@ -427,6 +469,39 @@ const CustomerAnalysis = () => {
 
   return (
     <div className="customer-analysis">
+      <div
+        className="filters"
+        style={{ display: "flex", gap: 16, marginBottom: 20 }}
+      >
+        <Select
+          value={selectedBranch}
+          onChange={setSelectedBranch}
+          style={{ width: 200 }}
+          placeholder="Select Branch"
+        >
+          {branches.map((b) => (
+            <Option key={b} value={b}>
+              {b}
+            </Option>
+          ))}
+        </Select>
+
+        <Select
+          value={selectedCustomer.code}
+          onChange={(code) =>
+            setSelectedCustomer(customers.find((c) => c.code === code))
+          }
+          style={{ width: 250 }}
+          placeholder="Select Customer"
+        >
+          {customers.map((c) => (
+            <Option key={c.code} value={c.code}>
+              {c.name}
+            </Option>
+          ))}
+        </Select>
+      </div>
+
       {/* Tabs */}
       <div className="top-tabs-container">
         {tabs.map((tab, index) => (
@@ -464,6 +539,52 @@ const CustomerAnalysis = () => {
                 data: [
                   80000001, 83234567, 85432123, 87654321, 89012345, 81234567,
                   83456789, 85791335, 87913579, 21000001,
+                ],
+              },
+            ]}
+          />
+        </div>
+      </div>
+
+      {/* Yearly Comparison Line Chart */}
+      <div className="row" style={{ marginTop: 20 }}>
+        <div className="graph">
+          <LineChart
+            graphTitle="Customer Sales Comparison (2023–2025)"
+            labels={[
+              "Jan",
+              "Feb",
+              "Mar",
+              "Apr",
+              "May",
+              "Jun",
+              "Jul",
+              "Aug",
+              "Sep",
+              "Oct",
+            ]}
+            colourTheme={["#007bff", "#ff69b4", "#ffa500"]}
+            units={["pcs"]}
+            series={[
+              {
+                name: "2023 Sales",
+                data: [
+                  7289456, 7456123, 7623987, 7487654, 6998765, 7421567, 7356789,
+                  7589432, 7498234, 7721987,
+                ],
+              },
+              {
+                name: "2024 Sales",
+                data: [
+                  7123456, 7256789, 7198345, 7548765, 7798234, 8034987, 7956123,
+                  8221345, 8149876, 8398765,
+                ],
+              },
+              {
+                name: "2025 Sales",
+                data: [
+                  6543210, 6789456, 6623987, 7034567, 7356211, 7698543, 7598123,
+                  7814567, 7732456, 7921345,
                 ],
               },
             ]}

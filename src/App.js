@@ -1,4 +1,3 @@
-import "./App.css";
 import { BrowserRouter } from "react-router-dom";
 import AppRoutes from "./Routes";
 import { DateFilterProvider } from "./Contexts/DateFilterContext";
