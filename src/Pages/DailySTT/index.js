@@ -91,15 +91,16 @@ const getProductColumns = (product) => {
     title: product,
     children: [
       {
-        title: "Sales",
-        dataIndex: `${slug}_sales`,
-        render: (v) => v?.toLocaleString(),
-      },
-      {
         title: "Target",
         dataIndex: `${slug}_target`,
         render: (v) => v?.toLocaleString(),
       },
+      {
+        title: "Sales",
+        dataIndex: `${slug}_sales`,
+        render: (v) => v?.toLocaleString(),
+      },
+
       {
         title: "Jun-24",
         dataIndex: `${slug}_jun24`,
@@ -310,7 +311,7 @@ const DailySTT = () => {
         <strong>Show Products: </strong>
         <Select
           mode="multiple"
-          style={{ width: 600 }}
+          style={{ width: "100%" }}
           value={selectedProducts}
           onChange={setSelectedProducts}
           options={productOptions.map((p) => ({ value: p, label: p }))}
@@ -328,7 +329,7 @@ const DailySTT = () => {
           if (record.branch.includes("GRAND TOTAL")) return "grandtotal-row";
           return "";
         }}
-        scroll={{ x: "max-content" }}
+        scroll={{ x: "max-content", y: "55vh" }}
       />
     </div>
   );
