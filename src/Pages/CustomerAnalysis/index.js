@@ -13,6 +13,7 @@ import BarChart from "../../Components/Charts/BarChart";
 import { useState } from "react";
 import LineChart from "../../Components/Charts/LineChart";
 import RiyalIcon from "../../Utils/RiyalIcon";
+import AreaChart from "../../Components/Charts/AreaChart";
 
 const { Option } = Select;
 
@@ -517,7 +518,7 @@ const CustomerAnalysis = () => {
 
       <div className="row">
         <div className="graph">
-          <BarChart
+          <AreaChart
             graphTitle="Monthly Sales"
             labels={[
               "Jan",
