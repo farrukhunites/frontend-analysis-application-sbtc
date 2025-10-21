@@ -99,21 +99,23 @@ const Dashboard = () => {
   // Mock series data: {branch: {channel: [orders per customer]}}
   const ordersData = {
     All: {
-      All: [5, 3, 8, 2],
-      WS: [2, 1, 3, 1],
-      DSC: [1, 2, 2, 1],
+      All: {
+        labels: ["Cust A", "Cust B", "Cust C", "Cust D"],
+        data: [5, 3, 8, 2],
+      },
+      WS: { labels: ["Cust E", "Cust F"], data: [2, 1] },
+      DSC: { labels: ["Cust G", "Cust H", "Cust I"], data: [1, 2, 3] },
     },
     JEDDAH: {
-      All: [4, 2, 7, 3],
-      WS: [3, 1, 4, 2],
-      DSC: [1, 1, 3, 1],
+      All: { labels: ["Ali", "Ahmed", "Sara", "Omar"], data: [4, 2, 7, 3] },
+      WS: { labels: ["Ali", "Sara"], data: [3, 1] },
+      DSC: { labels: ["Ahmed", "Omar"], data: [1, 1] },
     },
     MAKKAH: {
-      All: [6, 3, 9, 4],
-      WS: [4, 2, 5, 2],
-      DSC: [2, 1, 4, 2],
+      All: { labels: ["Hassan", "Mona", "Yousef", "Rana"], data: [6, 3, 9, 4] },
+      WS: { labels: ["Hassan", "Mona"], data: [4, 2] },
+      DSC: { labels: ["Yousef", "Rana"], data: [2, 1] },
     },
-    // ...other branches
   };
 
   const [selectedChannel, setSelectedChannel] = useState("All");
@@ -578,15 +580,18 @@ const Dashboard = () => {
         <div className="graph">
           <BarChart
             graphTitle="Orders per Customer"
-            labels={["Customer A", "Customer B", "Customer C", "Customer D"]}
+            labels={
+              ordersData[selectedBranch]?.[selectedChannel]?.labels ||
+              ordersData["All"]["All"].labels
+            }
             colourTheme={["#28a745"]}
             units={["Orders"]}
             series={[
               {
                 name: "Order Count",
                 data:
-                  ordersData[selectedBranch]?.[selectedChannel] ||
-                  ordersData["All"]["All"],
+                  ordersData[selectedBranch]?.[selectedChannel]?.data ||
+                  ordersData["All"]["All"].data,
               },
             ]}
             addOnComponent={selectDiv}
