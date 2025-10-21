@@ -22,18 +22,24 @@ const Sidebar = ({ collapsed }) => {
       label: "Dashboard",
       path: "/",
     },
-    {
-      key: "2",
-      icon: <BranchesOutlined />,
-      label: "Branch Analysis",
-      path: "/branch-analysis",
-    },
+    // {
+    //   key: "2",
+    //   icon: <BranchesOutlined />,
+    //   label: "Branch Analysis",
+    //   path: "/branch-analysis",
+    // },
     {
       key: "3",
       icon: <UserOutlined />,
       label: "Customer Analysis",
       path: "/customer-analysis",
     },
+    // {
+    //   key: "4",
+    //   icon: <UserOutlined />,
+    //   label: "Channel Analysis",
+    //   path: "/channel-analysis",
+    // },
     {
       key: "5",
       icon: <AimOutlined />,

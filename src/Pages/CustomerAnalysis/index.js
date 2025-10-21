@@ -592,7 +592,7 @@ const CustomerAnalysis = () => {
         </div>
       </div>
 
-      <div className="sales-history-table" style={{ marginTop: 20 }}>
+      {/* <div className="sales-history-table" style={{ marginTop: 20 }}>
         <Table
           columns={columns}
           dataSource={salesHistory}
@@ -600,7 +600,7 @@ const CustomerAnalysis = () => {
           pagination={false}
           bordered
         />
-      </div>
+      </div> */}
 
       <div className="sales-orders-table" style={{ marginTop: 20 }}>
         <Table

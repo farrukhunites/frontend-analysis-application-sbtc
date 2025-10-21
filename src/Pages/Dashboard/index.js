@@ -519,7 +519,7 @@ const Dashboard = () => {
 
       <div className="row">
         <div className="graph">
-          <LineChart
+          <BarChart
             graphTitle="Number of Customers by Channel (YTD)"
             labels={[
               "BRN",

@@ -91,13 +91,13 @@ const getProductColumns = (product) => {
     title: product,
     children: [
       {
-        title: "Target",
-        dataIndex: `${slug}_target`,
+        title: "Sales",
+        dataIndex: `${slug}_sales`,
         render: (v) => v?.toLocaleString(),
       },
       {
-        title: "Sales",
-        dataIndex: `${slug}_sales`,
+        title: "Target",
+        dataIndex: `${slug}_target`,
         render: (v) => v?.toLocaleString(),
       },
       {
@@ -105,11 +105,7 @@ const getProductColumns = (product) => {
         dataIndex: `${slug}_jun24`,
         render: (v) => v?.toLocaleString(),
       },
-      {
-        title: "Jun-25",
-        dataIndex: `${slug}_jun25`,
-        render: (v) => v?.toLocaleString(),
-      },
+
       {
         title: "Growth %",
         render: (_, record) => {
@@ -154,11 +150,7 @@ const DailySTT = () => {
           dataIndex: "total_jun24",
           render: (v) => v?.toLocaleString(),
         },
-        {
-          title: "Jun-25",
-          dataIndex: "total_jun25",
-          render: (v) => v?.toLocaleString(),
-        },
+
         {
           title: "Growth %",
           dataIndex: "total_growth",
