@@ -19,12 +19,14 @@ const { Option } = Select;
 
 const CustomerAnalysis = () => {
   const [selectedBranch, setSelectedBranch] = useState("JEDDAH");
+  const [selectedChannel, setSelectedChannel] = useState(null);
   const [selectedCustomer, setSelectedCustomer] = useState({
     code: 1234,
     name: "Customer A",
   });
 
   const branches = ["JEDDAH", "MAKKAH", "MADINAH", "TAIF"];
+  const channels = ["WS", "DSC", "Online"];
   const customers = [
     { code: 1234, name: "Customer A" },
     { code: 6598, name: "Customer B" },
@@ -95,112 +97,6 @@ const CustomerAnalysis = () => {
       icon: <CalendarOutlined />,
     },
   ];
-
-  const salesHistory = [
-    {
-      key: "2023",
-      year: 2023,
-      total: 4500000,
-      color: "#3f51b5",
-      months: [
-        { month: "Jan", sales: 400000 },
-        { month: "Feb", sales: 350000 },
-        { month: "Mar", sales: 420000 },
-        { month: "Apr", sales: 380000 },
-        { month: "May", sales: 450000 },
-        { month: "Jun", sales: 470000 },
-        { month: "Jul", sales: 400000 },
-        { month: "Aug", sales: 420000 },
-        { month: "Sep", sales: 410000 },
-        { month: "Oct", sales: 430000 },
-        { month: "Nov", sales: 450000 },
-        { month: "Dec", sales: 470000 },
-      ],
-    },
-    {
-      key: "2024",
-      year: 2024,
-      total: 4800000,
-      color: "#28a745",
-      months: [
-        { month: "Jan", sales: 400000 },
-        { month: "Feb", sales: 410000 },
-        { month: "Mar", sales: 420000 },
-        { month: "Apr", sales: 430000 },
-        { month: "May", sales: 440000 },
-        { month: "Jun", sales: 450000 },
-        { month: "Jul", sales: 460000 },
-        { month: "Aug", sales: 470000 },
-        { month: "Sep", sales: 480000 },
-        { month: "Oct", sales: 490000 },
-        { month: "Nov", sales: 500000 },
-        { month: "Dec", sales: 510000 },
-      ],
-    },
-    {
-      key: "2025",
-      year: 2025,
-      total: 5000000,
-      color: "#ff9800",
-      months: [
-        { month: "Jan", sales: 410000 },
-        { month: "Feb", sales: 420000 },
-        { month: "Mar", sales: 430000 },
-        { month: "Apr", sales: 440000 },
-        { month: "May", sales: 450000 },
-        { month: "Jun", sales: 460000 },
-        { month: "Jul", sales: 470000 },
-        { month: "Aug", sales: 480000 },
-        { month: "Sep", sales: 490000 },
-        { month: "Oct", sales: 500000 },
-        { month: "Nov", sales: 510000 },
-        { month: "Dec", sales: 520000 },
-      ],
-    },
-  ];
-
-  const columns = [
-    {
-      title: "Year",
-      dataIndex: "year",
-      key: "year",
-      render: (text, record) => <Tag color={record.color}>{text}</Tag>,
-    },
-    {
-      title: "Total Sales",
-      dataIndex: "total",
-      key: "total",
-      render: (value) => value.toLocaleString() + " pcs",
-    },
-  ];
-
-  const expandedRowRender = (record) => {
-    const monthColumns = [
-      { title: "Month", dataIndex: "month", key: "month" },
-      {
-        title: "Sales",
-        dataIndex: "sales",
-        key: "sales",
-        render: (value) => value.toLocaleString() + " pcs",
-      },
-    ];
-
-    // Add a total row
-    const totalRow = {
-      month: "Total",
-      sales: record.months.reduce((sum, m) => sum + m.sales, 0),
-      key: "total",
-    };
-
-    return (
-      <Table
-        columns={monthColumns}
-        dataSource={[...record.months, totalRow]}
-        pagination={false}
-        rowClassName={(record) => (record.month === "Total" ? "total-row" : "")}
-      />
-    );
-  };
 
   const salesOrders = [
     {
@@ -470,14 +366,12 @@ const CustomerAnalysis = () => {
 
   return (
     <div className="customer-analysis">
-      <div
-        className="filters"
-        style={{ display: "flex", gap: 16, marginBottom: 20 }}
-      >
+      <div style={{ display: "flex", gap: "16px" }}>
+        {/* Branch Select */}
         <Select
           value={selectedBranch}
           onChange={setSelectedBranch}
-          style={{ width: 200 }}
+          style={{ flex: 1, width: "100%" }}
           placeholder="Select Branch"
         >
           {branches.map((b) => (
@@ -487,13 +381,30 @@ const CustomerAnalysis = () => {
           ))}
         </Select>
 
+        {/* Channel Select */}
         <Select
-          value={selectedCustomer.code}
+          value={selectedChannel}
+          onChange={setSelectedChannel}
+          style={{ flex: 1, width: "100%" }}
+          placeholder="Select Channel"
+          disabled={!selectedBranch} // disabled until branch selected
+        >
+          {channels.map((ch) => (
+            <Option key={ch} value={ch}>
+              {ch}
+            </Option>
+          ))}
+        </Select>
+
+        {/* Customer Select */}
+        <Select
+          value={selectedCustomer?.code}
           onChange={(code) =>
             setSelectedCustomer(customers.find((c) => c.code === code))
           }
-          style={{ width: 250 }}
+          style={{ flex: 1, width: "100%" }}
           placeholder="Select Customer"
+          disabled={!selectedBranch || !selectedChannel} // disabled until branch & channel selected
         >
           {customers.map((c) => (
             <Option key={c.code} value={c.code}>
@@ -592,16 +503,6 @@ const CustomerAnalysis = () => {
           />
         </div>
       </div>
-
-      {/* <div className="sales-history-table" style={{ marginTop: 20 }}>
-        <Table
-          columns={columns}
-          dataSource={salesHistory}
-          expandable={{ expandedRowRender }}
-          pagination={false}
-          bordered
-        />
-      </div> */}
 
       <div className="sales-orders-table" style={{ marginTop: 20 }}>
         <Table
