@@ -189,7 +189,7 @@ const Dashboard = () => {
         </div>
 
         <div className="graph">
-          <BarChart
+          <LineChart
             graphTitle="Daily Sales Trend"
             labels={weekLabels}
             colourTheme={["#007BFF"]}
