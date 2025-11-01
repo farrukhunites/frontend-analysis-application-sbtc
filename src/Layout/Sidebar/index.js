@@ -2,6 +2,7 @@ import {
   AimOutlined,
   BranchesOutlined,
   DashboardOutlined,
+  FileTextOutlined,
   UserOutlined,
 } from "@ant-design/icons";
 import { Menu, Layout } from "antd";
@@ -45,6 +46,12 @@ const Sidebar = ({ collapsed }) => {
       icon: <AimOutlined />,
       label: "Daily STT",
       path: "/daily-stt",
+    },
+    {
+      key: "6",
+      icon: <FileTextOutlined />,
+      label: "M-O-R",
+      path: "/mor",
     },
   ];
 

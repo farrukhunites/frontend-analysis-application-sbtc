@@ -6,6 +6,7 @@ import CustomerAnalysis from "../Pages/CustomerAnalysis";
 import ChannelAnalysis from "../Pages/ChannelAnalysis";
 import AppLayout from "../Layout";
 import DailySTT from "../Pages/DailySTT";
+import MOR from "../Pages/MOR";
 
 const AppRoutes = () => {
   return (
@@ -25,6 +26,7 @@ const AppRoutes = () => {
       />
 
       <Route path="daily-stt" element={<AppLayout content={<DailySTT />} />} />
+      <Route path="mor" element={<AppLayout content={<MOR />} />} />
 
       {/* Catch-all redirect */}
       <Route path="*" element={<Navigate to="/" />} />
