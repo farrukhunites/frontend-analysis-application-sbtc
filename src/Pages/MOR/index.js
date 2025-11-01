@@ -9,14 +9,12 @@ import {
   ScheduleOutlined,
 } from "@ant-design/icons";
 import "./style.css";
-
-// Import tab components
-import ByBranch from "./Tabs/ByBranch";
-import ByMonth from "./Tabs/ByMonth";
-import ByYear from "./Tabs/ByYear";
-import ByChannel from "./Tabs/ByChannel";
-import ByChannelYTD from "./Tabs/ByChannelYTD";
-import ByItemSKU from "./Tabs/ByItemSKU";
+import ByBranch from "./Tabs/ByBranch/ByBranch";
+import ByMonth from "./Tabs/ByMonth/ByMonth";
+import ByYear from "./Tabs/ByYear/ByYear";
+import ByChannel from "./Tabs/ByChannel/ByChannel";
+import ByChannelYTD from "./Tabs/ByChannelYTD/ByChannelYTD";
+import ByItemSKU from "./Tabs/ByItemSKU/ByItemSKU";
 
 const { TabPane } = Tabs;
 
@@ -30,8 +28,8 @@ const MOR = () => {
         defaultActiveKey="1"
         tabPosition="top"
         type="line"
-        tabBarGutter={16} // space between tabs
-        moreIcon={<EllipsisOutlined />} // shows "..." when tabs overflow
+        tabBarGutter={16}
+        moreIcon={<EllipsisOutlined />}
       >
         <TabPane
           tab={
