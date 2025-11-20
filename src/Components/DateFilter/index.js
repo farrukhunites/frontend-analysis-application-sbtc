@@ -139,24 +139,7 @@ const DateFilter = () => {
         <FilterFilled
           style={{ fontSize: "16px", padding: "8px", color: "#A2A8B0" }}
         />
-        <DatePicker
-          value={dateValue}
-          suffixIcon={<DownOutlined style={{ color: "#2662D9" }} />}
-          placeholder="Date"
-          picker="date"
-          onChange={(value, dateString) =>
-            handleChange(value, dateString, "date")
-          }
-        />
-        <DatePicker
-          value={weekValue}
-          suffixIcon={<DownOutlined style={{ color: "#2662D9" }} />}
-          placeholder="Week"
-          picker="week"
-          onChange={(value, dateString) =>
-            handleChange(value, dateString, "week")
-          }
-        />
+
         <DatePicker
           value={monthValue}
           suffixIcon={<DownOutlined style={{ color: "#2662D9" }} />}
@@ -164,14 +147,6 @@ const DateFilter = () => {
           picker="month"
           onChange={(value, dateString) =>
             handleChange(value, dateString, "month")
-          }
-        />
-        <RangePicker
-          value={rangeValue}
-          suffixIcon={<DownOutlined style={{ color: "#2662D9" }} />}
-          placeholder={["Start Date", "End Date"]}
-          onChange={(value, dateString) =>
-            handleChange(value, dateString, "custom")
           }
         />
 
