@@ -1,29 +1,49 @@
 import { Header } from "antd/es/layout/layout";
 import "./style.css";
-import { Button, message, Select } from "antd";
-import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
+import { message, Select } from "antd";
 import DateFilter from "../../Components/DateFilter";
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { getAllProducts } from "../../API/Products";
+import { ProductContext } from "../../Contexts/ProductContext";
 
 const { Option } = Select;
 
-const Navbar = ({ collapsed, setCollapsed, colorBgContainer }) => {
-  const didFetchRef = useRef(false);
-
+const Navbar = ({ colorBgContainer }) => {
   const [productOptions, setProductOptions] = useState([]);
+  const { selectedProduct, setSelectedProduct } = useContext(ProductContext);
   const [loading, setLoading] = useState(false);
 
   const [msgApi, contextHolder] = message.useMessage();
 
   useEffect(() => {
-    if (didFetchRef.current) return;
     const fetchProductOptions = async () => {
       setLoading(true);
       try {
         const res = await getAllProducts(); // axios call
         if (res) {
-          setProductOptions(res?.results);
+          let products = res.results || [];
+
+          // check if any product has "INDOMIE" in its name
+          const hasIndomie = products.some((p) =>
+            p.name.toLowerCase().includes("indomie")
+          );
+
+          // if yes, add the 2 special Indomie products
+          if (hasIndomie) {
+            const specialIndomie = [
+              { code: "9999901", name: "INDOMIE PILLOW" },
+              { code: "9999902", name: "INDOMIE CUP" },
+            ];
+
+            // ensure we don’t duplicate if somehow already exists
+            specialIndomie.forEach((p) => {
+              if (!products.some((prod) => prod.code === p.code)) {
+                products.push(p);
+              }
+            });
+          }
+
+          setProductOptions(products);
         } else {
           msgApi.error(
             "Failed to fetch products: " + (res.message || "Unknown error")
@@ -36,7 +56,6 @@ const Navbar = ({ collapsed, setCollapsed, colorBgContainer }) => {
     };
 
     fetchProductOptions();
-    didFetchRef.current = true;
   }, []);
 
   return (
@@ -57,21 +76,15 @@ const Navbar = ({ collapsed, setCollapsed, colorBgContainer }) => {
       >
         {/* Left side: toggle + select */}
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <Button
-            type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
-            style={{
-              fontSize: "18px",
-              width: 48,
-              height: 48,
-              color: "#2662D9",
-            }}
-          />
-
           <Select
             loading={loading}
             placeholder="Select a product"
+            value={selectedProduct?.name || undefined} // controlled value
+            onChange={(value) => {
+              // find the full product object
+              const prod = productOptions.find((p) => p.name === value);
+              setSelectedProduct(prod);
+            }}
             style={{
               width: 240,
               fontWeight: 500,
