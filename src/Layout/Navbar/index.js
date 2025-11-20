@@ -43,7 +43,8 @@ const Navbar = ({ colorBgContainer }) => {
             });
           }
 
-          setProductOptions(products);
+          await setProductOptions(products);
+          if (products.length > 0) setSelectedProduct(products[0]);
         } else {
           msgApi.error(
             "Failed to fetch products: " + (res.message || "Unknown error")
