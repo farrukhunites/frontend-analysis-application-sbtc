@@ -1,8 +1,8 @@
 import axios from "axios";
 
-// Function to fetch all products
-const getAllProducts = async () => {
-  const API_URL = `${process.env.REACT_APP_BACKEND_URL}products/`;
+// Function to fetch all branches
+const getAllBranches = async () => {
+  const API_URL = `${process.env.REACT_APP_BACKEND_URL}branches/`;
 
   try {
     const response = await axios.get(API_URL);
@@ -16,4 +16,4 @@ const getAllProducts = async () => {
   }
 };
 
-export { getAllProducts };
+export { getAllBranches };
