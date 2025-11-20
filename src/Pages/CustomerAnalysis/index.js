@@ -7,26 +7,49 @@ import {
   UserOutlined,
   DollarOutlined,
 } from "@ant-design/icons";
-import { Select, Table, Tag } from "antd";
+import { message, Radio, Select, Table } from "antd";
 import "./style.css";
-import BarChart from "../../Components/Charts/BarChart";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import LineChart from "../../Components/Charts/LineChart";
 import RiyalIcon from "../../Utils/RiyalIcon";
 import AreaChart from "../../Components/Charts/AreaChart";
+import { getAllBranches } from "../../API/Branches";
 
 const { Option } = Select;
 
 const CustomerAnalysis = () => {
-  const [selectedBranch, setSelectedBranch] = useState("JEDDAH");
-  const [selectedChannel, setSelectedChannel] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [selectedBranch, setSelectedBranch] = useState();
+  const [unitType, setUnitType] = useState("ctn");
+  const [priceType, setPriceType] = useState("net");
   const [selectedCustomer, setSelectedCustomer] = useState({
     code: 1234,
     name: "Customer A",
   });
 
-  const branches = ["JEDDAH", "MAKKAH", "MADINAH", "TAIF"];
-  const channels = ["WS", "DSC", "Online"];
+  const [branches, setBranches] = useState([]);
+
+  useEffect(() => {
+    const fetchBranches = async () => {
+      setLoading(true);
+      try {
+        const res = await getAllBranches();
+        if (res?.results) {
+          setBranches(res.results); // keep objects
+        } else {
+          message.error(
+            "Failed to fetch branches: " + (res?.message || "Unknown error")
+          );
+        }
+      } catch (error) {
+        message.error("Error fetching branches: " + error?.message);
+      }
+      setLoading(false);
+    };
+
+    fetchBranches();
+  }, []);
+
   const customers = [
     { code: 1234, name: "Customer A" },
     { code: 6598, name: "Customer B" },
@@ -37,7 +60,7 @@ const CustomerAnalysis = () => {
   const customer = {
     name: selectedCustomer.name,
     code: selectedCustomer.code,
-    branch: selectedBranch,
+    branch: selectedBranch?.name,
     channel: "WS",
     totalSales: 12500000,
     ytdSales: 4500000,
@@ -98,246 +121,7 @@ const CustomerAnalysis = () => {
     },
   ];
 
-  const salesOrders = [
-    {
-      key: "1",
-      cust_cd: "5096",
-      cust_nm: "HYPER PANDA 20012 - AMIR FAWAZ",
-      otlcd: "KA",
-      cusgrcd: "G01",
-      cusgrcd_nm: "PANDA",
-      salesman_cd: "0494",
-      salesman_nm: "MOHAMMED ABDULMAJEED",
-      driver_cd: "0494",
-      driver_nm: "MOHAMMED ABDULMAJEED",
-      tp_ord: 12,
-      tp: "return",
-      inv_no: "",
-      inv_dt: "2025-10-18",
-      so_cd: "RE10110252497",
-      so_dt: "2025-10-18",
-      totqty: 12,
-      qtyorder: 12,
-      qtyconv: 1,
-      unitprice: 44,
-      item_cd: "1001009",
-      item_nm: "INST. NDL. VEGETABLE",
-      prod_cd: "11100",
-      prod_nm: "INDOMIE REGULAR",
-      prod_nm3: "INDOMIE REGULAR NON PROMO",
-      prod_nmg1: "PILLOW Noodle",
-      branded_nm: "INDOMIE",
-      size: "40X75G",
-      salespointcd: "101",
-      salespoint_nm: "SBTC JEDDAH",
-      do_dt: "2025-10-18",
-      bin_cd: "DM",
-    },
-    {
-      key: "2",
-      cust_cd: "5097",
-      cust_nm: "HYPER PANDA 20013 - AHMED ALI",
-      otlcd: "KA",
-      cusgrcd: "G01",
-      cusgrcd_nm: "PANDA",
-      salesman_cd: "0495",
-      salesman_nm: "ALI HUSSAIN",
-      driver_cd: "0495",
-      driver_nm: "ALI HUSSAIN",
-      tp_ord: 8,
-      tp: "normal",
-      inv_no: "INV1001",
-      inv_dt: "2025-10-18",
-      so_cd: "SO10110252500",
-      so_dt: "2025-10-18",
-      totqty: 8,
-      qtyorder: 8,
-      qtyconv: 1,
-      unitprice: 50,
-      item_cd: "1001010",
-      item_nm: "INST. NDL. CHICKEN",
-      prod_cd: "11101",
-      prod_nm: "INDOMIE CHICKEN",
-      prod_nm3: "INDOMIE CHICKEN NON PROMO",
-      prod_nmg1: "PILLOW Noodle",
-      branded_nm: "INDOMIE",
-      size: "40X75G",
-      salespointcd: "101",
-      salespoint_nm: "SBTC JEDDAH",
-      do_dt: "2025-10-18",
-      bin_cd: "DM",
-    },
-    {
-      key: "3",
-      cust_cd: "5098",
-      cust_nm: "HYPER PANDA 20014 - SAID KHALED",
-      otlcd: "KA",
-      cusgrcd: "G01",
-      cusgrcd_nm: "PANDA",
-      salesman_cd: "0496",
-      salesman_nm: "KHALED SAID",
-      driver_cd: "0496",
-      driver_nm: "KHALED SAID",
-      tp_ord: 15,
-      tp: "normal",
-      inv_no: "INV1002",
-      inv_dt: "2025-10-18",
-      so_cd: "SO10110252501",
-      so_dt: "2025-10-18",
-      totqty: 15,
-      qtyorder: 15,
-      qtyconv: 1,
-      unitprice: 42,
-      item_cd: "1001011",
-      item_nm: "INST. NDL. SPICY",
-      prod_cd: "11102",
-      prod_nm: "INDOMIE SPICY",
-      prod_nm3: "INDOMIE SPICY NON PROMO",
-      prod_nmg1: "PILLOW Noodle",
-      branded_nm: "INDOMIE",
-      size: "40X75G",
-      salespointcd: "101",
-      salespoint_nm: "SBTC JEDDAH",
-      do_dt: "2025-10-18",
-      bin_cd: "DM",
-    },
-    {
-      key: "4",
-      cust_cd: "5099",
-      cust_nm: "HYPER PANDA 20015 - MOHAMED AHMED",
-      otlcd: "KA",
-      cusgrcd: "G01",
-      cusgrcd_nm: "PANDA",
-      salesman_cd: "0497",
-      salesman_nm: "AHMED MOHAMED",
-      driver_cd: "0497",
-      driver_nm: "AHMED MOHAMED",
-      tp_ord: 10,
-      tp: "return",
-      inv_no: "",
-      inv_dt: "2025-10-18",
-      so_cd: "SO10110252502",
-      so_dt: "2025-10-18",
-      totqty: 10,
-      qtyorder: 10,
-      qtyconv: 1,
-      unitprice: 46,
-      item_cd: "1001012",
-      item_nm: "INST. NDL. TOMATO",
-      prod_cd: "11103",
-      prod_nm: "INDOMIE TOMATO",
-      prod_nm3: "INDOMIE TOMATO NON PROMO",
-      prod_nmg1: "PILLOW Noodle",
-      branded_nm: "INDOMIE",
-      size: "40X75G",
-      salespointcd: "101",
-      salespoint_nm: "SBTC JEDDAH",
-      do_dt: "2025-10-18",
-      bin_cd: "DM",
-    },
-    {
-      key: "5",
-      cust_cd: "5100",
-      cust_nm: "HYPER PANDA 20016 - ALI HASSAN",
-      otlcd: "KA",
-      cusgrcd: "G01",
-      cusgrcd_nm: "PANDA",
-      salesman_cd: "0498",
-      salesman_nm: "HASSAN ALI",
-      driver_cd: "0498",
-      driver_nm: "HASSAN ALI",
-      tp_ord: 9,
-      tp: "normal",
-      inv_no: "INV1003",
-      inv_dt: "2025-10-18",
-      so_cd: "SO10110252503",
-      so_dt: "2025-10-18",
-      totqty: 9,
-      qtyorder: 9,
-      qtyconv: 1,
-      unitprice: 48,
-      item_cd: "1001013",
-      item_nm: "INST. NDL. BEEF",
-      prod_cd: "11104",
-      prod_nm: "INDOMIE BEEF",
-      prod_nm3: "INDOMIE BEEF NON PROMO",
-      prod_nmg1: "PILLOW Noodle",
-      branded_nm: "INDOMIE",
-      size: "40X75G",
-      salespointcd: "101",
-      salespoint_nm: "SBTC JEDDAH",
-      do_dt: "2025-10-18",
-      bin_cd: "DM",
-    },
-    {
-      key: "6",
-      cust_cd: "5101",
-      cust_nm: "HYPER PANDA 20017 - FATIMA ALI",
-      otlcd: "KA",
-      cusgrcd: "G01",
-      cusgrcd_nm: "PANDA",
-      salesman_cd: "0499",
-      salesman_nm: "FATIMA ALI",
-      driver_cd: "0499",
-      driver_nm: "FATIMA ALI",
-      tp_ord: 14,
-      tp: "normal",
-      inv_no: "INV1004",
-      inv_dt: "2025-10-18",
-      so_cd: "SO10110252504",
-      so_dt: "2025-10-18",
-      totqty: 14,
-      qtyorder: 14,
-      qtyconv: 1,
-      unitprice: 45,
-      item_cd: "1001014",
-      item_nm: "INST. NDL. VEG MIX",
-      prod_cd: "11105",
-      prod_nm: "INDOMIE VEG MIX",
-      prod_nm3: "INDOMIE VEG MIX NON PROMO",
-      prod_nmg1: "PILLOW Noodle",
-      branded_nm: "INDOMIE",
-      size: "40X75G",
-      salespointcd: "101",
-      salespoint_nm: "SBTC JEDDAH",
-      do_dt: "2025-10-18",
-      bin_cd: "DM",
-    },
-    {
-      key: "7",
-      cust_cd: "5102",
-      cust_nm: "HYPER PANDA 20018 - SAEED AHMED",
-      otlcd: "KA",
-      cusgrcd: "G01",
-      cusgrcd_nm: "PANDA",
-      salesman_cd: "0500",
-      salesman_nm: "SAEED AHMED",
-      driver_cd: "0500",
-      driver_nm: "SAEED AHMED",
-      tp_ord: 11,
-      tp: "return",
-      inv_no: "",
-      inv_dt: "2025-10-18",
-      so_cd: "SO10110252505",
-      so_dt: "2025-10-18",
-      totqty: 11,
-      qtyorder: 11,
-      qtyconv: 1,
-      unitprice: 49,
-      item_cd: "1001015",
-      item_nm: "INST. NDL. SPINACH",
-      prod_cd: "11106",
-      prod_nm: "INDOMIE SPINACH",
-      prod_nm3: "INDOMIE SPINACH NON PROMO",
-      prod_nmg1: "PILLOW Noodle",
-      branded_nm: "INDOMIE",
-      size: "40X75G",
-      salespointcd: "101",
-      salespoint_nm: "SBTC JEDDAH",
-      do_dt: "2025-10-18",
-      bin_cd: "DM",
-    },
-  ];
+  const salesOrders = [];
 
   const salesOrderColumns = [
     { title: "Customer Code", dataIndex: "cust_cd", key: "cust_cd" },
@@ -365,154 +149,186 @@ const CustomerAnalysis = () => {
   ];
 
   return (
-    <div className="customer-analysis">
-      <div style={{ display: "flex", gap: "16px" }}>
-        {/* Branch Select */}
-        <Select
-          value={selectedBranch}
-          onChange={setSelectedBranch}
-          style={{ flex: 1, width: "100%" }}
-          placeholder="Select Branch"
-        >
-          {branches.map((b) => (
-            <Option key={b} value={b}>
-              {b}
-            </Option>
-          ))}
-        </Select>
+    <>
+      <div className="customer-analysis">
+        <div style={{ display: "flex", gap: "16px" }}>
+          {/* Branch Select */}
+          <Select
+            loading={loading}
+            showSearch
+            value={selectedBranch?.code || null}
+            onChange={(code) => {
+              const branch = branches.find((b) => b.code === code);
+              setSelectedBranch(branch);
+            }}
+            style={{ flex: 1, width: "100%" }}
+            placeholder="Select Branch"
+            optionFilterProp="children" // this tells AntD to filter using the displayed text
+            filterOption={(input, option) =>
+              option.children.toLowerCase().includes(input.toLowerCase())
+            }
+          >
+            {branches.map((branch) => (
+              <Option key={branch.code} value={branch.code}>
+                {branch?.name}
+              </Option>
+            ))}
+          </Select>
 
-        {/* Channel Select */}
-        <Select
-          value={selectedChannel}
-          onChange={setSelectedChannel}
-          style={{ flex: 1, width: "100%" }}
-          placeholder="Select Channel"
-          disabled={!selectedBranch} // disabled until branch selected
-        >
-          {channels.map((ch) => (
-            <Option key={ch} value={ch}>
-              {ch}
-            </Option>
-          ))}
-        </Select>
+          {/* Customer Select */}
+          <Select
+            value={selectedCustomer?.code}
+            onChange={(code) =>
+              setSelectedCustomer(customers.find((c) => c.code === code))
+            }
+            style={{ flex: 1, width: "100%" }}
+            placeholder="Select Customer"
+            disabled={!selectedBranch?.code} // disabled when branch not selected
+          >
+            {customers.map((c) => (
+              <Option key={c.code} value={c.code}>
+                {c.name}
+              </Option>
+            ))}
+          </Select>
+        </div>
 
-        {/* Customer Select */}
-        <Select
-          value={selectedCustomer?.code}
-          onChange={(code) =>
-            setSelectedCustomer(customers.find((c) => c.code === code))
-          }
-          style={{ flex: 1, width: "100%" }}
-          placeholder="Select Customer"
-          disabled={!selectedBranch || !selectedChannel} // disabled until branch & channel selected
+        {/* Radio Buttons */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            marginTop: 24,
+            gap: "32px",
+            marginBottom: 24,
+          }}
         >
-          {customers.map((c) => (
-            <Option key={c.code} value={c.code}>
-              {c.name}
-            </Option>
-          ))}
-        </Select>
-      </div>
-
-      {/* Tabs */}
-      <div className="top-tabs-container">
-        {tabs.map((tab, index) => (
-          <div key={index} className="tab-card">
-            <div className="tab-header">
-              <div className="tab-icon">{tab.icon}</div>
-              <div className="tab-title">{tab.title}</div>
-            </div>
-            <div className="tab-value">{tab.value}</div>
+          {/* Unit Type */}
+          <div>
+            <span style={{ marginRight: 8, fontWeight: 500 }}>Unit:</span>
+            <Radio.Group
+              value={unitType}
+              onChange={(e) => setUnitType(e.target.value)}
+            >
+              <Radio value="ctn">CTN</Radio>
+              <Radio value="pcs">PCS</Radio>
+            </Radio.Group>
           </div>
-        ))}
-      </div>
 
-      <div className="row">
-        <div className="graph">
-          <AreaChart
-            graphTitle="Monthly Sales"
-            labels={[
-              "Jan",
-              "Feb",
-              "Mar",
-              "Apr",
-              "May",
-              "Jun",
-              "Jul",
-              "Aug",
-              "Sep",
-              "Oct",
-            ]}
-            colourTheme={["#28a745"]}
-            units={["pcs", "pcs"]}
-            series={[
-              {
-                name: "Actual Sales",
-                data: [
-                  80000001, 83234567, 85432123, 87654321, 89012345, 81234567,
-                  83456789, 85791335, 87913579, 21000001,
-                ],
-              },
-            ]}
+          {/* Price Type */}
+          <div>
+            <span style={{ marginRight: 8, fontWeight: 500 }}>Type:</span>
+            <Radio.Group
+              value={priceType}
+              onChange={(e) => setPriceType(e.target.value)}
+            >
+              <Radio value="net">NET</Radio>
+              <Radio value="gross">GROSS</Radio>
+            </Radio.Group>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="top-tabs-container">
+          {tabs.map((tab, index) => (
+            <div key={index} className="tab-card">
+              <div className="tab-header">
+                <div className="tab-icon">{tab.icon}</div>
+                <div className="tab-title">{tab.title}</div>
+              </div>
+              <div className="tab-value">{tab.value}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="row">
+          <div className="graph">
+            <AreaChart
+              graphTitle="Monthly Sales"
+              labels={[
+                "Jan",
+                "Feb",
+                "Mar",
+                "Apr",
+                "May",
+                "Jun",
+                "Jul",
+                "Aug",
+                "Sep",
+                "Oct",
+              ]}
+              colourTheme={["#28a745"]}
+              units={["pcs", "pcs"]}
+              series={[
+                {
+                  name: "Actual Sales",
+                  data: [
+                    80000001, 83234567, 85432123, 87654321, 89012345, 81234567,
+                    83456789, 85791335, 87913579, 21000001,
+                  ],
+                },
+              ]}
+            />
+          </div>
+        </div>
+
+        {/* Yearly Comparison Line Chart */}
+        <div className="row" style={{ marginTop: 20 }}>
+          <div className="graph">
+            <LineChart
+              graphTitle="Customer Sales Comparison (2023–2025)"
+              labels={[
+                "Jan",
+                "Feb",
+                "Mar",
+                "Apr",
+                "May",
+                "Jun",
+                "Jul",
+                "Aug",
+                "Sep",
+                "Oct",
+              ]}
+              colourTheme={["#007bff", "#ff69b4", "#ffa500"]}
+              units={["pcs"]}
+              series={[
+                {
+                  name: "2023 Sales",
+                  data: [
+                    7289456, 7456123, 7623987, 7487654, 6998765, 7421567,
+                    7356789, 7589432, 7498234, 7721987,
+                  ],
+                },
+                {
+                  name: "2024 Sales",
+                  data: [
+                    7123456, 7256789, 7198345, 7548765, 7798234, 8034987,
+                    7956123, 8221345, 8149876, 8398765,
+                  ],
+                },
+                {
+                  name: "2025 Sales",
+                  data: [
+                    6543210, 6789456, 6623987, 7034567, 7356211, 7698543,
+                    7598123, 7814567, 7732456, 7921345,
+                  ],
+                },
+              ]}
+            />
+          </div>
+        </div>
+
+        <div className="sales-orders-table" style={{ marginTop: 20 }}>
+          <Table
+            columns={salesOrderColumns}
+            dataSource={salesOrders}
+            bordered
+            scroll={{ x: "max-content" }}
           />
         </div>
       </div>
-
-      {/* Yearly Comparison Line Chart */}
-      <div className="row" style={{ marginTop: 20 }}>
-        <div className="graph">
-          <LineChart
-            graphTitle="Customer Sales Comparison (2023–2025)"
-            labels={[
-              "Jan",
-              "Feb",
-              "Mar",
-              "Apr",
-              "May",
-              "Jun",
-              "Jul",
-              "Aug",
-              "Sep",
-              "Oct",
-            ]}
-            colourTheme={["#007bff", "#ff69b4", "#ffa500"]}
-            units={["pcs"]}
-            series={[
-              {
-                name: "2023 Sales",
-                data: [
-                  7289456, 7456123, 7623987, 7487654, 6998765, 7421567, 7356789,
-                  7589432, 7498234, 7721987,
-                ],
-              },
-              {
-                name: "2024 Sales",
-                data: [
-                  7123456, 7256789, 7198345, 7548765, 7798234, 8034987, 7956123,
-                  8221345, 8149876, 8398765,
-                ],
-              },
-              {
-                name: "2025 Sales",
-                data: [
-                  6543210, 6789456, 6623987, 7034567, 7356211, 7698543, 7598123,
-                  7814567, 7732456, 7921345,
-                ],
-              },
-            ]}
-          />
-        </div>
-      </div>
-
-      <div className="sales-orders-table" style={{ marginTop: 20 }}>
-        <Table
-          columns={salesOrderColumns}
-          dataSource={salesOrders}
-          bordered
-          scroll={{ x: "max-content" }}
-        />
-      </div>
-    </div>
+    </>
   );
 };
 
