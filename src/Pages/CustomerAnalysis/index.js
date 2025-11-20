@@ -7,25 +7,28 @@ import {
   UserOutlined,
   DollarOutlined,
 } from "@ant-design/icons";
-import { message, Radio, Select, Table } from "antd";
+import { message, Radio, Select, Table, Tag } from "antd";
 import "./style.css";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import LineChart from "../../Components/Charts/LineChart";
 import RiyalIcon from "../../Utils/RiyalIcon";
 import AreaChart from "../../Components/Charts/AreaChart";
 import { getAllBranches } from "../../API/Branches";
+import { getCustomerInsight, getCustomersByBranch } from "../../API/Customer";
+import { ProductContext } from "../../Contexts/ProductContext";
 
 const { Option } = Select;
 
 const CustomerAnalysis = () => {
+  const { selectedProduct } = useContext(ProductContext);
+
   const [loading, setLoading] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState();
   const [unitType, setUnitType] = useState("ctn");
   const [priceType, setPriceType] = useState("net");
-  const [selectedCustomer, setSelectedCustomer] = useState({
-    code: 1234,
-    name: "Customer A",
-  });
+  const [customers, setCustomers] = useState([]);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [customerData, setCustomerData] = useState(null);
 
   const [branches, setBranches] = useState([]);
 
@@ -50,26 +53,73 @@ const CustomerAnalysis = () => {
     fetchBranches();
   }, []);
 
-  const customers = [
-    { code: 1234, name: "Customer A" },
-    { code: 6598, name: "Customer B" },
-    { code: 7821, name: "Customer C" },
-  ];
+  // Branch Select handler
+  const handleBranchChange = async (code) => {
+    const branch = branches.find((b) => b.code === code);
+    setSelectedBranch(branch);
+
+    // Reset customer selection
+    setSelectedCustomer(null);
+    setCustomers([]);
+
+    if (!branch) return;
+
+    setLoading(true);
+    try {
+      const res = await getCustomersByBranch(code);
+      if (res?.success !== false && res?.length > 0) {
+        setCustomers(res);
+      } else {
+        message.warning("No customers found for this branch");
+      }
+    } catch (err) {
+      message.error("Failed to fetch customers");
+    }
+    setLoading(false);
+  };
+
+  // Customer Select handler
+  const handleCustomerChange = async (code) => {
+    const customer = customers.find((c) => c.code === code) || null;
+    setSelectedCustomer(customer);
+    if (!customer || !selectedBranch) return;
+
+    setLoading(true);
+    try {
+      const res = await getCustomerInsight({
+        customer_code: customer.code,
+        branch_code: selectedBranch.code,
+        sales_type: priceType,
+        unit: unitType,
+        product_code: selectedProduct?.code, // or any dynamic code if needed
+      });
+      if (res?.success === false) {
+        message.warning("No data found for this customer");
+        setCustomerData(null);
+      } else {
+        setCustomerData(res);
+      }
+    } catch (err) {
+      message.error("Failed to fetch customer insight");
+      setCustomerData(null);
+    }
+    setLoading(false);
+  };
 
   // Customer info based on selection
   const customer = {
-    name: selectedCustomer.name,
-    code: selectedCustomer.code,
-    branch: selectedBranch?.name,
-    channel: "WS",
-    totalSales: 12500000,
-    ytdSales: 4500000,
-    mtdSales: 800000,
-    dryMonths: 2,
-    salesman: "Osama Mohamed",
-    contribution: 30,
-    pendingAmount: 54763,
-    pendingMonths: 5,
+    name: customerData?.customer_name || "-",
+    code: customerData?.customer_code || "-",
+    branch: customerData?.branch || selectedBranch?.name || "-",
+    channel: customerData?.channel || "WS",
+    totalSales: customerData?.total_sales_forever || 0,
+    ytdSales: customerData?.sales_ytd || 0,
+    mtdSales: customerData?.sales_mtd || 0,
+    dryMonths: customerData?.dry_months ?? 0,
+    salesman: customerData?.salesman || "-",
+    contribution: customerData?.contribution_percent || 0,
+    pendingAmount: customerData?.pendingAmount || 0, // keep dummy if API doesn't return
+    pendingMonths: customerData?.pendingMonths || 0, // keep dummy if API doesn't return
   };
 
   const tabs = [
@@ -79,17 +129,17 @@ const CustomerAnalysis = () => {
     { title: "Channel", value: customer.channel, icon: <SlidersOutlined /> },
     {
       title: "Total Sales",
-      value: customer.totalSales.toLocaleString() + " pcs",
+      value: customer.totalSales.toLocaleString() + " " + unitType,
       icon: <DollarOutlined />,
     },
     {
       title: "Sales YTD",
-      value: customer.ytdSales.toLocaleString() + " pcs",
+      value: customer.ytdSales.toLocaleString() + " " + unitType,
       icon: <LineChartOutlined />,
     },
     {
       title: "Sales MTD",
-      value: customer.mtdSales.toLocaleString() + " pcs",
+      value: customer.mtdSales.toLocaleString() + " " + unitType,
       icon: <CalendarOutlined />,
     },
     { title: "Dry Months", value: customer.dryMonths, icon: <StopOutlined /> },
@@ -103,7 +153,8 @@ const CustomerAnalysis = () => {
       title: "Payment Pending",
       value: customer?.pendingAmount ? (
         <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <RiyalIcon /> {customer?.pendingAmount?.toLocaleString()}
+          <RiyalIcon /> {customer?.pendingAmount?.toLocaleString()}{" "}
+          <Tag color="orange">Dummy Data</Tag>
         </span>
       ) : (
         <span>
@@ -114,14 +165,19 @@ const CustomerAnalysis = () => {
     },
     {
       title: "Pending Since",
-      value: customer?.pendingMonths
-        ? `${customer?.pendingMonths} months`
-        : "No pending",
+      value: (
+        <span>
+          {customer?.pendingMonths
+            ? `${customer?.pendingMonths} months`
+            : "No pending"}{" "}
+          <Tag color="orange">Dummy Data</Tag>
+        </span>
+      ),
       icon: <CalendarOutlined />,
     },
   ];
 
-  const salesOrders = [];
+  const salesOrders = customerData?.invoices || [];
 
   const salesOrderColumns = [
     { title: "Customer Code", dataIndex: "cust_cd", key: "cust_cd" },
@@ -157,13 +213,10 @@ const CustomerAnalysis = () => {
             loading={loading}
             showSearch
             value={selectedBranch?.code || null}
-            onChange={(code) => {
-              const branch = branches.find((b) => b.code === code);
-              setSelectedBranch(branch);
-            }}
+            onChange={handleBranchChange}
             style={{ flex: 1, width: "100%" }}
             placeholder="Select Branch"
-            optionFilterProp="children" // this tells AntD to filter using the displayed text
+            optionFilterProp="children"
             filterOption={(input, option) =>
               option.children.toLowerCase().includes(input.toLowerCase())
             }
@@ -175,19 +228,22 @@ const CustomerAnalysis = () => {
             ))}
           </Select>
 
-          {/* Customer Select */}
           <Select
-            value={selectedCustomer?.code}
-            onChange={(code) =>
-              setSelectedCustomer(customers.find((c) => c.code === code))
-            }
+            showSearch
+            loading={loading}
+            value={selectedCustomer?.code || null}
+            onChange={handleCustomerChange} // <-- call updated function
             style={{ flex: 1, width: "100%" }}
             placeholder="Select Customer"
-            disabled={!selectedBranch?.code} // disabled when branch not selected
+            optionFilterProp="label"
           >
             {customers.map((c) => (
-              <Option key={c.code} value={c.code}>
-                {c.name}
+              <Option
+                key={c.code}
+                value={c.code}
+                label={`${c.code} - ${c.name}`}
+              >
+                {`${c.code} - ${c.name}`}
               </Option>
             ))}
           </Select>
@@ -246,27 +302,13 @@ const CustomerAnalysis = () => {
           <div className="graph">
             <AreaChart
               graphTitle="Monthly Sales"
-              labels={[
-                "Jan",
-                "Feb",
-                "Mar",
-                "Apr",
-                "May",
-                "Jun",
-                "Jul",
-                "Aug",
-                "Sep",
-                "Oct",
-              ]}
+              labels={customerData?.monthly_sales_current_year?.months || []} // fallback
               colourTheme={["#28a745"]}
-              units={["pcs", "pcs"]}
+              units={[unitType, unitType]}
               series={[
                 {
                   name: "Actual Sales",
-                  data: [
-                    80000001, 83234567, 85432123, 87654321, 89012345, 81234567,
-                    83456789, 85791335, 87913579, 21000001,
-                  ],
+                  data: customerData?.monthly_sales_current_year?.sales || [], // fallback
                 },
               ]}
             />
@@ -278,41 +320,21 @@ const CustomerAnalysis = () => {
           <div className="graph">
             <LineChart
               graphTitle="Customer Sales Comparison (2023–2025)"
-              labels={[
-                "Jan",
-                "Feb",
-                "Mar",
-                "Apr",
-                "May",
-                "Jun",
-                "Jul",
-                "Aug",
-                "Sep",
-                "Oct",
-              ]}
+              labels={customerData?.graph?.months || []} // fallback
               colourTheme={["#007bff", "#ff69b4", "#ffa500"]}
-              units={["pcs"]}
+              units={[unitType]}
               series={[
                 {
                   name: "2023 Sales",
-                  data: [
-                    7289456, 7456123, 7623987, 7487654, 6998765, 7421567,
-                    7356789, 7589432, 7498234, 7721987,
-                  ],
+                  data: customerData?.graph?.["2023"] || [],
                 },
                 {
                   name: "2024 Sales",
-                  data: [
-                    7123456, 7256789, 7198345, 7548765, 7798234, 8034987,
-                    7956123, 8221345, 8149876, 8398765,
-                  ],
+                  data: customerData?.graph?.["2024"] || [],
                 },
                 {
                   name: "2025 Sales",
-                  data: [
-                    6543210, 6789456, 6623987, 7034567, 7356211, 7698543,
-                    7598123, 7814567, 7732456, 7921345,
-                  ],
+                  data: customerData?.graph?.["2025"] || [],
                 },
               ]}
             />
