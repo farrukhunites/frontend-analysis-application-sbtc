@@ -53,6 +53,45 @@ const CustomerAnalysis = () => {
     fetchBranches();
   }, []);
 
+  useEffect(() => {
+    // Only call API if all required variables are present
+    if (
+      !selectedCustomer ||
+      !selectedBranch ||
+      !selectedProduct ||
+      !priceType ||
+      !unitType
+    ) {
+      return;
+    }
+
+    const fetchCustomerInsight = async () => {
+      setLoading(true);
+      try {
+        const res = await getCustomerInsight({
+          customer_code: selectedCustomer.code,
+          branch_code: selectedBranch.code,
+          sales_type: priceType,
+          unit: unitType,
+          product_code: selectedProduct.code,
+        });
+
+        if (res?.success === false) {
+          message.warning("No data found for this customer");
+          setCustomerData(null);
+        } else {
+          setCustomerData(res);
+        }
+      } catch (err) {
+        message.error("Failed to fetch customer insight");
+        setCustomerData(null);
+      }
+      setLoading(false);
+    };
+
+    fetchCustomerInsight();
+  }, [selectedCustomer, selectedBranch, priceType, unitType, selectedProduct]);
+
   // Branch Select handler
   const handleBranchChange = async (code) => {
     const branch = branches.find((b) => b.code === code);
