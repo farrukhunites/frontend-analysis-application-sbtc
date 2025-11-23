@@ -31,8 +31,8 @@ const Navbar = ({ colorBgContainer }) => {
           // if yes, add the 2 special Indomie products
           if (hasIndomie) {
             const specialIndomie = [
-              { code: "9999901", name: "INDOMIE PILLOW" },
-              { code: "9999902", name: "INDOMIE CUP" },
+              { code: "9999901", name: "INDOMIE PILLOW (All)" },
+              { code: "9999902", name: "INDOMIE CUP (All)" },
             ];
 
             // ensure we don’t duplicate if somehow already exists
