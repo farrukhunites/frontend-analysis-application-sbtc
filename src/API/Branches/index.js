@@ -8,7 +8,7 @@ const getAllBranches = async () => {
     const response = await axios.get(API_URL);
     return response?.data;
   } catch (error) {
-    console.error("Error fetching products:", error);
+    console.error("Error fetching branches:", error);
     return {
       success: false,
       error: error.response?.data || error.message || "Unknown error",
