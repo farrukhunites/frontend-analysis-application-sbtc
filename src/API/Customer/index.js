@@ -1,8 +1,8 @@
 import axios from "axios";
 
 // Function to fetch all branches
-const getCustomersByBranch = async (code) => {
-  const API_URL = `${process.env.REACT_APP_BACKEND_URL}customers/by-branch/?branch_id=${code}`;
+const getCustomersByBranchByCHannel = async (code, channel_name) => {
+  const API_URL = `${process.env.REACT_APP_BACKEND_URL}customers/by-branch/?branch_id=${code}&channel_name=${channel_name}`;
 
   try {
     const response = await axios.get(API_URL);
@@ -37,4 +37,4 @@ const getCustomerInsight = async ({
   }
 };
 
-export { getCustomersByBranch, getCustomerInsight };
+export { getCustomersByBranchByCHannel, getCustomerInsight };

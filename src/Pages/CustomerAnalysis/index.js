@@ -14,8 +14,13 @@ import LineChart from "../../Components/Charts/LineChart";
 import RiyalIcon from "../../Utils/RiyalIcon";
 import AreaChart from "../../Components/Charts/AreaChart";
 import { getAllBranches } from "../../API/Branches";
-import { getCustomerInsight, getCustomersByBranch } from "../../API/Customer";
+import {
+  getCustomerInsight,
+  getCustomersByBranch,
+  getCustomersByBranchByCHannel,
+} from "../../API/Customer";
 import { ProductContext } from "../../Contexts/ProductContext";
+import { getAllChannels } from "../../API/Channels";
 
 const { Option } = Select;
 
@@ -24,6 +29,7 @@ const CustomerAnalysis = () => {
 
   const [loading, setLoading] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState();
+  const [selectedChannel, setSelectedChannel] = useState();
   const [unitType, setUnitType] = useState("ctn");
   const [priceType, setPriceType] = useState("net");
   const [customers, setCustomers] = useState([]);
@@ -31,6 +37,7 @@ const CustomerAnalysis = () => {
   const [customerData, setCustomerData] = useState(null);
 
   const [branches, setBranches] = useState([]);
+  const [channels, setChannels] = useState([]);
 
   useEffect(() => {
     const fetchBranches = async () => {
@@ -50,7 +57,25 @@ const CustomerAnalysis = () => {
       setLoading(false);
     };
 
+    const fetchChannels = async () => {
+      setLoading(true);
+      try {
+        const res = await getAllChannels();
+        if (res?.results) {
+          setChannels(res.results);
+        } else {
+          message.error(
+            "Failed to fetch channels: " + (res?.message || "Unknown error")
+          );
+        }
+      } catch (error) {
+        message.error("Error fetching channels: " + error?.message);
+      }
+      setLoading(false);
+    };
+
     fetchBranches();
+    fetchChannels();
   }, []);
 
   useEffect(() => {
@@ -92,29 +117,51 @@ const CustomerAnalysis = () => {
     fetchCustomerInsight();
   }, [selectedCustomer, selectedBranch, priceType, unitType, selectedProduct]);
 
+  useEffect(() => {
+    // Do nothing unless BOTH branch + channel selected
+    if (!selectedBranch || !selectedChannel) {
+      setCustomers([]);
+      setSelectedCustomer(null);
+      return;
+    }
+
+    const fetchCustomers = async () => {
+      setLoading(true);
+      try {
+        const res = await getCustomersByBranchByCHannel(
+          selectedBranch?.code,
+          selectedChannel?.name
+        );
+
+        if (res?.length > 0) {
+          setCustomers(res);
+        } else {
+          setCustomers([]);
+          message.warning("No customers found for this branch + channel");
+        }
+      } catch (error) {
+        message.error("Failed to fetch customers");
+      }
+      setLoading(false);
+    };
+
+    fetchCustomers();
+  }, [selectedBranch, selectedChannel]);
+
   // Branch Select handler
-  const handleBranchChange = async (code) => {
+  const handleBranchChange = (code) => {
     const branch = branches.find((b) => b.code === code);
     setSelectedBranch(branch);
-
-    // Reset customer selection
     setSelectedCustomer(null);
     setCustomers([]);
+  };
 
-    if (!branch) return;
-
-    setLoading(true);
-    try {
-      const res = await getCustomersByBranch(code);
-      if (res?.success !== false && res?.length > 0) {
-        setCustomers(res);
-      } else {
-        message.warning("No customers found for this branch");
-      }
-    } catch (err) {
-      message.error("Failed to fetch customers");
-    }
-    setLoading(false);
+  // Channel Select handler
+  const handleChannelChange = (code) => {
+    const channel = channels.find((c) => c.code === code);
+    setSelectedChannel(channel);
+    setSelectedCustomer(null);
+    setCustomers([]);
   };
 
   // Customer Select handler
@@ -263,11 +310,32 @@ const CustomerAnalysis = () => {
             ))}
           </Select>
 
+          {/* Channel Select */}
           <Select
-            showSearch
             loading={loading}
+            showSearch
+            value={selectedChannel?.name || null}
+            onChange={handleChannelChange}
+            style={{ flex: 1, width: "100%" }}
+            placeholder="Select Channel"
+            optionFilterProp="children"
+            filterOption={(input, option) =>
+              option.children.toLowerCase().includes(input.toLowerCase())
+            }
+          >
+            {channels.map((channel) => (
+              <Option key={channel.code} value={channel.code}>
+                {channel?.name}
+              </Option>
+            ))}
+          </Select>
+
+          <Select
+            disabled={!selectedBranch || !selectedChannel}
+            loading={loading}
+            showSearch
             value={selectedCustomer?.code || null}
-            onChange={handleCustomerChange} // <-- call updated function
+            onChange={handleCustomerChange}
             style={{ flex: 1, width: "100%" }}
             placeholder="Select Customer"
             optionFilterProp="label"
