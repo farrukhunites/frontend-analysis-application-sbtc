@@ -38,7 +38,7 @@ const CustomerAnalysis = () => {
       try {
         const res = await getAllBranches();
         if (res?.results) {
-          setBranches(res.results); // keep objects
+          setBranches(res.results);
         } else {
           message.error(
             "Failed to fetch branches: " + (res?.message || "Unknown error")
@@ -190,14 +190,10 @@ const CustomerAnalysis = () => {
     },
     {
       title: "Payment Pending",
-      value: customer?.pendingAmount ? (
+      value: (
         <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <RiyalIcon /> {customer?.pendingAmount?.toLocaleString()}{" "}
           <Tag color="orange">Dummy Data</Tag>
-        </span>
-      ) : (
-        <span>
-          <RiyalIcon /> 0
         </span>
       ),
       icon: <DollarOutlined />,
@@ -208,7 +204,7 @@ const CustomerAnalysis = () => {
         <span>
           {customer?.pendingMonths
             ? `${customer?.pendingMonths} months`
-            : "No pending"}{" "}
+            : "5th Oct, 2025"}{" "}
           <Tag color="orange">Dummy Data</Tag>
         </span>
       ),
