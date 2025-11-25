@@ -214,7 +214,7 @@ const CustomerAnalysis = () => {
     { title: "Branch", value: customer.branch, icon: <AimOutlined /> },
     { title: "Channel", value: customer.channel, icon: <SlidersOutlined /> },
     {
-      title: "Total Sales",
+      title: "Total Sales (From 2023)",
       value: customer.totalSales.toLocaleString() + " " + unitType,
       icon: <DollarOutlined />,
     },
@@ -277,6 +277,7 @@ const CustomerAnalysis = () => {
     { title: "Item Code", dataIndex: "item_cd", key: "item_cd" },
     { title: "Item Name", dataIndex: "item_nm", key: "item_nm" },
     { title: "Quantity Ordered", dataIndex: "qtyorder", key: "qtyorder" },
+    { title: "Quantity Converted", dataIndex: "qtyconv", key: "qtyconv" },
     { title: "Unit Price", dataIndex: "unitprice", key: "unitprice" },
     { title: "Total Quantity", dataIndex: "totqty", key: "totqty" },
     { title: "Product Name", dataIndex: "prod_nm", key: "prod_nm" },
@@ -450,6 +451,7 @@ const CustomerAnalysis = () => {
             dataSource={salesOrders}
             bordered
             scroll={{ x: "max-content" }}
+            pagination={{ pageSize: 100 }}
           />
         </div>
       </div>
