@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button, DatePicker, Space } from "antd";
 import dayjs from "dayjs";
 import { useDateFilter } from "../../Contexts/DateFilterContext";
@@ -7,7 +7,18 @@ import "./style.css";
 
 const DateFilter = () => {
   const { selectedMonth, setSelectedMonth } = useDateFilter();
-  const [monthValue, setMonthValue] = useState(null);
+
+  // If selectedMonth is empty, default to current month
+  const defaultMonth = selectedMonth ? dayjs(selectedMonth, "YYYYMM") : dayjs();
+  const [monthValue, setMonthValue] = useState(defaultMonth);
+
+  // whenever component mounts, set the default in context if empty
+  useEffect(() => {
+    if (!selectedMonth) {
+      const currentYM = dayjs().format("YYYYMM");
+      setSelectedMonth(currentYM);
+    }
+  }, [selectedMonth, setSelectedMonth]);
 
   const handleChange = (value) => {
     if (!value) {
@@ -15,15 +26,16 @@ const DateFilter = () => {
       setMonthValue(null);
       return;
     }
-
-    const ym = value.format("YYYYMM"); // convert to 202511 format
+    const ym = value.format("YYYYMM"); // "202511"
     setSelectedMonth(ym);
     setMonthValue(value);
   };
 
   const handleReset = () => {
-    setSelectedMonth("");
-    setMonthValue(null);
+    const now = dayjs();
+    const ym = now.format("YYYYMM");
+    setSelectedMonth(ym);
+    setMonthValue(now);
   };
 
   return (

@@ -1,6 +1,10 @@
-import React, { useMemo, useState } from "react";
-import { Table, Select } from "antd";
+import React, { useContext, useEffect, useMemo, useState } from "react";
+import { Table, Select, message } from "antd";
 import "./style.css";
+import { getAllProducts } from "../../API/Products";
+import { ProductContext } from "../../Contexts/ProductContext";
+import { useDateFilter } from "../../Contexts/DateFilterContext";
+import { getDailySTT } from "../../API/Daily STT Report";
 
 const branch_region_map = {
   "SBTC BISHA": "SOUTHERN",
@@ -26,27 +30,6 @@ const branch_region_map = {
   "SBTC JIZAN": "JIZAN",
 };
 
-const productOptions = [
-  "INDOMIE PILLOW",
-  "INDOMIE CUP",
-  "CHICKEN STOCK",
-  "SANTAN",
-  "COFFEE INSTANT",
-  "CRACKER",
-  "INDOFOOD CHILI",
-  "INDOFOOD SOY SAUCE",
-  "MONOSODIUM GLUTAMAT",
-  "MUSHROOM",
-  "SIWAK",
-  "STEVIANA",
-  "THAI RICE",
-  "TOYA CHILI SAUCE",
-  "TOYA HOT SAUCE",
-  "TOYA KETCHUP",
-  "TOYA VINEGAR",
-  "TUNA INDONESIA",
-];
-
 const branchesData = [
   { branch: "SBTC JEDDAH", region: "JEDDAH" },
   { branch: "SBTC JIZAN", region: "JIZAN" },
@@ -70,19 +53,6 @@ const branchesData = [
   { branch: "SBTC JUBAIL", region: "EASTERN" },
   { branch: "SBTC KHOBAR", region: "EASTERN" },
 ];
-
-// Random data generation
-const baseData = branchesData.map((b, i) => {
-  const row = { key: i + 1, branch: b.branch };
-  productOptions.forEach((p) => {
-    const slug = p.toLowerCase().replace(/\s+/g, "_");
-    row[`${slug}_target`] = Math.round(Math.random() * 5000);
-    row[`${slug}_sales`] = Math.round(Math.random() * 5000);
-    row[`${slug}_jun24`] = Math.round(Math.random() * 5000);
-    row[`${slug}_jun25`] = Math.round(Math.random() * 5000);
-  });
-  return row;
-});
 
 // Generate product columns
 const getProductColumns = (product) => {
@@ -125,10 +95,97 @@ const getProductColumns = (product) => {
 };
 
 const DailySTT = () => {
+  const [loading, setLoading] = useState(false);
+  const { selectedMonth } = useDateFilter();
+  const [dailySTTReport, setDailySTTReport] = useState({});
+  const { selectedProduct } = useContext(ProductContext);
+  const [productOptions, setProductOptions] = useState([]);
   const [selectedProducts, setSelectedProducts] = useState([
-    "INDOMIE CUP",
-    "INDOMIE PILLOW",
+    selectedProduct?.code,
   ]);
+  const [msgApi, contextHolder] = message.useMessage();
+
+  console.log("Selected Month: ", selectedMonth);
+
+  // Random data generation
+  const baseData = branchesData.map((b, i) => {
+    const row = { key: i + 1, branch: b.branch };
+    productOptions.forEach((p) => {
+      const slug = p?.toLowerCase().replace(/\s+/g, "_");
+      row[`${slug}_target`] = Math.round(Math.random() * 5000);
+      row[`${slug}_sales`] = Math.round(Math.random() * 5000);
+      row[`${slug}_jun24`] = Math.round(Math.random() * 5000);
+      row[`${slug}_jun25`] = Math.round(Math.random() * 5000);
+    });
+    return row;
+  });
+
+  console.log(dailySTTReport);
+
+  useEffect(() => {
+    const fetchDailySTTReport = async () => {
+      setLoading(true);
+      try {
+        const res = await getDailySTT(
+          selectedMonth,
+          selectedProducts.join(", ")
+        );
+        if (res?.results) {
+          setDailySTTReport(res.results);
+        } else {
+          message.error(
+            "Failed to fetch daily stt report: " +
+              (res?.message || "Unknown error")
+          );
+        }
+      } catch (error) {
+        message.error("Error fetching daily stt report: " + error?.message);
+      }
+      setLoading(false);
+    };
+
+    const fetchProductOptions = async () => {
+      setLoading(true);
+      try {
+        const res = await getAllProducts();
+        if (res) {
+          let products = res.results || [];
+
+          const hasIndomie = products.some((p) =>
+            p?.name?.toLowerCase().includes("indomie")
+          );
+
+          // if yes, add the 2 special Indomie products
+          if (hasIndomie) {
+            const specialIndomie = [
+              { code: "9999901", name: "INDOMIE PILLOW (All)" },
+              { code: "9999902", name: "INDOMIE CUP (All)" },
+            ];
+
+            // ensure we don’t duplicate if somehow already exists
+            specialIndomie.forEach((p) => {
+              if (!products.some((prod) => prod.code === p.code)) {
+                products.push(p);
+              }
+            });
+          }
+
+          await setProductOptions(products);
+          if (products.length > 0) setSelectedProducts(products[0]);
+        } else {
+          msgApi.error(
+            "Failed to fetch products: " + (res.message || "Unknown error")
+          );
+        }
+      } catch (error) {
+        msgApi.error("Error fetching products: " + error.message);
+      }
+      setLoading(false);
+    };
+
+    fetchProductOptions();
+    fetchDailySTTReport();
+  }, []);
 
   const columns = useMemo(() => {
     const dynamicCols = selectedProducts.map(getProductColumns);
@@ -196,7 +253,7 @@ const DailySTT = () => {
           t_jun25 = 0;
 
         selectedProducts.forEach((p) => {
-          const slug = p.toLowerCase().replace(/\s+/g, "_");
+          const slug = p?.toLowerCase().replace(/\s+/g, "_");
           t_target += r[`${slug}_target`] || 0;
           t_sales += r[`${slug}_sales`] || 0;
           t_jun24 += r[`${slug}_jun24`] || 0;
@@ -223,7 +280,7 @@ const DailySTT = () => {
         sub_total_jun25 = 0;
 
       selectedProducts.forEach((p) => {
-        const slug = p.toLowerCase().replace(/\s+/g, "_");
+        const slug = p?.toLowerCase().replace(/\s+/g, "_");
         ["target", "sales", "jun24", "jun25"].forEach((f) => {
           const col = `${slug}_${f}`;
           subtotal[col] = rows.reduce((s, r) => s + (r[col] || 0), 0);
@@ -263,7 +320,7 @@ const DailySTT = () => {
 
     // For each product, sum the values across all branches
     selectedProducts.forEach((p) => {
-      const slug = p.toLowerCase().replace(/\s+/g, "_");
+      const slug = p?.toLowerCase().replace(/\s+/g, "_");
       ["target", "sales", "jun24", "jun25"].forEach((f) => {
         const col = `${slug}_${f}`;
         grand[col] = baseData.reduce((sum, r) => sum + (r[col] || 0), 0);
@@ -277,22 +334,22 @@ const DailySTT = () => {
     // Total column (sum of selected products)
     grand.total_target = selectedProducts.reduce(
       (s, p) =>
-        s + (grand[`${p.toLowerCase().replace(/\s+/g, "_")}_target`] || 0),
+        s + (grand[`${p?.toLowerCase().replace(/\s+/g, "_")}_target`] || 0),
       0
     );
     grand.total_sales = selectedProducts.reduce(
       (s, p) =>
-        s + (grand[`${p.toLowerCase().replace(/\s+/g, "_")}_sales`] || 0),
+        s + (grand[`${p?.toLowerCase().replace(/\s+/g, "_")}_sales`] || 0),
       0
     );
     grand.total_jun24 = selectedProducts.reduce(
       (s, p) =>
-        s + (grand[`${p.toLowerCase().replace(/\s+/g, "_")}_jun24`] || 0),
+        s + (grand[`${p?.toLowerCase().replace(/\s+/g, "_")}_jun24`] || 0),
       0
     );
     grand.total_jun25 = selectedProducts.reduce(
       (s, p) =>
-        s + (grand[`${p.toLowerCase().replace(/\s+/g, "_")}_jun25`] || 0),
+        s + (grand[`${p?.toLowerCase().replace(/\s+/g, "_")}_jun25`] || 0),
       0
     );
     grand.total_growth =
@@ -305,32 +362,35 @@ const DailySTT = () => {
   }, [selectedProducts]);
 
   return (
-    <div style={{ padding: 16 }}>
-      <div style={{ marginBottom: 16 }}>
-        <strong>Show Products: </strong>
-        <Select
-          mode="multiple"
-          style={{ width: "100%" }}
-          value={selectedProducts}
-          onChange={setSelectedProducts}
-          options={productOptions.map((p) => ({ value: p, label: p }))}
+    <>
+      {contextHolder}
+      <div style={{ padding: 16 }}>
+        <div style={{ marginBottom: 16 }}>
+          <strong>Show Products: </strong>
+          <Select
+            mode="multiple"
+            style={{ width: "100%" }}
+            value={selectedProducts}
+            onChange={setSelectedProducts}
+            options={productOptions.map((p) => ({ value: p, label: p }))}
+          />
+        </div>
+
+        <Table
+          bordered
+          size="small"
+          dataSource={processedData}
+          columns={columns}
+          pagination={false}
+          rowClassName={(record) => {
+            if (record.branch.includes("SUB TOTAL")) return "subtotal-row";
+            if (record.branch.includes("GRAND TOTAL")) return "grandtotal-row";
+            return "";
+          }}
+          scroll={{ x: "max-content", y: "55vh" }}
         />
       </div>
-
-      <Table
-        bordered
-        size="small"
-        dataSource={processedData}
-        columns={columns}
-        pagination={false}
-        rowClassName={(record) => {
-          if (record.branch.includes("SUB TOTAL")) return "subtotal-row";
-          if (record.branch.includes("GRAND TOTAL")) return "grandtotal-row";
-          return "";
-        }}
-        scroll={{ x: "max-content", y: "55vh" }}
-      />
-    </div>
+    </>
   );
 };
 
