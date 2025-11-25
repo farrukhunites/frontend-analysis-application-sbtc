@@ -16,7 +16,6 @@ import AreaChart from "../../Components/Charts/AreaChart";
 import { getAllBranches } from "../../API/Branches";
 import {
   getCustomerInsight,
-  getCustomersByBranch,
   getCustomersByBranchByCHannel,
 } from "../../API/Customer";
 import { ProductContext } from "../../Contexts/ProductContext";
