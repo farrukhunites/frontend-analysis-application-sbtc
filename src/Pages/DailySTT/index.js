@@ -96,36 +96,63 @@ const DailySTT = () => {
             { code: "9999902", name: "INDOMIE CUP (All)" },
           ];
           specialIndomie.forEach((p) => {
-            if (!products.some((prod) => prod?.code === p?.code)) {
+            if (!products.some((prod) => prod?.code === p?.code))
               products.push(p);
-            }
           });
         }
 
         setProductOptions(products);
-        if (!selectedProducts.length && products.length > 0) {
+        if (!selectedProducts.length && products.length > 0)
           setSelectedProducts([products[0]]);
-        }
       } catch (error) {
         msgApi.error("Error fetching products: " + error?.message);
       }
       setLoading(false);
     };
 
+    fetchProductOptions();
+  }, []);
+
+  useEffect(() => {
     const fetchDailySTTReport = async () => {
+      if (!selectedProducts?.length) return;
       setLoading(true);
       try {
-        const codes = selectedProducts?.map((p) => p?.code)?.join(",");
+        const codes = selectedProducts.map((p) => p.code).join(",");
         const res = await getDailySTT(selectedMonth, codes);
-        const apiData = res?.products?.[0]?.branches || [];
-        setDailySTTReport(apiData);
+
+        const branchMap = {}; // key = branch_code
+        selectedProducts.forEach((p) => {
+          const productData = res.products.find(
+            (x) => x.product_code === p.code
+          );
+          if (!productData) return;
+
+          productData.branches.forEach((b) => {
+            if (!branchMap[b.branch_code]) {
+              branchMap[b.branch_code] = {
+                branch_name: b.branch_name,
+                branch_code: b.branch_code,
+                products: {},
+              };
+            }
+            // Store sales, target, prev **per product**
+            const slug = p.name.toLowerCase().replace(/\s+/g, "_");
+            branchMap[b.branch_code].products[slug] = {
+              sales: b.net_sales_ctn || 0,
+              target: b.target_ctn || 0,
+              prev: b.prev_net_sales_ctn || 0,
+            };
+          });
+        });
+
+        setDailySTTReport(Object.values(branchMap));
       } catch (error) {
-        msgApi.error("Error fetching daily STT report: " + error?.message);
+        msgApi.error("Error fetching daily STT report: " + error.message);
       }
       setLoading(false);
     };
 
-    fetchProductOptions();
     fetchDailySTTReport();
   }, [selectedMonth, selectedProducts]);
 
@@ -167,16 +194,13 @@ const DailySTT = () => {
     ];
   }, [selectedProducts]);
 
-  console.log(dailySTTReport);
-
   const processedData = useMemo(() => {
     if (!dailySTTReport?.length) return [];
 
-    // group by region
     const regionGroups = {};
     dailySTTReport.forEach((branch) => {
       const region =
-        branch_region_map[branch?.branch_name?.toUpperCase()] || "UNKNOWN";
+        branch_region_map[branch.branch_name.toUpperCase()] || "UNKNOWN";
       if (!regionGroups[region]) regionGroups[region] = [];
       regionGroups[region].push(branch);
     });
@@ -184,37 +208,32 @@ const DailySTT = () => {
     const result = [];
 
     Object.entries(regionGroups).forEach(([region, rows]) => {
-      // Add branch rows
-      rows.forEach((r, i) => {
-        const row = {
-          key: `${r?.branch_code}`,
-          branch: r?.branch_name || "Unknown",
-        };
-        selectedProducts?.forEach((p) => {
-          const slug =
-            p?.name?.toLowerCase()?.replace(/\s+/g, "_") || "unknown";
-          row[`${slug}_sales`] = r?.net_sales_ctn || 0;
-          row[`${slug}_target`] = r?.target_ctn || 0;
-          row[`${slug}_prev`] = r?.prev_net_sales_ctn || 0;
+      rows.forEach((r) => {
+        const row = { key: r.branch_code, branch: r.branch_name || "Unknown" };
+        selectedProducts.forEach((p) => {
+          const slug = p.name.toLowerCase().replace(/\s+/g, "_");
+          const prod = r.products[slug] || {};
+          row[`${slug}_sales`] = prod.sales || 0;
+          row[`${slug}_target`] = prod.target || 0;
+          row[`${slug}_prev`] = prod.prev || 0;
         });
-        // Total columns
-        row.total_sales = selectedProducts?.reduce(
-          (s, p) =>
-            s +
-            (row[`${p?.name?.toLowerCase()?.replace(/\s+/g, "_")}_sales`] || 0),
+        // total per row
+        row.total_sales = selectedProducts.reduce(
+          (sum, p) =>
+            sum +
+            (row[`${p.name.toLowerCase().replace(/\s+/g, "_")}_sales`] || 0),
           0
         );
-        row.total_target = selectedProducts?.reduce(
-          (s, p) =>
-            s +
-            (row[`${p?.name?.toLowerCase()?.replace(/\s+/g, "_")}_target`] ||
-              0),
+        row.total_target = selectedProducts.reduce(
+          (sum, p) =>
+            sum +
+            (row[`${p.name.toLowerCase().replace(/\s+/g, "_")}_target`] || 0),
           0
         );
-        row.total_prev = selectedProducts?.reduce(
-          (s, p) =>
-            s +
-            (row[`${p?.name?.toLowerCase()?.replace(/\s+/g, "_")}_prev`] || 0),
+        row.total_prev = selectedProducts.reduce(
+          (sum, p) =>
+            sum +
+            (row[`${p.name.toLowerCase().replace(/\s+/g, "_")}_prev`] || 0),
           0
         );
         row.total_growth =
@@ -222,45 +241,43 @@ const DailySTT = () => {
         result.push(row);
       });
 
-      // Add SUBTOTAL row
+      // Subtotal per region
       const subtotal = {
         key: `${region}-subtotal`,
         branch: `SUB TOTAL (${region})`,
       };
-      selectedProducts?.forEach((p) => {
-        const slug = p?.name?.toLowerCase()?.replace(/\s+/g, "_") || "unknown";
+      selectedProducts.forEach((p) => {
+        const slug = p.name.toLowerCase().replace(/\s+/g, "_");
         subtotal[`${slug}_sales`] = rows.reduce(
-          (s, r) => s + (r?.net_sales_ctn || 0),
+          (sum, r) => sum + (r.products[slug]?.sales || 0),
           0
         );
         subtotal[`${slug}_target`] = rows.reduce(
-          (s, r) => s + (r?.target_ctn || 0),
+          (sum, r) => sum + (r.products[slug]?.target || 0),
           0
         );
         subtotal[`${slug}_prev`] = rows.reduce(
-          (s, r) => s + (r?.prev_net_sales_ctn || 0),
+          (sum, r) => sum + (r.products[slug]?.prev || 0),
           0
         );
       });
-      subtotal.total_sales = selectedProducts?.reduce(
-        (s, p) =>
-          s +
-          (subtotal[`${p?.name?.toLowerCase()?.replace(/\s+/g, "_")}_sales`] ||
+      subtotal.total_sales = selectedProducts.reduce(
+        (sum, p) =>
+          sum +
+          (subtotal[`${p.name.toLowerCase().replace(/\s+/g, "_")}_sales`] || 0),
+        0
+      );
+      subtotal.total_target = selectedProducts.reduce(
+        (sum, p) =>
+          sum +
+          (subtotal[`${p.name.toLowerCase().replace(/\s+/g, "_")}_target`] ||
             0),
         0
       );
-      subtotal.total_target = selectedProducts?.reduce(
-        (s, p) =>
-          s +
-          (subtotal[`${p?.name?.toLowerCase()?.replace(/\s+/g, "_")}_target`] ||
-            0),
-        0
-      );
-      subtotal.total_prev = selectedProducts?.reduce(
-        (s, p) =>
-          s +
-          (subtotal[`${p?.name?.toLowerCase()?.replace(/\s+/g, "_")}_prev`] ||
-            0),
+      subtotal.total_prev = selectedProducts.reduce(
+        (sum, p) =>
+          sum +
+          (subtotal[`${p.name.toLowerCase().replace(/\s+/g, "_")}_prev`] || 0),
         0
       );
       subtotal.total_growth =
@@ -270,44 +287,42 @@ const DailySTT = () => {
       result.push(subtotal);
     });
 
-    // GRAND TOTAL
+    // GRAND TOTAL (exclude subtotal rows!)
     const grand = { key: "grand-total", branch: "GRAND TOTAL" };
-    selectedProducts?.forEach((p) => {
-      const slug = p?.name?.toLowerCase()?.replace(/\s+/g, "_") || "unknown";
+    selectedProducts.forEach((p) => {
+      const slug = p.name.toLowerCase().replace(/\s+/g, "_");
       grand[`${slug}_sales`] = dailySTTReport.reduce(
-        (s, r) => s + (r?.net_sales_ctn || 0),
+        (sum, r) => sum + (r.products[slug]?.sales || 0),
         0
       );
       grand[`${slug}_target`] = dailySTTReport.reduce(
-        (s, r) => s + (r?.target_ctn || 0),
+        (sum, r) => sum + (r.products[slug]?.target || 0),
         0
       );
       grand[`${slug}_prev`] = dailySTTReport.reduce(
-        (s, r) => s + (r?.prev_net_sales_ctn || 0),
+        (sum, r) => sum + (r.products[slug]?.prev || 0),
         0
       );
     });
-    grand.total_sales = selectedProducts?.reduce(
-      (s, p) =>
-        s +
-        (grand[`${p?.name?.toLowerCase()?.replace(/\s+/g, "_")}_sales`] || 0),
+    grand.total_sales = selectedProducts.reduce(
+      (sum, p) =>
+        sum +
+        (grand[`${p.name.toLowerCase().replace(/\s+/g, "_")}_sales`] || 0),
       0
     );
-    grand.total_target = selectedProducts?.reduce(
-      (s, p) =>
-        s +
-        (grand[`${p?.name?.toLowerCase()?.replace(/\s+/g, "_")}_target`] || 0),
+    grand.total_target = selectedProducts.reduce(
+      (sum, p) =>
+        sum +
+        (grand[`${p.name.toLowerCase().replace(/\s+/g, "_")}_target`] || 0),
       0
     );
-    grand.total_prev = selectedProducts?.reduce(
-      (s, p) =>
-        s +
-        (grand[`${p?.name?.toLowerCase()?.replace(/\s+/g, "_")}_prev`] || 0),
+    grand.total_prev = selectedProducts.reduce(
+      (sum, p) =>
+        sum + (grand[`${p.name.toLowerCase().replace(/\s+/g, "_")}_prev`] || 0),
       0
     );
     grand.total_growth =
       ((grand.total_sales - grand.total_prev) / (grand.total_prev || 1)) * 100;
-
     result.push(grand);
 
     return result;
@@ -324,7 +339,7 @@ const DailySTT = () => {
             style={{ width: "100%" }}
             showSearch
             placeholder="Select products"
-            value={selectedProducts?.map((p) => p?.code)} // keep selected codes
+            value={selectedProducts?.map((p) => p?.code)}
             onChange={(codes) => {
               const selected = productOptions?.filter((p) =>
                 codes.includes(p?.code)
