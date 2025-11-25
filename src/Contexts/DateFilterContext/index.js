@@ -3,11 +3,11 @@ import React, { createContext, useContext, useState } from "react";
 const DateFilterContext = createContext();
 
 export const DateFilterProvider = ({ children }) => {
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  // holds only single month in YYYYMM
+  const [selectedMonth, setSelectedMonth] = useState("");
 
   return (
-    <DateFilterContext.Provider value={{ from, to, setFrom, setTo }}>
+    <DateFilterContext.Provider value={{ selectedMonth, setSelectedMonth }}>
       {children}
     </DateFilterContext.Provider>
   );
