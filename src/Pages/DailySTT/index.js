@@ -58,6 +58,19 @@ const DailySTT = () => {
           render: (v) => v?.toLocaleString(),
         },
         {
+          title: "Ach %",
+          render: (_, record) => {
+            const sales = record[`${slug}_sales`] || 0;
+            const target = record[`${slug}_target`] || 0;
+            const achievement = target ? (sales / target) * 100 : 0;
+            return (
+              <span style={{ color: achievement < 90 ? "red" : "green" }}>
+                {achievement.toFixed(1)}%
+              </span>
+            );
+          },
+        },
+        {
           title: "Last Yr",
           dataIndex: `${slug}_prev`,
           render: (v) => v?.toLocaleString(),
@@ -172,9 +185,17 @@ const DailySTT = () => {
           render: (v) => v?.toLocaleString(),
         },
         {
-          title: "Last Yr",
-          dataIndex: "total_prev",
-          render: (v) => v?.toLocaleString(),
+          title: "Ach %",
+          render: (_, record) => {
+            const achievement = record.total_target
+              ? (record.total_sales / record.total_target) * 100
+              : 0;
+            return (
+              <span style={{ color: achievement < 90 ? "red" : "green" }}>
+                {achievement.toFixed(1)}%
+              </span>
+            );
+          },
         },
         {
           title: "Growth %",
