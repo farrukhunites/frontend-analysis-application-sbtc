@@ -331,7 +331,7 @@ const DailySTT = () => {
   return (
     <>
       {contextHolder}
-      <div style={{ padding: 16 }}>
+      <div className="daily-stt" style={{ padding: 16 }}>
         <div style={{ marginBottom: 16 }}>
           <strong>Show Products: </strong>
           <Select

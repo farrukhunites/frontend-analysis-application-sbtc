@@ -422,9 +422,9 @@ const CustomerAnalysis = () => {
         <div className="row" style={{ marginTop: 20 }}>
           <div className="graph">
             <LineChart
-              graphTitle="Customer Sales Comparison (2023–2025)"
+              graphTitle="Customer Sales Comparison (Previous Years)"
               labels={customerData?.graph?.months || []} // fallback
-              colourTheme={["#007bff", "#ff69b4", "#ffa500"]}
+              colourTheme={["#ffa500", "#ff69b4", "#007bff"]}
               units={[unitType]}
               series={[
                 {
