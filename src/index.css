@@ -15,3 +15,10 @@ code {
 .ant-table-cell {
   padding: 5px !important;
 }
+
+.ant-table-thead > tr > th {
+  background-color: #0074cc !important;
+  color: white !important;
+  text-align: center !important;
+  font-weight: 600;
+}
