@@ -51,11 +51,15 @@ const DailySTT = () => {
           title: "Sales",
           dataIndex: `${slug}_sales`,
           render: (v) => v?.toLocaleString(),
+          sorter: (a, b) =>
+            (a[`${slug}_sales`] || 0) - (b[`${slug}_sales`] || 0),
         },
         {
           title: "Target",
           dataIndex: `${slug}_target`,
           render: (v) => v?.toLocaleString(),
+          sorter: (a, b) =>
+            (a[`${slug}_target`] || 0) - (b[`${slug}_target`] || 0),
         },
         {
           title: "Ach %",
@@ -69,11 +73,21 @@ const DailySTT = () => {
               </span>
             );
           },
+          sorter: (a, b) => {
+            const aVal = a[`${slug}_target`]
+              ? (a[`${slug}_sales`] / a[`${slug}_target`]) * 100
+              : 0;
+            const bVal = b[`${slug}_target`]
+              ? (b[`${slug}_sales`] / b[`${slug}_target`]) * 100
+              : 0;
+            return aVal - bVal;
+          },
         },
         {
           title: "Last Yr",
           dataIndex: `${slug}_prev`,
           render: (v) => v?.toLocaleString(),
+          sorter: (a, b) => (a[`${slug}_prev`] || 0) - (b[`${slug}_prev`] || 0),
         },
         {
           title: "Growth %",
@@ -87,6 +101,18 @@ const DailySTT = () => {
                 {g?.toFixed(1)}%
               </span>
             );
+          },
+
+          sorter: (a, b) => {
+            const aVal =
+              ((a[`${slug}_sales`] - a[`${slug}_prev`]) /
+                (a[`${slug}_prev`] || 1)) *
+              100;
+            const bVal =
+              ((b[`${slug}_sales`] - b[`${slug}_prev`]) /
+                (b[`${slug}_prev`] || 1)) *
+              100;
+            return aVal - bVal;
           },
         },
       ],
@@ -198,13 +224,23 @@ const DailySTT = () => {
           },
         },
         {
+          title: "Last Yr",
+          dataIndex: "total_prev",
+          render: (v) => v?.toLocaleString(),
+        },
+        {
           title: "Growth %",
-          dataIndex: "total_growth",
-          render: (v) => (
-            <span style={{ color: v < 0 ? "red" : "green" }}>
-              {v?.toFixed(1)}%
-            </span>
-          ),
+          render: (_, record) => {
+            const growth =
+              ((record.total_sales - record.total_prev) /
+                (record.total_prev || 1)) *
+              100;
+            return (
+              <span style={{ color: growth < 0 ? "red" : "green" }}>
+                {growth.toFixed(1)}%
+              </span>
+            );
+          },
         },
       ],
     };
