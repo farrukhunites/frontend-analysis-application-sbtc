@@ -16,12 +16,12 @@
 }
 
 .daily-stt .ant-table-cell {
-  border: 1px solid black;
+  border: 1px solid #bebebe;
 }
 
 .daily-stt
   .ant-table-tbody
   > tr:not(.subtotal-row):not(.grandtotal-row):hover
   > td {
-  background-color: lightcyan !important;
+  background-color: rgb(190, 255, 255) !important;
 }
