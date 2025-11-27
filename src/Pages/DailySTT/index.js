@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
-import { Table, Select, message } from "antd";
+import { Table, Select, message, Radio } from "antd";
 import "./style.css";
 import { getAllProducts } from "../../API/Products";
 import { ProductContext } from "../../Contexts/ProductContext";
@@ -40,6 +40,8 @@ const DailySTT = () => {
   );
   const [dailySTTReport, setDailySTTReport] = useState([]);
   const [msgApi, contextHolder] = message.useMessage();
+  const [valueType, setValueType] = useState("net"); // 'net' or 'gross'
+  const [unitType, setUnitType] = useState("ctn");
 
   const getProductColumns = (product) => {
     const slug =
@@ -178,9 +180,16 @@ const DailySTT = () => {
             // Store sales, target, prev **per product**
             const slug = p.name.toLowerCase().replace(/\s+/g, "_");
             branchMap[b.branch_code].products[slug] = {
-              sales: b.net_sales_ctn || 0,
-              target: b.target_ctn || 0,
-              prev: b.prev_net_sales_ctn || 0,
+              net_ctn: b.net_sales_ctn || 0,
+              net_pcs: b.net_sales_pcs || 0,
+              gross_ctn: b.gross_sales_ctn || 0,
+              gross_pcs: b.gross_sales_pcs || 0,
+              target_ctn: b.target_ctn || 0,
+              target_pcs: b.target_pcs || 0,
+              prev_net_ctn: b.prev_net_sales_ctn || 0,
+              prev_net_pcs: b.prev_net_sales_pcs || 0,
+              prev_gross_ctn: b.prev_gross_sales_ctn || 0,
+              prev_gross_pcs: b.prev_gross_sales_pcs || 0,
             };
           });
         });
@@ -193,7 +202,42 @@ const DailySTT = () => {
     };
 
     fetchDailySTTReport();
-  }, [selectedMonth, selectedProducts]);
+  }, [selectedMonth, selectedProducts, msgApi]);
+
+  const renderRadioButtons = () => (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "32px",
+      }}
+    >
+      {/* Unit Type */}
+      <div>
+        <span style={{ marginRight: 8, fontWeight: 500 }}>Unit:</span>
+        <Radio.Group
+          value={unitType}
+          onChange={(e) => setUnitType(e.target.value)}
+        >
+          <Radio value="ctn">CTN</Radio>
+          <Radio value="pcs">PCS</Radio>
+        </Radio.Group>
+      </div>
+
+      {/* Price Type */}
+      <div>
+        <span style={{ marginRight: 8, fontWeight: 500 }}>Type:</span>
+        <Radio.Group
+          value={valueType}
+          onChange={(e) => setValueType(e.target.value)}
+        >
+          <Radio value="net">NET</Radio>
+          <Radio value="gross">GROSS</Radio>
+        </Radio.Group>
+      </div>
+    </div>
+  );
 
   const columns = useMemo(() => {
     const dynamicCols = selectedProducts?.map(getProductColumns) || [];
@@ -265,16 +309,17 @@ const DailySTT = () => {
     const result = [];
 
     Object.entries(regionGroups).forEach(([region, rows]) => {
+      // Add branch rows
       rows.forEach((r) => {
         const row = { key: r.branch_code, branch: r.branch_name || "Unknown" };
         selectedProducts.forEach((p) => {
           const slug = p.name.toLowerCase().replace(/\s+/g, "_");
           const prod = r.products[slug] || {};
-          row[`${slug}_sales`] = prod.sales || 0;
-          row[`${slug}_target`] = prod.target || 0;
-          row[`${slug}_prev`] = prod.prev || 0;
+          row[`${slug}_sales`] = prod[`${valueType}_${unitType}`] || 0;
+          row[`${slug}_target`] = prod[`target_${unitType}`] || 0;
+          row[`${slug}_prev`] = prod[`prev_${valueType}_${unitType}`] || 0;
         });
-        // total per row
+
         row.total_sales = selectedProducts.reduce(
           (sum, p) =>
             sum +
@@ -293,8 +338,7 @@ const DailySTT = () => {
             (row[`${p.name.toLowerCase().replace(/\s+/g, "_")}_prev`] || 0),
           0
         );
-        row.total_growth =
-          ((row.total_sales - row.total_prev) / (row.total_prev || 1)) * 100;
+
         result.push(row);
       });
 
@@ -306,18 +350,21 @@ const DailySTT = () => {
       selectedProducts.forEach((p) => {
         const slug = p.name.toLowerCase().replace(/\s+/g, "_");
         subtotal[`${slug}_sales`] = rows.reduce(
-          (sum, r) => sum + (r.products[slug]?.sales || 0),
+          (sum, r) =>
+            sum + (r.products[slug]?.[`${valueType}_${unitType}`] || 0),
           0
         );
         subtotal[`${slug}_target`] = rows.reduce(
-          (sum, r) => sum + (r.products[slug]?.target || 0),
+          (sum, r) => sum + (r.products[slug]?.[`target_${unitType}`] || 0),
           0
         );
         subtotal[`${slug}_prev`] = rows.reduce(
-          (sum, r) => sum + (r.products[slug]?.prev || 0),
+          (sum, r) =>
+            sum + (r.products[slug]?.[`prev_${valueType}_${unitType}`] || 0),
           0
         );
       });
+
       subtotal.total_sales = selectedProducts.reduce(
         (sum, p) =>
           sum +
@@ -337,58 +384,59 @@ const DailySTT = () => {
           (subtotal[`${p.name.toLowerCase().replace(/\s+/g, "_")}_prev`] || 0),
         0
       );
-      subtotal.total_growth =
-        ((subtotal.total_sales - subtotal.total_prev) /
-          (subtotal.total_prev || 1)) *
-        100;
+
       result.push(subtotal);
     });
 
-    // GRAND TOTAL (exclude subtotal rows!)
-    const grand = { key: "grand-total", branch: "GRAND TOTAL" };
+    // Grand total row
+    const grandTotal = { key: "grand-total", branch: "GRAND TOTAL" };
     selectedProducts.forEach((p) => {
       const slug = p.name.toLowerCase().replace(/\s+/g, "_");
-      grand[`${slug}_sales`] = dailySTTReport.reduce(
-        (sum, r) => sum + (r.products[slug]?.sales || 0),
+      grandTotal[`${slug}_sales`] = dailySTTReport.reduce(
+        (sum, r) => sum + (r.products[slug]?.[`${valueType}_${unitType}`] || 0),
         0
       );
-      grand[`${slug}_target`] = dailySTTReport.reduce(
-        (sum, r) => sum + (r.products[slug]?.target || 0),
+      grandTotal[`${slug}_target`] = dailySTTReport.reduce(
+        (sum, r) => sum + (r.products[slug]?.[`target_${unitType}`] || 0),
         0
       );
-      grand[`${slug}_prev`] = dailySTTReport.reduce(
-        (sum, r) => sum + (r.products[slug]?.prev || 0),
+      grandTotal[`${slug}_prev`] = dailySTTReport.reduce(
+        (sum, r) =>
+          sum + (r.products[slug]?.[`prev_${valueType}_${unitType}`] || 0),
         0
       );
     });
-    grand.total_sales = selectedProducts.reduce(
+
+    grandTotal.total_sales = selectedProducts.reduce(
       (sum, p) =>
         sum +
-        (grand[`${p.name.toLowerCase().replace(/\s+/g, "_")}_sales`] || 0),
+        (grandTotal[`${p.name.toLowerCase().replace(/\s+/g, "_")}_sales`] || 0),
       0
     );
-    grand.total_target = selectedProducts.reduce(
+    grandTotal.total_target = selectedProducts.reduce(
       (sum, p) =>
         sum +
-        (grand[`${p.name.toLowerCase().replace(/\s+/g, "_")}_target`] || 0),
+        (grandTotal[`${p.name.toLowerCase().replace(/\s+/g, "_")}_target`] ||
+          0),
       0
     );
-    grand.total_prev = selectedProducts.reduce(
+    grandTotal.total_prev = selectedProducts.reduce(
       (sum, p) =>
-        sum + (grand[`${p.name.toLowerCase().replace(/\s+/g, "_")}_prev`] || 0),
+        sum +
+        (grandTotal[`${p.name.toLowerCase().replace(/\s+/g, "_")}_prev`] || 0),
       0
     );
-    grand.total_growth =
-      ((grand.total_sales - grand.total_prev) / (grand.total_prev || 1)) * 100;
-    result.push(grand);
+
+    result.push(grandTotal);
 
     return result;
-  }, [dailySTTReport, selectedProducts]);
+  }, [dailySTTReport, selectedProducts, valueType, unitType]);
 
   return (
     <>
       {contextHolder}
       <div className="daily-stt" style={{ padding: 16 }}>
+        {renderRadioButtons()}
         <div style={{ marginBottom: 16 }}>
           <strong>Show Products: </strong>
           <Select
