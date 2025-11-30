@@ -1,17 +1,18 @@
 import axios from "axios";
 
 // Function to fetch dashboard snapshot based on required parameters
-const getDashboardData = async ({
+const getDashboardData = async (
   analysis_type,
   month,
   product_code,
   unit_type,
-  value_type,
-}) => {
+  value_type
+) => {
   const API_URL = `${process.env.REACT_APP_BACKEND_URL}snapshots/`;
 
   // Validate that all required params are provided
   if (!analysis_type || !month || !product_code || !unit_type || !value_type) {
+    console.log("here as well");
     return {
       success: false,
       error:

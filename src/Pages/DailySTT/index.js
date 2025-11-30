@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { Table, Select, message, Radio } from "antd";
 import "./style.css";
 import { getAllProducts } from "../../API/Products";
