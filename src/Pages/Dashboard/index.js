@@ -263,8 +263,9 @@ const Dashboard = () => {
     dashboardData.channel_contribution_graph?.channels || [];
   const channelSeries =
     dashboardData.channel_contribution_graph?.channel_contribution || [];
+  const channelSeriesValues =
+    dashboardData?.channel_contribution_graph?.channel_sales_values || [];
 
-  // Dynamically create the color theme by taking the first N colors from the palette
   const dynamicColorTheme = BRIGHT_COLORS.slice(0, channelLabels.length);
 
   // --- Helper function to derive dynamic options (use in JSX) ---
@@ -418,10 +419,11 @@ const Dashboard = () => {
             <div className="graph">
               <DonutChart
                 graphTitle="Channel Sales Contribution"
-                labels={channelLabels} // Already safely derived
+                labels={channelLabels}
                 colourTheme={dynamicColorTheme}
                 units={["%"]}
-                series={channelSeries} // Already safely derived
+                series={channelSeries}
+                seriesValues={channelSeriesValues}
                 showTable={false}
               />
             </div>
@@ -476,10 +478,10 @@ const Dashboard = () => {
           <div className="row">
             <div className="graph">
               <AreaChart
-                graphTitle="Category Contribution (pcs)"
+                graphTitle={`Category Contribution (${unitType})`}
                 labels={dashboardData.sku_contribution_graph?.labels || []}
                 colourTheme={["#dc3545"]}
-                units={["pcs"]}
+                units={[unitType]}
                 series={[
                   {
                     name: "Sales",

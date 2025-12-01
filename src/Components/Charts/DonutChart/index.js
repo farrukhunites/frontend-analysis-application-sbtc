@@ -1,4 +1,3 @@
-import React from "react";
 import Chart from "react-apexcharts";
 import GraphLayout from "../../GraphLayout";
 
@@ -7,6 +6,7 @@ const DonutChart = ({
   labels,
   colourTheme,
   series,
+  seriesValues = [],
   units = [],
   extraCols = [],
   showTable = true,
@@ -23,13 +23,14 @@ const DonutChart = ({
     dataLabels: {
       enabled: true,
       formatter: function (val) {
-        return val.toFixed(1) + "%"; // show percentage
+        return `${val.toFixed(1)}% `;
       },
     },
     tooltip: {
       y: {
-        formatter: function (val) {
-          return val.toLocaleString() + " %"; // tooltip shows absolute values
+        formatter: function (val, { seriesIndex }) {
+          const actual = seriesValues[seriesIndex]?.toLocaleString() || "0";
+          return `${val.toFixed(1)}% (${actual})`;
         },
       },
     },
