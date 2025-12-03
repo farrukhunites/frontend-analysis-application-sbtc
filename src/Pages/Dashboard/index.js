@@ -85,7 +85,8 @@ const Dashboard = () => {
             );
 
             setWeeklySalesGraphData(processedSalesData);
-            const firstWeek = Object.keys(graphData)[0];
+            const keys = Object.keys(graphData);
+            const firstWeek = keys[keys.length - 1];
             if (firstWeek) {
               setSelectedWeek(firstWeek);
               setDailySalesLabels(graphData[firstWeek]?.days || []);
