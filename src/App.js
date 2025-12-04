@@ -85,28 +85,18 @@ function App() {
   useEffect(() => {
     const initializeUserState = async () => {
       setLoading(true);
-      const updatedStates = updateUserStates(setUserData, setUserToken);
-      if (
-        updatedStates?.token?.access &&
-        updatedStates?.token?.refresh &&
-        loading
-      ) {
-        await refreshAccessToken(updatedStates.token);
+      updateUserStates(setUserData, setUserToken);
+
+      const localToken = getRefreshToken();
+      if (localToken) {
+        await refreshAccessToken({ refresh: localToken });
       }
+
       setLoading(false);
     };
 
-    if (
-      userData.name === "" &&
-      userToken.access === "" &&
-      userToken.refresh === "" &&
-      loading
-    ) {
-      initializeUserState();
-    } else {
-      setLoading(false);
-    }
-  }, [loading, userToken?.refresh, userData?.name, userToken?.access]);
+    initializeUserState();
+  }, []);
 
   return (
     <DateFilterProvider>
