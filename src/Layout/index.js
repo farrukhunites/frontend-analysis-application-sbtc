@@ -7,9 +7,11 @@ import Navbar from "./Navbar";
 
 const { Content } = Layout;
 
-const AppLayout = ({ userType, content }) => {
+const AppLayout = ({ userType, contents }) => {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
+
+  console.log(contents);
 
   const {
     token: { colorBgContainer, borderRadiusLG },
@@ -33,7 +35,7 @@ const AppLayout = ({ userType, content }) => {
             borderRadius: borderRadiusLG,
           }}
         >
-          {content}
+          {contents}
         </Content>
       </Layout>
     </Layout>

@@ -1,32 +1,21 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import Dashboard from "../Pages/Private/Dashboard";
+import BranchAnalysis from "../Pages/Private/BranchAnalysis";
+import CustomerAnalysis from "../Pages/Private/CustomerAnalysis";
+import ChannelAnalysis from "../Pages/Private/ChannelAnalysis";
+import DailySTT from "../Pages/Private/DailySTT";
+import MOR from "../Pages/Private/MOR";
 
-import Dashboard from "../Pages/Dashboard";
-import BranchAnalysis from "../Pages/BranchAnalysis";
-import CustomerAnalysis from "../Pages/CustomerAnalysis";
-import ChannelAnalysis from "../Pages/ChannelAnalysis";
-import AppLayout from "../Layout";
-import DailySTT from "../Pages/DailySTT";
-import MOR from "../Pages/MOR";
-
-const PrivateRoutes = () => {
+const UserRoutes = () => {
   return (
     <Routes>
-      <Route index element={<AppLayout content={<Dashboard />} />} />
-      <Route
-        path="branch-analysis"
-        element={<AppLayout content={<BranchAnalysis />} />}
-      />
-      <Route
-        path="customer-analysis"
-        element={<AppLayout content={<CustomerAnalysis />} />}
-      />
-      <Route
-        path="channel-analysis"
-        element={<AppLayout content={<ChannelAnalysis />} />}
-      />
+      <Route index element={<Dashboard />} />
+      <Route path="branch-analysis" element={<BranchAnalysis />} />
+      <Route path="customer-analysis" element={<CustomerAnalysis />} />
+      <Route path="channel-analysis" element={<ChannelAnalysis />} />
 
-      <Route path="daily-stt" element={<AppLayout content={<DailySTT />} />} />
-      <Route path="mor" element={<AppLayout content={<MOR />} />} />
+      <Route path="daily-stt" element={<DailySTT />} />
+      <Route path="mor" element={<MOR />} />
 
       {/* Catch-all redirect */}
       <Route path="*" element={<Navigate to="/" />} />
@@ -34,4 +23,4 @@ const PrivateRoutes = () => {
   );
 };
 
-export default PrivateRoutes;
+export default UserRoutes;
