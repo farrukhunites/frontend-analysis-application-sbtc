@@ -8,7 +8,7 @@ import AppLayout from "../Layout";
 import DailySTT from "../Pages/DailySTT";
 import MOR from "../Pages/MOR";
 
-const AppRoutes = () => {
+const PrivateRoutes = () => {
   return (
     <Routes>
       <Route index element={<AppLayout content={<Dashboard />} />} />
@@ -34,4 +34,4 @@ const AppRoutes = () => {
   );
 };
 
-export default AppRoutes;
+export default PrivateRoutes;

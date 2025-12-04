@@ -1,0 +1,81 @@
+.login {
+  height: 100vh;
+  background-color: #f5f7fa; /* replaced var(--login-bg) */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.login .login-card {
+  background-color: #ffffff; /* replaced var(--white) */
+  width: 532px;
+  padding: 65px;
+  margin: 0px 80px;
+  border-radius: 14px;
+  border: 1px solid #ccc;
+}
+
+.login .logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 44px;
+}
+
+.login .title p {
+  font-family: "Public Sans", sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.login .ant-input {
+  height: 50px;
+  width: 100%;
+  gap: 20px;
+}
+
+.login .ant-input-prefix .site-form-item-icon {
+  color: #969ab8;
+  font-size: 22px;
+  margin-right: 12px;
+}
+
+.login .ant-input::placeholder {
+  color: #969ab8;
+  font-size: 14px;
+  font-family: "Poppins", sans-serif;
+  font-weight: 500;
+}
+
+.login .login-form-button {
+  background-color: #1b364d;
+  border: none;
+  height: 50px;
+  width: 100%;
+  margin-top: 10px;
+  font-family: "Poppins", sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.login .login-form {
+  text-align: center;
+}
+
+.login .login-form-forgot {
+  color: #000000; /* replaced var(--black) */
+  font-family: Poppins;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center !important;
+}
+
+.login-form .login-form-forgot:hover {
+  color: #40a9ff;
+}
+
+@media screen and (max-width: 477px) {
+  .login .login-card {
+    margin: 0px 20px;
+    padding: 30px;
+  }
+}

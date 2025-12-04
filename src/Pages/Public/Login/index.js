@@ -1,24 +1,24 @@
 import React, { useContext, useState } from "react";
 import { Form, Input, Button, notification } from "antd";
-import { MailOutlined, KeyOutlined } from "@ant-design/icons";
 import "./style.css";
-import logo from "../../../Assets/Images/Logo.png";
+import { useNavigate } from "react-router-dom";
+import { UserContext } from "../../../App";
 import { login } from "../../../API/Auth";
 import { encryptText } from "../../../Utils/Encryption";
-import updateUserStates from "../../../Utils/UpdateUsersState";
-import { UserContext } from "../../../App";
-import { useNavigate } from "react-router-dom";
+import updateUserStates from "../../../Utils/UpdateUserState";
+import logo from "../../../Assets/Logo.png";
 
 const Login = () => {
-  const { setUserData, setUserToken, setUserPages } = useContext(UserContext);
+  const { setUserData, setUserToken } = useContext(UserContext);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const onFinish = async (values) => {
     setLoading(true);
-    const { email, password } = values;
-    const loginData = await login({ email, password });
+    const { username, password } = values;
+    const loginData = await login({ username, password });
     if (loginData?.status === 200) {
+      console.log(loginData);
       localStorage.clear();
       localStorage.setItem(
         encryptText("token"),
@@ -33,16 +33,17 @@ const Login = () => {
         encryptText("user"),
         encryptText(
           JSON.stringify({
-            id: loginData?.data?.id,
             role: loginData?.data?.role,
             name: loginData?.data?.name,
-            email: loginData?.data?.email,
+            position: loginData?.data?.position,
+            employee_code: loginData?.data?.employee_code,
+            allowed_branches: loginData?.data?.allowed_branches,
+            allowed_products: loginData?.data?.allowed_products,
           })
         )
       );
       updateUserStates(setUserData, setUserToken);
-      setUserPages(loginData?.data?.pages);
-      navigate("/home");
+      navigate("/");
     } else {
       notification.error({
         message: "Invalid login details",
@@ -56,7 +57,7 @@ const Login = () => {
     <div className="login">
       <div className="login-card">
         <div className="logo">
-          <img src={logo} alt="Company Logo" />
+          <img style={{ width: "150px" }} src={logo} alt="Company Logo" />
         </div>
         <div className="title">
           <p>Log in</p>
@@ -68,24 +69,17 @@ const Login = () => {
           onFinish={onFinish}
         >
           <Form.Item
-            name="email"
-            rules={[{ required: true, message: "Please input your email!" }]}
+            name="username"
+            rules={[{ required: true, message: "Please input your username!" }]}
           >
-            <Input
-              prefix={<MailOutlined className="site-form-item-icon" />}
-              placeholder="Your email"
-            />
+            <Input placeholder="Your username" />
           </Form.Item>
 
           <Form.Item
             name="password"
             rules={[{ required: true, message: "Please input your Password!" }]}
           >
-            <Input
-              prefix={<KeyOutlined className="site-form-item-icon" />}
-              type="password"
-              placeholder="Password"
-            />
+            <Input type="password" placeholder="Password" />
           </Form.Item>
 
           <Form.Item>

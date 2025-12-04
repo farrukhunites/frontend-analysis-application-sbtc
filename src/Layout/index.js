@@ -7,7 +7,7 @@ import Navbar from "./Navbar";
 
 const { Content } = Layout;
 
-const AppLayout = ({ content }) => {
+const AppLayout = ({ userType, content }) => {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
 

@@ -1,5 +1,3 @@
-import { BrowserRouter } from "react-router-dom";
-import AppRoutes from "./Routes";
 import { DateFilterProvider } from "./Contexts/DateFilterContext";
 import { ProductProvider } from "./Contexts/ProductContext";
 import { createContext, useEffect, useState } from "react";
@@ -11,6 +9,7 @@ import { refresh } from "./API/Auth";
 import { decryptText, encryptText } from "./Utils/Encryption";
 import axios from "axios";
 import { Spin } from "antd";
+import AppRoutes from "./Routes/AppRoutes";
 
 const UserContext = createContext();
 
@@ -110,37 +109,36 @@ function App() {
   }, [loading, userToken?.refresh, userData?.name, userToken?.access]);
 
   return (
-    <BrowserRouter>
-      <DateFilterProvider>
-        <ProductProvider>
-          <UserContext.Provider
-            value={{
-              userData,
-              setUserData,
-              userToken,
-              setUserToken,
-            }}
-          >
-            {loading ? (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  height: "100vh",
-                  width: "100%",
-                }}
-              >
-                <Spin size="large" />
-              </div>
-            ) : (
-              <AppRoutes />
-            )}
-          </UserContext.Provider>
-        </ProductProvider>
-      </DateFilterProvider>
-    </BrowserRouter>
+    <DateFilterProvider>
+      <ProductProvider>
+        <UserContext.Provider
+          value={{
+            userData,
+            setUserData,
+            userToken,
+            setUserToken,
+          }}
+        >
+          {loading ? (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                height: "100vh",
+                width: "100%",
+              }}
+            >
+              <Spin size="large" />
+            </div>
+          ) : (
+            <AppRoutes />
+          )}
+        </UserContext.Provider>
+      </ProductProvider>
+    </DateFilterProvider>
   );
 }
 
 export default App;
+export { UserContext };
