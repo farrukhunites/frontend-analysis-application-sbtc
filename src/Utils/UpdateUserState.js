@@ -59,7 +59,7 @@ const getUser = async () => {
   }
 };
 
-const handleLogout = (setUserData, setUserToken, setUserPages) => {
+const handleLogout = (setUserData, setUserToken) => {
   const localStorageItems = localStorage;
 
   if (localStorageItems.length !== 0) {
@@ -74,7 +74,6 @@ const handleLogout = (setUserData, setUserToken, setUserPages) => {
     }
     setUserData({});
     setUserToken({ access: "", refresh: "" });
-    setUserPages([]);
   }
 };
 

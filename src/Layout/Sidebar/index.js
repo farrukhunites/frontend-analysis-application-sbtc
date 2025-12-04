@@ -5,14 +5,18 @@ import {
   FileTextOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { Menu, Layout } from "antd";
+import { Menu, Layout, Button } from "antd";
 import "./style.css";
 import logo from "../../Assets/Logo.png";
 import { useNavigate, useLocation } from "react-router-dom";
+import { handleLogout } from "../../Utils/UpdateUserState";
+import { useContext } from "react";
+import { UserContext } from "../../App";
 
 const { Sider } = Layout;
 
 const Sidebar = ({ collapsed }) => {
+  const { setUserData, setUserToken } = useContext(UserContext);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -64,18 +68,31 @@ const Sidebar = ({ collapsed }) => {
     if (item) navigate(item.path);
   };
 
+  const onLogout = () => {
+    handleLogout(setUserData, setUserToken);
+    navigate("/login");
+  };
+
   return (
     <Sider trigger={null} collapsible collapsed={collapsed}>
-      <div className="logo-container">
-        <img style={{ width: "130px" }} src={logo} alt="SBTC Logo" />
+      <div>
+        <div className="logo-container">
+          <img style={{ width: "130px" }} src={logo} alt="SBTC Logo" />
+        </div>
+        <Menu
+          theme="dark"
+          mode="inline"
+          selectedKeys={[selectedKey]}
+          items={menuItems}
+          onClick={onMenuClick}
+        />
       </div>
-      <Menu
-        theme="dark"
-        mode="inline"
-        selectedKeys={[selectedKey]}
-        items={menuItems}
-        onClick={onMenuClick}
-      />
+      {/* Logout button at the bottom */}
+      <div style={{ padding: "16px" }}>
+        <Button type="primary" danger block onClick={onLogout}>
+          Logout
+        </Button>
+      </div>
     </Sider>
   );
 };
