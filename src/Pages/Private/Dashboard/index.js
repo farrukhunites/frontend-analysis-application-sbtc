@@ -7,15 +7,15 @@ import {
   BoxPlotOutlined,
 } from "@ant-design/icons";
 import "./style.css";
-import LineChart from "../../Components/Charts/LineChart";
-import AreaChart from "../../Components/Charts/AreaChart";
-import BarChart from "../../Components/Charts/BarChart";
-import DonutChart from "../../Components/Charts/DonutChart";
+import LineChart from "../../../Components/Charts/LineChart";
+import AreaChart from "../../../Components/Charts/AreaChart";
+import BarChart from "../../../Components/Charts/BarChart";
+import DonutChart from "../../../Components/Charts/DonutChart";
 import { useContext, useEffect, useState } from "react";
 import { message, Radio, Select, Spin } from "antd";
-import { getDashboardData } from "../../API/AnalysisSnapshot";
-import { useDateFilter } from "../../Contexts/DateFilterContext";
-import { ProductContext } from "../../Contexts/ProductContext";
+import { getDashboardData } from "../../../API/AnalysisSnapshot";
+import { useDateFilter } from "../../../Contexts/DateFilterContext";
+import { ProductContext } from "../../../Contexts/ProductContext";
 
 // Define a safe initial structure for dashboardData
 const initialDashboardData = {

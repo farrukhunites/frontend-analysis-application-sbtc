@@ -10,16 +10,16 @@ import {
 import { message, Radio, Select, Table, Tag } from "antd";
 import "./style.css";
 import { useContext, useEffect, useState } from "react";
-import LineChart from "../../Components/Charts/LineChart";
-import RiyalIcon from "../../Utils/RiyalIcon";
-import AreaChart from "../../Components/Charts/AreaChart";
-import { getAllBranches } from "../../API/Branches";
+import LineChart from "../../../Components/Charts/LineChart";
+import RiyalIcon from "../../../Utils/RiyalIcon";
+import AreaChart from "../../../Components/Charts/AreaChart";
+import { getAllBranches } from "../../../API/Branches";
 import {
   getCustomerInsight,
   getCustomersByBranchByCHannel,
-} from "../../API/Customer";
-import { ProductContext } from "../../Contexts/ProductContext";
-import { getAllChannels } from "../../API/Channels";
+} from "../../../API/Customer";
+import { ProductContext } from "../../../Contexts/ProductContext";
+import { getAllChannels } from "../../../API/Channels";
 
 const { Option } = Select;
 
