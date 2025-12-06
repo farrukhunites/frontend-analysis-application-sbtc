@@ -72,7 +72,7 @@ const Login = () => {
             name="username"
             rules={[{ required: true, message: "Please input your username!" }]}
           >
-            <Input placeholder="Your username" />
+            <Input placeholder="Username" />
           </Form.Item>
 
           <Form.Item
