@@ -5,6 +5,7 @@ import CustomerAnalysis from "../Pages/Private/CustomerAnalysis";
 import ChannelAnalysis from "../Pages/Private/ChannelAnalysis";
 import DailySTT from "../Pages/Private/DailySTT";
 import MOR from "../Pages/Private/MOR";
+import Settings from "../Pages/Private/Settings";
 
 const UserRoutes = () => {
   return (
@@ -16,6 +17,8 @@ const UserRoutes = () => {
 
       <Route path="daily-stt" element={<DailySTT />} />
       <Route path="mor" element={<MOR />} />
+
+      <Route path="settings" element={<Settings />} />
 
       {/* Catch-all redirect */}
       <Route path="*" element={<Navigate to="/" />} />

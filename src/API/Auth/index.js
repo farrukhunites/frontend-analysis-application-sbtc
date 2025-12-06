@@ -30,4 +30,23 @@ const refresh = async (refresh) => {
   }
 };
 
-export { login, refresh };
+const changePassword = async (data) => {
+  try {
+    const token = getToken(); // access token
+    const res = await axios.post(
+      `${process.env.REACT_APP_BACKEND_URL}change-password/`,
+      data,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return res;
+  } catch (error) {
+    console.error(error);
+    return error.response;
+  }
+};
+
+export { login, refresh, changePassword };

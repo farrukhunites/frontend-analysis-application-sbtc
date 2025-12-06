@@ -1,6 +1,12 @@
-.logo-container {
+.sidebar .logo-container {
   margin-top: 20px;
   margin-bottom: 20px;
   display: flex;
   justify-content: center;
+}
+
+.sidebar .ant-layout-sider-children {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
 }

@@ -1,6 +1,7 @@
 import {
   AimOutlined,
   BranchesOutlined,
+  SettingOutlined,
   DashboardOutlined,
   FileTextOutlined,
   UserOutlined,
@@ -57,6 +58,12 @@ const Sidebar = ({ collapsed }) => {
       label: "M-O-R",
       path: "/mor",
     },
+    {
+      key: "7",
+      icon: <SettingOutlined />,
+      label: "Settings",
+      path: "/settings",
+    },
   ];
 
   // Determine which menu item is active based on current URL
@@ -74,7 +81,17 @@ const Sidebar = ({ collapsed }) => {
   };
 
   return (
-    <Sider trigger={null} collapsible collapsed={collapsed}>
+    <Sider
+      className="sidebar"
+      trigger={null}
+      collapsible
+      collapsed={collapsed}
+      style={{
+        height: "100vh",
+        position: "sticky",
+        top: 0,
+      }}
+    >
       <div>
         <div className="logo-container">
           <img style={{ width: "130px" }} src={logo} alt="SBTC Logo" />
@@ -90,7 +107,7 @@ const Sidebar = ({ collapsed }) => {
       {/* Logout button at the bottom */}
       <div style={{ padding: "16px" }}>
         <Button type="primary" danger block onClick={onLogout}>
-          Logout
+          {"Logout"}
         </Button>
       </div>
     </Sider>
