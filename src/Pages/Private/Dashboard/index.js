@@ -415,7 +415,7 @@ const Dashboard = () => {
               <LineChart
                 graphTitle="Monthly Cumulative Sales By Date"
                 labels={dashboardData?.monthly_daily_graph?.day || []}
-                colourTheme={["#ebc034"]}
+                colourTheme={["#857a56"]}
                 units={[unitType]}
                 series={[
                   {
