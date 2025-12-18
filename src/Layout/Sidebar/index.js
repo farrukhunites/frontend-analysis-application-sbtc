@@ -52,12 +52,12 @@ const Sidebar = ({ collapsed }) => {
       label: "Daily STT",
       path: "/daily-stt",
     },
-    {
-      key: "6",
-      icon: <FileTextOutlined />,
-      label: "M-O-R",
-      path: "/mor",
-    },
+    // {
+    //   key: "6",
+    //   icon: <FileTextOutlined />,
+    //   label: "M-O-R",
+    //   path: "/mor",
+    // },
     {
       key: "7",
       icon: <SettingOutlined />,
