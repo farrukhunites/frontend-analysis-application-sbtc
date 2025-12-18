@@ -294,6 +294,17 @@ const Dashboard = () => {
   const isLoadingOrNoData =
     loading || !dashboardData.tabs || dashboardData.tabs.length === 0;
 
+  const dailySales = dashboardData?.monthly_daily_graph?.sales || [];
+
+  const cumulativeSales = dailySales.reduce((acc, curr, index) => {
+    if (index === 0) {
+      acc.push(curr);
+    } else {
+      acc.push(acc[index - 1] + curr);
+    }
+    return acc;
+  }, []);
+
   return (
     <>
       {isLoadingOrNoData ? (
@@ -391,8 +402,25 @@ const Dashboard = () => {
                 units={[unitType]}
                 series={[
                   {
-                    name: "Weekly Sales",
-                    data: dashboardData?.monthly_daily_graph?.sales || [],
+                    name: "Daily Sales",
+                    data: dailySales,
+                  },
+                ]}
+              />
+            </div>
+          </div>
+
+          <div className="row">
+            <div className="graph">
+              <LineChart
+                graphTitle="Monthly Cumulative Sales By Date"
+                labels={dashboardData?.monthly_daily_graph?.day || []}
+                colourTheme={["#ebc034"]}
+                units={[unitType]}
+                series={[
+                  {
+                    name: "Cumulative Sales",
+                    data: cumulativeSales,
                   },
                 ]}
               />
