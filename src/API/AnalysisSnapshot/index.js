@@ -12,7 +12,6 @@ const getDashboardData = async (
 
   // Validate that all required params are provided
   if (!analysis_type || !month || !product_code || !unit_type || !value_type) {
-    console.log("here as well");
     return {
       success: false,
       error:
