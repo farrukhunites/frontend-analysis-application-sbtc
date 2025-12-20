@@ -5,6 +5,7 @@ import {
   DashboardOutlined,
   FileTextOutlined,
   UserOutlined,
+  UsergroupAddOutlined,
 } from "@ant-design/icons";
 import { Menu, Layout, Button } from "antd";
 import "./style.css";
@@ -51,6 +52,12 @@ const Sidebar = ({ collapsed }) => {
       icon: <AimOutlined />,
       label: "Daily STT",
       path: "/daily-stt",
+    },
+    {
+      key: "8",
+      icon: <UsergroupAddOutlined />,
+      label: "Potential Customers",
+      path: "/potential-customers",
     },
     // {
     //   key: "6",

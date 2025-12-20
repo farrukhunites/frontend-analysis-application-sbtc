@@ -1,0 +1,315 @@
+import { Table, message, Radio, Spin, Input, Button, Space } from "antd";
+import { useDateFilter } from "../../../Contexts/DateFilterContext";
+import { ProductContext } from "../../../Contexts/ProductContext";
+import { useContext, useEffect, useRef, useState } from "react";
+import { getPotentialCustomers } from "../../../API/Potential Customers";
+import { SearchOutlined } from "@ant-design/icons";
+import Highlighter from "react-highlight-words";
+
+const branchOptions = [
+  "SBTC JEDDAH",
+  "SBTC MAKKAH",
+  "SBTC MADINAH",
+  "SBTC TAIF",
+  "SBTC YANBU",
+  "SBTC TABUK",
+  "SBTC SKAKA",
+  "SBTC GASIEM",
+  "SBTC RIYADH",
+  "SBTC KHARJ",
+  "SBTC DAWADMI",
+  "SBTC HAIL",
+  "SBTC KHOBAR",
+  "SBTC JUBAIL",
+  "SBTC HUFUF",
+  "SBTC HAFR BATIN",
+  "SBTC KHAMIS MUSHAIT",
+  "SBTC JIZAN",
+  "SBTC NAJRAN",
+  "SBTC QONFUDA",
+  "SBTC BISHA",
+];
+
+const channelOptions = [
+  "BRN",
+  "CFC",
+  "CSM",
+  "DSC",
+  "HRC",
+  "KA",
+  "MM",
+  "RTA",
+  "RTI",
+  "WS",
+];
+
+const PotentialCustomers = () => {
+  const { selectedMonth } = useDateFilter();
+  const { selectedProduct } = useContext(ProductContext);
+
+  const [loading, setLoading] = useState(false);
+  const [valueType, setValueType] = useState("net");
+  const [unitType, setUnitType] = useState("ctn");
+  const [potentialCustomers, setPotentialCustomers] = useState([]);
+
+  // -------------------------
+  // Radio buttons for Unit & Type
+  // -------------------------
+  const renderRadioButtons = () => (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "32px",
+        marginBottom: "16px",
+      }}
+    >
+      {/* Unit Type */}
+      <div>
+        <span style={{ marginRight: 8, fontWeight: 500 }}>Unit:</span>
+        <Radio.Group
+          value={unitType}
+          onChange={(e) => setUnitType(e.target.value)}
+        >
+          <Radio value="ctn">CTN</Radio>
+          <Radio value="pcs">PCS</Radio>
+        </Radio.Group>
+      </div>
+
+      {/* Value Type */}
+      <div>
+        <span style={{ marginRight: 8, fontWeight: 500 }}>Type:</span>
+        <Radio.Group
+          value={valueType}
+          onChange={(e) => setValueType(e.target.value)}
+        >
+          <Radio value="net">NET</Radio>
+          <Radio value="gross">GROSS</Radio>
+        </Radio.Group>
+      </div>
+    </div>
+  );
+
+  // -------------------------
+  // Fetch API Data
+  // -------------------------
+  useEffect(() => {
+    const fetchPotentialCustomers = async () => {
+      setLoading(true);
+
+      try {
+        const res = await getPotentialCustomers(
+          selectedMonth,
+          selectedProduct?.code,
+          unitType,
+          valueType
+        );
+        if (res) {
+          setPotentialCustomers(res);
+        }
+      } catch (error) {
+        message.error(
+          "Error fetching potential Customer data: " + error?.message
+        );
+      }
+      setLoading(false);
+    };
+
+    if (selectedMonth && selectedProduct?.code) {
+      fetchPotentialCustomers();
+    }
+  }, [selectedMonth, selectedProduct, unitType, valueType]);
+
+  const [searchText, setSearchText] = useState("");
+  const [searchedColumn, setSearchedColumn] = useState("");
+  const searchInput = useRef(null);
+  const handleSearch = (selectedKeys, confirm, dataIndex) => {
+    confirm();
+    setSearchText(selectedKeys[0]);
+    setSearchedColumn(dataIndex);
+  };
+  const handleReset = (clearFilters) => {
+    clearFilters();
+    setSearchText("");
+  };
+
+  const getColumnSearchProps = (dataIndex) => ({
+    filterDropdown: ({
+      setSelectedKeys,
+      selectedKeys,
+      confirm,
+      clearFilters,
+      close,
+    }) => (
+      <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()}>
+        <Input
+          ref={searchInput}
+          placeholder={`Search ${dataIndex}`}
+          value={selectedKeys[0]}
+          onChange={(e) =>
+            setSelectedKeys(e.target.value ? [e.target.value] : [])
+          }
+          onPressEnter={() => handleSearch(selectedKeys, confirm, dataIndex)}
+          style={{ marginBottom: 8, display: "block" }}
+        />
+        <Space>
+          <Button
+            type="primary"
+            onClick={() => handleSearch(selectedKeys, confirm, dataIndex)}
+            icon={<SearchOutlined />}
+            size="small"
+            style={{ width: 90 }}
+          >
+            Search
+          </Button>
+          <Button
+            onClick={() => clearFilters && handleReset(clearFilters)}
+            size="small"
+            style={{ width: 90 }}
+          >
+            Reset
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            onClick={() => {
+              confirm({ closeDropdown: false });
+              setSearchText(selectedKeys[0]);
+              setSearchedColumn(dataIndex);
+            }}
+          >
+            Filter
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            onClick={() => {
+              close();
+            }}
+          >
+            close
+          </Button>
+        </Space>
+      </div>
+    ),
+    filterIcon: (filtered) => (
+      <SearchOutlined style={{ color: filtered ? "#1677ff" : undefined }} />
+    ),
+    onFilter: (value, record) =>
+      record[dataIndex].toString().toLowerCase().includes(value.toLowerCase()),
+    filterDropdownProps: {
+      onOpenChange(open) {
+        if (open) {
+          setTimeout(() => {
+            var _a;
+            return (_a = searchInput.current) === null || _a === void 0
+              ? void 0
+              : _a.select();
+          }, 100);
+        }
+      },
+    },
+    render: (text) =>
+      searchedColumn === dataIndex ? (
+        <Highlighter
+          highlightStyle={{ backgroundColor: "#ffc069", padding: 0 }}
+          searchWords={[searchText]}
+          autoEscape
+          textToHighlight={text ? text.toString() : ""}
+        />
+      ) : (
+        text
+      ),
+  });
+
+  // -------------------------
+  // Table Columns
+  // -------------------------
+  const columns = [
+    {
+      title: "Code",
+      dataIndex: "customer_code",
+      key: "customer_code",
+    },
+    Object.assign(
+      { title: "Customer", dataIndex: "customer_name", key: "customer_name" },
+      getColumnSearchProps("customer_name")
+    ),
+    {
+      title: "Salesman",
+      dataIndex: "salesman_name",
+      key: "salesman_name",
+    },
+    {
+      title: "Salesman Num",
+      dataIndex: "salesman_mobile",
+      key: "salesman_mobile",
+    },
+    {
+      title: "Branch",
+      dataIndex: "branch",
+      key: "branch",
+      filters: branchOptions.map((branch) => ({ text: branch, value: branch })),
+      onFilter: (value, record) => record.branch === value,
+    },
+    {
+      title: "Channel",
+      dataIndex: "otlcd",
+      key: "otlcd",
+      filters: channelOptions.map((channel) => ({
+        text: channel,
+        value: channel,
+      })),
+      onFilter: (value, record) => record?.otlcd === value,
+    },
+    { title: "Dry Months", dataIndex: "dry_months", key: "dry_months" },
+    {
+      title: "Avg Sales",
+      dataIndex: "avg_sales_13_months",
+      key: "avg_sales_13_months",
+      render: (value) =>
+        value !== undefined && value !== null
+          ? value.toLocaleString(undefined, {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
+            })
+          : 0,
+    },
+    {
+      title: "Potential",
+      dataIndex: "potential",
+      key: "potential",
+      sorter: (a, b) => a.potential - b.potential,
+      render: (value) =>
+        value !== undefined && value !== null
+          ? value.toLocaleString(undefined, {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
+            })
+          : 0,
+    },
+  ];
+
+  return (
+    <div>
+      {renderRadioButtons()}
+      {loading ? (
+        <div style={{ textAlign: "center", padding: "50px" }}>
+          <Spin size="large" />
+          <h2>Loading Data...</h2>
+          <p>Please wait while the data is being fetched.</p>
+        </div>
+      ) : (
+        <Table
+          columns={columns}
+          dataSource={potentialCustomers}
+          rowKey={(record) => record.customer_code}
+          scroll={{ x: "max-content" }}
+        />
+      )}
+    </div>
+  );
+};
+
+export default PotentialCustomers;
