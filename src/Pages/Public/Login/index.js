@@ -60,7 +60,7 @@ const Login = () => {
           <img style={{ width: "150px" }} src={logo} alt="Company Logo" />
         </div>
         <div className="title">
-          <p>Log in</p>
+          <p>Log in to App</p>
         </div>
         <Form
           name="login"
