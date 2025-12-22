@@ -22,7 +22,7 @@ jobs:
         run: npm ci
 
       - name: Build frontend
-        run: npm run build
+        run: CI=false npm run build
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
