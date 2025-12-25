@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getToken } from "../../Utils/UpdateUserState";
 
 // Function to fetch dashboard snapshot based on required parameters
 const getDashboardData = async (
@@ -21,6 +22,9 @@ const getDashboardData = async (
 
   try {
     const response = await axios.get(API_URL, {
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
       params: {
         analysis_type,
         month,
