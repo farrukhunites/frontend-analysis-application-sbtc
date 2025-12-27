@@ -507,7 +507,7 @@ const Dashboard = () => {
           <div className="row">
             <div className="graph">
               <AreaChart
-                graphTitle={`Category Contribution (${unitType})`}
+                graphTitle={`SKU Contribution (${unitType})`}
                 labels={dashboardData.sku_contribution_graph?.labels || []}
                 colourTheme={["#dc3545"]}
                 units={[unitType]}
