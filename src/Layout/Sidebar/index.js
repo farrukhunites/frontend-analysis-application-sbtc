@@ -53,20 +53,27 @@ const Sidebar = ({ collapsed }) => {
       label: "Daily STT",
       path: "/daily-stt",
     },
-    {
-      key: "8",
-      icon: <UsergroupAddOutlined />,
-      label: "Potential Customers",
-      path: "/potential-customers",
-    },
     // {
     //   key: "6",
     //   icon: <FileTextOutlined />,
     //   label: "M-O-R",
     //   path: "/mor",
     // },
+
     {
       key: "7",
+      icon: <UsergroupAddOutlined />,
+      label: "Potential Customers",
+      path: "/potential-customers",
+    },
+    {
+      key: "8",
+      icon: <AimOutlined />,
+      label: "Daily Sales",
+      path: "/daily-sales",
+    },
+    {
+      key: "9",
       icon: <SettingOutlined />,
       label: "Settings",
       path: "/settings",

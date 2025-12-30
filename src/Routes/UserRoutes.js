@@ -7,6 +7,7 @@ import DailySTT from "../Pages/Private/DailySTT";
 import MOR from "../Pages/Private/MOR";
 import Settings from "../Pages/Private/Settings";
 import PotentialCustomers from "../Pages/Private/PotentialCustomers";
+import DailySalesByBranch from "../Pages/Private/DailySalesByBranch";
 
 const UserRoutes = () => {
   return (
@@ -17,6 +18,7 @@ const UserRoutes = () => {
       <Route path="channel-analysis" element={<ChannelAnalysis />} />
 
       <Route path="daily-stt" element={<DailySTT />} />
+      <Route path="daily-sales" element={<DailySalesByBranch />} />
       <Route path="potential-customers" element={<PotentialCustomers />} />
       <Route path="mor" element={<MOR />} />
 
