@@ -66,12 +66,12 @@ const Sidebar = ({ collapsed }) => {
       label: "Potential Customers",
       path: "/potential-customers",
     },
-    {
-      key: "8",
-      icon: <AimOutlined />,
-      label: "Daily Sales",
-      path: "/daily-sales",
-    },
+    // {
+    //   key: "8",
+    //   icon: <AimOutlined />,
+    //   label: "Daily Sales",
+    //   path: "/daily-sales",
+    // },
     {
       key: "9",
       icon: <SettingOutlined />,
