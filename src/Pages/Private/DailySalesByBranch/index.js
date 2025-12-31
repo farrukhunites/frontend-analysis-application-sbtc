@@ -121,8 +121,17 @@ const DailySalesByBranch = () => {
       align: "right",
       sorter: (a, b) =>
         a.isTotal ? 1 : b.isTotal ? -1 : (a[d.key] || 0) - (b[d.key] || 0),
-      render: (v) => v?.toLocaleString(),
+      render: (v) => renderNumber(v, "#000", false),
     }));
+
+    const renderNumber = (v, color = "#000", bold = true) => {
+      if (v === 0 || v === null || v === undefined) return "-";
+      return bold ? (
+        <b style={{ color }}>{v.toLocaleString()}</b>
+      ) : (
+        <span style={{ color }}>{v.toLocaleString()}</span>
+      );
+    };
 
     const numericCols = [
       {
@@ -132,9 +141,7 @@ const DailySalesByBranch = () => {
         align: "right",
         sorter: (a, b) =>
           a.isTotal ? 1 : b.isTotal ? -1 : (a.total || 0) - (b.total || 0),
-        render: (v) => (
-          <b style={{ color: "#1677ff" }}>{v?.toLocaleString()}</b>
-        ),
+        render: (v) => renderNumber(v, "#1677ff"),
       },
       {
         title: "Remaining",
@@ -147,9 +154,7 @@ const DailySalesByBranch = () => {
             : b.isTotal
             ? -1
             : (a.remaining || 0) - (b.remaining || 0),
-        render: (v) => (
-          <b style={{ color: "#997205ff" }}>{v?.toLocaleString()}</b>
-        ),
+        render: (v) => renderNumber(v, "#997205ff"),
       },
       {
         title: "Target",
@@ -158,9 +163,7 @@ const DailySalesByBranch = () => {
         align: "right",
         sorter: (a, b) =>
           a.isTotal ? 1 : b.isTotal ? -1 : (a.target || 0) - (b.target || 0),
-        render: (v) => (
-          <b style={{ color: "#000000ff" }}>{v?.toLocaleString()}</b>
-        ),
+        render: (v) => renderNumber(v, "#000000ff"),
       },
       {
         title: "Achievement %",
@@ -173,9 +176,14 @@ const DailySalesByBranch = () => {
             : b.isTotal
             ? -1
             : (a.achievement || 0) - (b.achievement || 0),
-        render: (v) => (
-          <b style={{ color: v >= 100 ? "green" : "red" }}>{v?.toFixed(2)}%</b>
-        ),
+        render: (v) =>
+          v === 0 ? (
+            "-"
+          ) : (
+            <b style={{ color: v >= 100 ? "green" : "red" }}>
+              {v?.toFixed(2)}%
+            </b>
+          ),
       },
       {
         title: "Daily Ach %",
@@ -188,9 +196,14 @@ const DailySalesByBranch = () => {
             : b.isTotal
             ? -1
             : (a.dailyAch || 0) - (b.dailyAch || 0),
-        render: (v) => (
-          <b style={{ color: v >= 100 ? "green" : "red" }}>{v?.toFixed(2)}%</b>
-        ),
+        render: (v) =>
+          v === 0 ? (
+            "-"
+          ) : (
+            <b style={{ color: v >= 100 ? "green" : "red" }}>
+              {v?.toFixed(2)}%
+            </b>
+          ),
       },
     ];
 
