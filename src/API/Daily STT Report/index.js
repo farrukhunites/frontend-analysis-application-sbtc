@@ -21,4 +21,44 @@ const getDailySTT = async (month, codes) => {
   }
 };
 
-export { getDailySTT };
+const getDailyBranchSales = async (
+  month,
+  product_codes,
+  unit_type,
+  value_type
+) => {
+  const API_URL = `${process.env.REACT_APP_BACKEND_URL}sales/daily-branch/`;
+
+  // Validate required params
+  if (!month || !product_codes || !unit_type || !value_type) {
+    return {
+      success: false,
+      error:
+        "Missing one or more required parameters: month, product_codes, unit_type, value_type",
+    };
+  }
+
+  try {
+    const response = await axios.get(API_URL, {
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+      params: {
+        month,
+        product_codes,
+        unit_type,
+        value_type,
+      },
+    });
+
+    return response?.data;
+  } catch (error) {
+    console.error("Error fetching daily branch sales:", error);
+    return {
+      success: false,
+      error: error.response?.data || error.message || "Unknown error",
+    };
+  }
+};
+
+export { getDailySTT, getDailyBranchSales };
