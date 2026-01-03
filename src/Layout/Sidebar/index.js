@@ -50,7 +50,7 @@ const Sidebar = ({ collapsed }) => {
     {
       key: "5",
       icon: <AimOutlined />,
-      label: "Daily STT",
+      label: "Monthly Sales",
       path: "/daily-stt",
     },
     // {
