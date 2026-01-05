@@ -5,6 +5,8 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { getPotentialCustomers } from "../../../API/Potential Customers";
 import { SearchOutlined } from "@ant-design/icons";
 import Highlighter from "react-highlight-words";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 const branchOptions = [
   "SBTC JEDDAH",
@@ -291,6 +293,40 @@ const PotentialCustomers = () => {
     },
   ];
 
+  const exportToExcel = () => {
+    if (!potentialCustomers.length) {
+      message.warning("No data to export");
+      return;
+    }
+
+    // Map data to worksheet format
+    const wsData = potentialCustomers.map((item) => ({
+      "Customer Code": item.customer_code,
+      "Customer Name": item.customer_name,
+      Salesman: item.salesman_name,
+      "Salesman Num": item.salesman_mobile,
+      Branch: item.branch,
+      Channel: item.otlcd,
+      "Dry Months": item.dry_months,
+      "Avg Sales": item.avg_sales_13_months,
+      Potential: item.potential,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(wsData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Potential Customers");
+
+    const excelBuffer = XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "array",
+    });
+    const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
+    saveAs(
+      blob,
+      `Potential_Customers_${selectedMonth}_${selectedProduct?.name}.xlsx`
+    );
+  };
+
   return (
     <div>
       {renderRadioButtons()}
@@ -301,12 +337,25 @@ const PotentialCustomers = () => {
           <p>Please wait while the data is being fetched.</p>
         </div>
       ) : (
-        <Table
-          columns={columns}
-          dataSource={potentialCustomers}
-          rowKey={(record) => record.customer_code}
-          scroll={{ x: "max-content" }}
-        />
+        <>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              marginBottom: "20px",
+            }}
+          >
+            <Button type="primary" onClick={exportToExcel}>
+              Export to XLSX
+            </Button>
+          </div>
+          <Table
+            columns={columns}
+            dataSource={potentialCustomers}
+            rowKey={(record) => record.customer_code}
+            scroll={{ x: "max-content" }}
+          />
+        </>
       )}
     </div>
   );
