@@ -25,12 +25,19 @@ const getDailyBranchSales = async (
   month,
   product_codes,
   unit_type,
-  value_type
+  value_type,
+  selectedChannels
 ) => {
   const API_URL = `${process.env.REACT_APP_BACKEND_URL}sales/daily-branch/`;
 
   // Validate required params
-  if (!month || !product_codes || !unit_type || !value_type) {
+  if (
+    !month ||
+    !product_codes ||
+    !unit_type ||
+    !value_type ||
+    !selectedChannels
+  ) {
     return {
       success: false,
       error:
@@ -48,6 +55,7 @@ const getDailyBranchSales = async (
         product_codes,
         unit_type,
         value_type,
+        otlcd_list: selectedChannels,
       },
     });
 

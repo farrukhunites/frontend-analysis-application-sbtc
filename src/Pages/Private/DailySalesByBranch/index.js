@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo, useContext } from "react";
-import { Table, Radio, message, Spin, Tabs } from "antd";
+import { Table, Radio, message, Spin, Tabs, Select } from "antd";
 import { ProductContext } from "../../../Contexts/ProductContext";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
 import { getAllProducts } from "../../../API/Products";
 import { getDailyBranchSales } from "../../../API/Daily STT Report";
 import "./style.css";
+
+const { Option } = Select;
 
 const DailySalesByBranch = () => {
   const { selectedMonth } = useDateFilter();
@@ -16,6 +18,21 @@ const DailySalesByBranch = () => {
   const [dayColumns, setDayColumns] = useState([]);
   const [unitType, setUnitType] = useState("ctn");
   const [valueType, setValueType] = useState("net");
+  const [channels, setChannels] = useState([
+    "BRN",
+    "RTI",
+    "WS",
+    "PHA",
+    "CFC",
+    "CSM",
+    "DSC",
+    "ECM",
+    "HRC",
+    "KA",
+    "MM",
+    "RTA",
+  ]);
+  const [selectedChannels, setSelectedChannels] = useState(channels);
 
   // ------------------------------
   // Fetch products
@@ -65,7 +82,8 @@ const DailySalesByBranch = () => {
           selectedMonth,
           selectedProduct.code,
           unitType,
-          valueType
+          valueType,
+          selectedChannels
         );
 
         const results = res?.results || [];
@@ -108,7 +126,7 @@ const DailySalesByBranch = () => {
     };
 
     fetchSales();
-  }, [selectedProduct, unitType, valueType, selectedMonth]);
+  }, [selectedProduct, unitType, valueType, selectedMonth, selectedChannels]);
 
   // ------------------------------
   // Columns for Table
@@ -260,6 +278,10 @@ const DailySalesByBranch = () => {
     key: p.code,
   }));
 
+  const handleChannelChange = (values) => {
+    setSelectedChannels(values);
+  };
+
   return (
     <div className="daily-sales-report" style={{ padding: 0 }}>
       <div
@@ -270,6 +292,21 @@ const DailySalesByBranch = () => {
         }}
       >
         <h2>Daily Sales by Branch</h2>
+        {/* Channel Select */}
+        <Select
+          mode="multiple"
+          loading={loading}
+          value={selectedChannels}
+          onChange={handleChannelChange}
+          style={{ flex: 1, maxWidth: "500px" }}
+          placeholder="Select Channels"
+        >
+          {channels.map((channel) => (
+            <Option key={channel} value={channel}>
+              {channel}
+            </Option>
+          ))}
+        </Select>
         <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
           <div>
             <span style={{ marginRight: 8, fontWeight: 500 }}>Unit:</span>
