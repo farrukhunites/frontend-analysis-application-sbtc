@@ -345,8 +345,12 @@ const PotentialCustomers = () => {
               marginBottom: "20px",
             }}
           >
-            <Button type="primary" onClick={exportToExcel}>
-              Export to XLSX
+            <Button
+              style={{ backgroundColor: "#0074cc" }}
+              type="primary"
+              onClick={exportToExcel}
+            >
+              Export to Excel
             </Button>
           </div>
           <Table
