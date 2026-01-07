@@ -489,7 +489,7 @@ const Dashboard = () => {
                 graphTitle="Branch-wise Sales vs Target"
                 labels={dashboardData.branch_sales_target_graph?.branches || []}
                 colourTheme={["#ffc107", "#17a2b8"]}
-                units={["pcs", "pcs"]}
+                units={[unitType, unitType]}
                 series={[
                   {
                     name: "Sales",
