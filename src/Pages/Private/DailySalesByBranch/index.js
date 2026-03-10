@@ -45,7 +45,7 @@ const DailySalesByBranch = () => {
         const products = res?.results || [];
 
         const hasIndomie = products.some((p) =>
-          p?.name?.toLowerCase()?.includes("indomie")
+          p?.name?.toLowerCase()?.includes("indomie"),
         );
         if (hasIndomie) {
           const specialIndomie = [
@@ -83,7 +83,7 @@ const DailySalesByBranch = () => {
           selectedProduct.code,
           unitType,
           valueType,
-          selectedChannels
+          selectedChannels,
         );
 
         const results = res?.results || [];
@@ -170,8 +170,8 @@ const DailySalesByBranch = () => {
           a.isTotal
             ? 1
             : b.isTotal
-            ? -1
-            : (a.remaining || 0) - (b.remaining || 0),
+              ? -1
+              : (a.remaining || 0) - (b.remaining || 0),
         render: (v) => renderNumber(v, "#997205ff"),
       },
       {
@@ -192,8 +192,8 @@ const DailySalesByBranch = () => {
           a.isTotal
             ? 1
             : b.isTotal
-            ? -1
-            : (a.achievement || 0) - (b.achievement || 0),
+              ? -1
+              : (a.achievement || 0) - (b.achievement || 0),
         render: (v) =>
           v === 0 ? (
             "-"
@@ -212,8 +212,8 @@ const DailySalesByBranch = () => {
           a.isTotal
             ? 1
             : b.isTotal
-            ? -1
-            : (a.dailyAch || 0) - (b.dailyAch || 0),
+              ? -1
+              : (a.dailyAch || 0) - (b.dailyAch || 0),
         render: (v) =>
           v === 0 ? (
             "-"
@@ -279,7 +279,13 @@ const DailySalesByBranch = () => {
   }));
 
   const handleChannelChange = (values) => {
-    setSelectedChannels(values);
+    if (values.includes("ALL")) {
+      setSelectedChannels(channels); // select all
+    } else if (values.includes("NONE")) {
+      setSelectedChannels([]); // unselect all
+    } else {
+      setSelectedChannels(values);
+    }
   };
 
   return (
@@ -301,6 +307,12 @@ const DailySalesByBranch = () => {
           style={{ flex: 1, maxWidth: "500px" }}
           placeholder="Select Channels"
         >
+          <Option key="ALL" value="ALL">
+            Select All
+          </Option>
+          <Option key="NONE" value="NONE">
+            Unselect All
+          </Option>
           {channels.map((channel) => (
             <Option key={channel} value={channel}>
               {channel}
