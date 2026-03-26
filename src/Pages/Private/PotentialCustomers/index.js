@@ -105,14 +105,14 @@ const PotentialCustomers = () => {
           selectedMonth,
           selectedProduct?.code,
           unitType,
-          valueType
+          valueType,
         );
         if (res) {
           setPotentialCustomers(res);
         }
       } catch (error) {
         message.error(
-          "Error fetching potential Customer data: " + error?.message
+          "Error fetching potential Customer data: " + error?.message,
         );
       }
       setLoading(false);
@@ -236,7 +236,7 @@ const PotentialCustomers = () => {
     },
     Object.assign(
       { title: "Customer", dataIndex: "customer_name", key: "customer_name" },
-      getColumnSearchProps("customer_name")
+      getColumnSearchProps("customer_name"),
     ),
     {
       title: "Salesman",
@@ -265,11 +265,30 @@ const PotentialCustomers = () => {
       })),
       onFilter: (value, record) => record?.otlcd === value,
     },
-    { title: "Dry Months", dataIndex: "dry_months", key: "dry_months" },
+    {
+      title: "Dry Months",
+      dataIndex: "dry_months",
+      key: "dry_months",
+      sorter: (a, b) => a.dry_months - b.dry_months,
+    },
     {
       title: "Avg Sales",
       dataIndex: "avg_sales_13_months",
       key: "avg_sales_13_months",
+      sorter: (a, b) => a.avg_sales_13_months - b.avg_sales_13_months,
+      render: (value) =>
+        value !== undefined && value !== null
+          ? value.toLocaleString(undefined, {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
+            })
+          : 0,
+    },
+    {
+      title: "MTD Sales",
+      dataIndex: "mtd_sales",
+      key: "mtd_sales",
+      sorter: (a, b) => a.mtd_sales - b.mtd_sales,
       render: (value) =>
         value !== undefined && value !== null
           ? value.toLocaleString(undefined, {
@@ -309,6 +328,7 @@ const PotentialCustomers = () => {
       Channel: item.otlcd,
       "Dry Months": item.dry_months,
       "Avg Sales": item.avg_sales_13_months,
+      "MTD Sales": item.mtd_sales,
       Potential: item.potential,
     }));
 
@@ -323,7 +343,7 @@ const PotentialCustomers = () => {
     const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
     saveAs(
       blob,
-      `Potential_Customers_${selectedMonth}_${selectedProduct?.name}.xlsx`
+      `Potential_Customers_${selectedMonth}_${selectedProduct?.name}.xlsx`,
     );
   };
 
