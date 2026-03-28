@@ -322,8 +322,10 @@ const PotentialCustomers = () => {
     const wsData = potentialCustomers.map((item) => ({
       "Customer Code": item.customer_code,
       "Customer Name": item.customer_name,
+      "Salesman Code": item.salesman_code,
       Salesman: item.salesman_name,
       "Salesman Num": item.salesman_mobile,
+      "Branch Code": item.branch_code,
       Branch: item.branch,
       Channel: item.otlcd,
       "Dry Months": item.dry_months,
