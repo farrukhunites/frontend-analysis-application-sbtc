@@ -238,11 +238,10 @@ const PotentialCustomers = () => {
       { title: "Customer", dataIndex: "customer_name", key: "customer_name" },
       getColumnSearchProps("customer_name"),
     ),
-    {
-      title: "Salesman",
-      dataIndex: "salesman_name",
-      key: "salesman_name",
-    },
+    Object.assign(
+      { title: "Salesman", dataIndex: "salesman_name", key: "salesman_name" },
+      getColumnSearchProps("salesman_name"),
+    ),
     {
       title: "Salesman Num",
       dataIndex: "salesman_mobile",
