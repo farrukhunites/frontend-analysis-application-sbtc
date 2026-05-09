@@ -2,31 +2,24 @@
   font-size: 12px !important;
 }
 
-.daily-stt .ant-table-thead > tr > th {
-  background-color: #0074cc !important;
-  color: white !important;
-  text-align: center !important;
+.daily-stt .subtotal-row {
+  background-color: #F1F5F9 !important;
   font-weight: 600;
 }
 
-.daily-stt .subtotal-row {
-  background-color: #f2f2f2 !important;
-  font-weight: bold;
-}
-
 .daily-stt .grandtotal-row {
-  background-color: #ffe599 !important;
-  font-weight: bold;
+  background-color: rgba(245, 158, 11, 0.12) !important;
+  font-weight: 700;
 }
 
 .daily-stt .ant-table-cell {
-  border: 1px solid #bebebe;
+  border: 1px solid var(--color-border);
 }
 
 .daily-stt
   .ant-table-tbody
   > tr:not(.subtotal-row):not(.grandtotal-row):hover
   > td {
-  background-color: rgb(190, 255, 255) !important;
+  background-color: rgba(59, 130, 246, 0.06) !important;
   font-weight: 500;
 }

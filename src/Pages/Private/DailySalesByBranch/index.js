@@ -159,7 +159,7 @@ const DailySalesByBranch = () => {
         align: "right",
         sorter: (a, b) =>
           a.isTotal ? 1 : b.isTotal ? -1 : (a.total || 0) - (b.total || 0),
-        render: (v) => renderNumber(v, "#1677ff"),
+        render: (v) => renderNumber(v, "#3B82F6"),
       },
       {
         title: "Remaining",
@@ -172,7 +172,7 @@ const DailySalesByBranch = () => {
             : b.isTotal
               ? -1
               : (a.remaining || 0) - (b.remaining || 0),
-        render: (v) => renderNumber(v, "#997205ff"),
+        render: (v) => renderNumber(v, "#F59E0B"),
       },
       {
         title: "Target",

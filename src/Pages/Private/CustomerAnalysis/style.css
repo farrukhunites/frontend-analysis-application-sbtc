@@ -2,81 +2,72 @@
   display: flex;
   justify-content: space-between;
   align-items: stretch;
-  gap: 19px;
-  margin: 20px;
+  gap: 16px;
+  margin: 16px 0 20px 0;
   flex-wrap: wrap;
 }
 
 .customer-analysis .tab-card {
   flex: 1;
-  background: #fafafa;
+  background: var(--color-bg-card);
   border-radius: 12px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
-  padding: 18px 22px;
+  box-shadow: 0 1px 3px rgba(30, 58, 95, 0.06), 0 4px 12px rgba(30, 58, 95, 0.04);
+  padding: 20px 22px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  transition: all 0.3s ease;
-  min-width: 230px;
-  border: 1px solid #ccc;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  min-width: 200px;
+  border: 1px solid var(--color-border);
 }
 
 .customer-analysis .tab-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(30, 58, 95, 0.12);
 }
 
 .customer-analysis .tab-header {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #333;
+  margin-bottom: 8px;
 }
 
 .customer-analysis .tab-icon {
-  background-color: #f0f3ff;
-  color: #3f51b5;
+  background-color: rgba(59, 130, 246, 0.1);
+  color: var(--color-accent);
   border-radius: 8px;
   padding: 8px;
-  font-size: 19px;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.customer-analysis .tab-title {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .customer-analysis .tab-value {
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 700;
-  color: #111;
-  margin: 5px 0;
+  color: var(--color-text-primary);
+  margin: 4px 0 0 0;
+  word-break: break-word;
 }
 
-.customer-analysis .tab-footer {
+.customer-analysis .row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
-.customer-analysis .tab-change {
-  font-weight: 600;
-  font-size: 15px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.customer-analysis .tab-change.positive {
-  color: #28a745;
-}
-
-.customer-analysis .tab-change.negative {
-  color: #dc3545;
-}
-
-.customer-analysis .tab-subtext {
-  font-size: 14px;
-  color: #777;
-}
-
-.customer-analysis .ant-spin-container {
-  padding: 20px !important;
+.customer-analysis .row .graph {
+  flex: 1;
+  min-width: 0;
 }

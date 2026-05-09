@@ -1,19 +1,43 @@
 .graph-layout {
-  padding: 12px;
+  padding: 16px;
   border-radius: 12px;
-  border: 1px solid #ccc;
-  background-color: #fafafa;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-card);
+  box-shadow: 0 1px 3px rgba(30, 58, 95, 0.06), 0 4px 12px rgba(30, 58, 95, 0.04);
+  transition: box-shadow 0.2s ease;
+}
+
+.graph-layout:hover {
+  box-shadow: 0 4px 16px rgba(30, 58, 95, 0.1);
+}
+
+.graph-layout .graph-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .graph-layout .graph-title {
-  color: black;
-  font-size: 16px;
+  color: var(--color-text-primary);
+  font-size: 15px;
   font-weight: 600;
   line-height: 24px;
-  margin-bottom: 8px;
 }
 
 .graph-layout .additional-components {
   display: flex;
-  gap: 20px;
+  gap: 12px;
+  align-items: center;
+}
+
+.graph-layout .ant-btn-text {
+  color: var(--color-text-secondary);
+}
+
+.graph-layout .ant-btn-text:hover {
+  color: var(--color-accent);
+  background: rgba(59, 130, 246, 0.08);
 }

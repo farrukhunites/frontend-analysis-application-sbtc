@@ -367,7 +367,6 @@ const PotentialCustomers = () => {
             }}
           >
             <Button
-              style={{ backgroundColor: "#0074cc" }}
               type="primary"
               onClick={exportToExcel}
             >

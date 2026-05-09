@@ -8,8 +8,35 @@ import updateUserStates, {
 import { refresh } from "./API/Auth";
 import { decryptText, encryptText } from "./Utils/Encryption";
 import axios from "axios";
-import { Spin } from "antd";
+import { Spin, ConfigProvider } from "antd";
 import AppRoutes from "./Routes/AppRoutes";
+
+const appTheme = {
+  token: {
+    colorPrimary:         '#3B82F6',
+    colorBgContainer:     '#FFFFFF',
+    colorBgLayout:        '#F0F4F8',
+    borderRadius:         8,
+    fontFamily:           "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    colorBorderSecondary: '#E2E8F0',
+    colorText:            '#1E293B',
+    colorTextSecondary:   '#64748B',
+  },
+  components: {
+    Table: {
+      headerBg:    '#1E3A5F',
+      headerColor: '#FFFFFF',
+    },
+    Menu: {
+      darkItemBg:            'transparent',
+      darkItemSelectedBg:    'rgba(59, 130, 246, 0.15)',
+      darkItemSelectedColor: '#3B82F6',
+      darkItemHoverBg:       'rgba(59, 130, 246, 0.08)',
+    },
+    Button: { borderRadius: 8 },
+    Select: { borderRadius: 8 },
+  },
+};
 
 const UserContext = createContext();
 
@@ -99,6 +126,7 @@ function App() {
   }, []);
 
   return (
+    <ConfigProvider theme={appTheme}>
     <DateFilterProvider>
       <ProductProvider>
         <UserContext.Provider
@@ -127,6 +155,7 @@ function App() {
         </UserContext.Provider>
       </ProductProvider>
     </DateFilterProvider>
+    </ConfigProvider>
   );
 }
 

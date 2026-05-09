@@ -9,7 +9,6 @@ import {
 } from "@ant-design/icons";
 import { Menu, Layout, Button } from "antd";
 import "./style.css";
-import logo from "../../Assets/Logo.png";
 import { useNavigate, useLocation } from "react-router-dom";
 import { handleLogout } from "../../Utils/UpdateUserState";
 import { useContext } from "react";
@@ -104,11 +103,12 @@ const Sidebar = ({ collapsed }) => {
         height: "100vh",
         position: "sticky",
         top: 0,
+        background: "linear-gradient(180deg, #0F2744 0%, #1E3A5F 100%)",
       }}
     >
       <div>
         <div className="logo-container">
-          <img style={{ width: "130px" }} src={logo} alt="SBTC Logo" />
+          <div className="logo-text">{collapsed ? "S" : "SBTC"}</div>
         </div>
         <Menu
           theme="dark"
@@ -120,8 +120,8 @@ const Sidebar = ({ collapsed }) => {
       </div>
       {/* Logout button at the bottom */}
       <div style={{ padding: "16px" }}>
-        <Button type="primary" danger block onClick={onLogout}>
-          {"Logout"}
+        <Button className="logout-btn" block onClick={onLogout}>
+          Logout
         </Button>
       </div>
     </Sider>

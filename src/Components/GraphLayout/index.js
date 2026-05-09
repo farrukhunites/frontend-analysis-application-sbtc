@@ -61,7 +61,7 @@ const GraphLayout = ({
       </div>
     ),
     filterIcon: (filtered) => (
-      <SearchOutlined style={{ color: filtered ? "#2662D9" : undefined }} />
+      <SearchOutlined style={{ color: filtered ? "#3B82F6" : undefined }} />
     ),
     onFilter: (value, record) =>
       record[dataIndex]
@@ -143,14 +143,7 @@ const GraphLayout = ({
 
   return (
     <div className="graph-layout">
-      <div
-        className="graph-header"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
+      <div className="graph-header">
         <div className="graph-title">{title}</div>
         <div className="additional-components">
           {addOnComponent}

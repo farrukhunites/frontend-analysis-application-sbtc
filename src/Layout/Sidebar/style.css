@@ -1,12 +1,53 @@
-.sidebar .logo-container {
-  margin-top: 20px;
-  margin-bottom: 20px;
-  display: flex;
-  justify-content: center;
+.sidebar {
+  background: linear-gradient(180deg, #0F2744 0%, #1E3A5F 100%) !important;
 }
 
 .sidebar .ant-layout-sider-children {
   display: flex !important;
   flex-direction: column !important;
   justify-content: space-between !important;
+  background: transparent !important;
+}
+
+.sidebar .logo-container {
+  margin-top: 24px;
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.sidebar .logo-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: #FFFFFF;
+  text-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+  transition: font-size 0.2s, letter-spacing 0.2s;
+}
+
+.sidebar .ant-menu-dark {
+  background: transparent !important;
+}
+
+.sidebar .ant-menu-dark .ant-menu-item {
+  border-radius: 8px;
+  margin: 2px 8px;
+  width: calc(100% - 16px);
+}
+
+.sidebar .logout-btn {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #EF4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  font-weight: 600;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.sidebar .logout-btn:hover {
+  background-color: rgba(239, 68, 68, 0.28) !important;
+  border-color: #EF4444 !important;
+  color: #EF4444 !important;
 }

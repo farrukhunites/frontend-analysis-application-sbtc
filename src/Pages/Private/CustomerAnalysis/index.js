@@ -20,6 +20,7 @@ import {
 } from "../../../API/Customer";
 import { ProductContext } from "../../../Contexts/ProductContext";
 import { getAllChannels } from "../../../API/Channels";
+import { CHART_COLORS } from "../../../Components/Charts/chartConfig";
 
 const { Option } = Select;
 
@@ -406,7 +407,7 @@ const CustomerAnalysis = () => {
             <AreaChart
               graphTitle="Monthly Sales"
               labels={customerData?.monthly_sales_current_year?.months || []} // fallback
-              colourTheme={["#28a745"]}
+              colourTheme={[CHART_COLORS[2]]}
               units={[unitType, unitType]}
               series={[
                 {
@@ -424,7 +425,7 @@ const CustomerAnalysis = () => {
             <LineChart
               graphTitle="Customer Sales Comparison (Previous Years)"
               labels={customerData?.graph?.months || []} // fallback
-              colourTheme={["#ffa500", "#ff69b4", "#007bff"]}
+              colourTheme={[CHART_COLORS[3], CHART_COLORS[6], CHART_COLORS[0]]}
               units={[unitType]}
               series={[
                 {

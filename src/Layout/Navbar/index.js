@@ -65,18 +65,20 @@ const Navbar = ({ colorBgContainer }) => {
       <Header
         style={{
           padding: "0 24px",
-          background: colorBgContainer || "#fff",
+          background: "#FFFFFF",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
+          boxShadow: "0 1px 0 #E2E8F0, 0 2px 8px rgba(30, 58, 95, 0.06)",
           position: "sticky",
           top: 0,
           zIndex: 1000,
+          height: 64,
         }}
       >
-        {/* Left side: toggle + select */}
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+        {/* Left side: product select */}
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500 }}>Product:</span>
           <Select
             loading={loading}
             placeholder="Select a product"
@@ -89,7 +91,6 @@ const Navbar = ({ colorBgContainer }) => {
             style={{
               width: 240,
               fontWeight: 500,
-              color: "#2c3e50",
             }}
             showSearch
             optionFilterProp="children"

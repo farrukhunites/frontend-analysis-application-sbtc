@@ -1,13 +1,12 @@
-/* Highlight grand total row */
 .daily-sales-report .grand-total-row {
-  background-color: #fff3b0 !important; /* soft yellow */
-  font-weight: bold;
+  background-color: rgba(245, 158, 11, 0.12) !important;
+  font-weight: 700;
 }
 
 .daily-sales-report
   .ant-table-tbody
-  > tr:not(.subtotal-row):not(.grandtotal-row):hover
+  > tr:not(.grand-total-row):hover
   > td {
-  background-color: rgb(190, 255, 255) !important;
+  background-color: rgba(59, 130, 246, 0.06) !important;
   font-weight: 500;
 }

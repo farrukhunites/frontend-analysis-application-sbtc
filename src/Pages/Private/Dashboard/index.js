@@ -16,6 +16,7 @@ import { message, Radio, Select, Spin } from "antd";
 import { getDashboardData } from "../../../API/AnalysisSnapshot";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
 import { ProductContext } from "../../../Contexts/ProductContext";
+import { CHART_COLORS } from "../../../Components/Charts/chartConfig";
 
 // Define a safe initial structure for dashboardData
 const initialDashboardData = {
@@ -242,23 +243,6 @@ const Dashboard = () => {
     });
   }
 
-  // Define a large palette of distinct, bright colors
-  const BRIGHT_COLORS = [
-    "#FF6384", // Red
-    "#36A2EB", // Blue
-    "#FFCE56", // Yellow
-    "#4BC0C0", // Cyan
-    "#9966FF", // Purple
-    "#FF9F40", // Orange
-    "#00CD99", // Sea Green
-    "#E60049", // Deep Pink
-    "#0BB4FF", // Sky Blue
-    "#50E991", // Mint Green
-    "#EE82EE", // Violet
-    "#FFA500", // Gold Orange
-    // Add more colors if you expect more than 11 channels
-  ];
-
   // Extract the channel labels from the fetched data, safely defaulting to empty array
   const channelLabels =
     dashboardData.channel_contribution_graph?.channels || [];
@@ -267,7 +251,7 @@ const Dashboard = () => {
   const channelSeriesValues =
     dashboardData?.channel_contribution_graph?.channel_sales_values || [];
 
-  const dynamicColorTheme = BRIGHT_COLORS.slice(0, channelLabels.length);
+  const dynamicColorTheme = CHART_COLORS.slice(0, channelLabels.length);
 
   // --- Helper function to derive dynamic options (use in JSX) ---
   const getBranchOptions = () => {
@@ -352,7 +336,7 @@ const Dashboard = () => {
                 graphTitle="Weekly Sales"
                 // Safely access properties with optional chaining and nullish coalescing
                 labels={dashboardData.weekly_sales_graph?.week || []}
-                colourTheme={["#3f51b5"]}
+                colourTheme={[CHART_COLORS[0]]}
                 units={[unitType]}
                 series={[
                   {
@@ -367,7 +351,7 @@ const Dashboard = () => {
               <LineChart
                 graphTitle="Daily Sales Trend"
                 labels={dailySalesLabels}
-                colourTheme={["#007BFF"]}
+                colourTheme={[CHART_COLORS[0]]}
                 units={[unitType]}
                 series={[
                   {
@@ -398,7 +382,7 @@ const Dashboard = () => {
               <LineChart
                 graphTitle="Monthly Sales By Date"
                 labels={dashboardData?.monthly_daily_graph?.day || []}
-                colourTheme={["red"]}
+                colourTheme={[CHART_COLORS[4]]}
                 units={[unitType]}
                 series={[
                   {
@@ -415,7 +399,7 @@ const Dashboard = () => {
               <LineChart
                 graphTitle="Monthly Cumulative Sales By Date"
                 labels={dashboardData?.monthly_daily_graph?.day || []}
-                colourTheme={["#857a56"]}
+                colourTheme={[CHART_COLORS[2]]}
                 units={[unitType]}
                 series={[
                   {
@@ -432,7 +416,7 @@ const Dashboard = () => {
               <LineChart
                 graphTitle="Weekly Sales YTD"
                 labels={dashboardData.weekly_ytd_graph?.Week || []}
-                colourTheme={["#ff69b4"]}
+                colourTheme={[CHART_COLORS[1]]}
                 units={[unitType]}
                 series={[
                   {
@@ -461,7 +445,7 @@ const Dashboard = () => {
               <LineChart
                 graphTitle="Monthly Sales"
                 labels={dashboardData?.monthly_sales_target_graph?.Months || []}
-                colourTheme={["#3f51b5", "#28a745"]}
+                colourTheme={[CHART_COLORS[0], CHART_COLORS[2]]}
                 units={[unitType, unitType]}
                 series={[
                   {
@@ -488,7 +472,7 @@ const Dashboard = () => {
               <BarChart
                 graphTitle="Branch-wise Sales vs Target"
                 labels={dashboardData.branch_sales_target_graph?.branches || []}
-                colourTheme={["#ffc107", "#17a2b8"]}
+                colourTheme={[CHART_COLORS[3], CHART_COLORS[0]]}
                 units={[unitType, unitType]}
                 series={[
                   {
@@ -509,7 +493,7 @@ const Dashboard = () => {
               <AreaChart
                 graphTitle={`SKU Contribution (${unitType})`}
                 labels={dashboardData.sku_contribution_graph?.labels || []}
-                colourTheme={["#dc3545"]}
+                colourTheme={[CHART_COLORS[0]]}
                 units={[unitType]}
                 series={[
                   {
@@ -530,7 +514,7 @@ const Dashboard = () => {
                   dashboardData.customer_count_channel_branch_wise?.channels ||
                   []
                 }
-                colourTheme={["#3f51b5"]}
+                colourTheme={[CHART_COLORS[0]]}
                 units={["Customers"]}
                 series={[
                   {

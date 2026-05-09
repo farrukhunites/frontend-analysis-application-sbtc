@@ -1,11 +1,12 @@
 import { Empty } from "antd";
 import ReactApexChart from "react-apexcharts";
 import GraphLayout from "../../GraphLayout";
+import { CHART_COLORS, CHART_AXIS_COLOR, CHART_LEGEND_COLOR } from "../chartConfig";
 
 const AreaChart = ({
   labels,
   series,
-  colourTheme = ["#000", "#fff"],
+  colourTheme = CHART_COLORS,
   graphTitle = "Undefined",
   units = [],
   extraCols = [],
@@ -44,7 +45,7 @@ const AreaChart = ({
       gradient: {
         type: "vertical",
         shadeIntensity: 0,
-        gradientToColors: ["rgba(38, 98, 217, 0.06)"],
+        gradientToColors: ["rgba(59, 130, 246, 0.04)"],
         inverseColors: false,
         opacityFrom: 0.48,
         opacityTo: 0.06,
@@ -67,11 +68,11 @@ const AreaChart = ({
       },
       axisBorder: {
         show: true,
-        color: "#ccc",
+        color: CHART_AXIS_COLOR,
       },
       axisTicks: {
         show: true,
-        color: "#ccc",
+        color: CHART_AXIS_COLOR,
       },
     },
     yaxis: {
@@ -82,11 +83,11 @@ const AreaChart = ({
       },
       axisBorder: {
         show: true,
-        color: "#ccc",
+        color: CHART_AXIS_COLOR,
       },
       axisTicks: {
         show: true,
-        color: "#ccc",
+        color: CHART_AXIS_COLOR,
       },
     },
     legend: {
@@ -94,7 +95,7 @@ const AreaChart = ({
       horizontalAlign: "center",
       offsetY: 8,
       labels: {
-        colors: "#000",
+        colors: CHART_LEGEND_COLOR,
         useSeriesColors: false,
         style: {
           fontFamily: "Inter",
@@ -104,7 +105,7 @@ const AreaChart = ({
       },
     },
     grid: {
-      borderColor: "#ccc",
+      borderColor: CHART_AXIS_COLOR,
       strokeDashArray: 0,
       xaxis: {
         lines: {

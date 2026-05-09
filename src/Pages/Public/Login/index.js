@@ -6,7 +6,6 @@ import { UserContext } from "../../../App";
 import { login } from "../../../API/Auth";
 import { encryptText } from "../../../Utils/Encryption";
 import updateUserStates from "../../../Utils/UpdateUserState";
-import logo from "../../../Assets/Logo.png";
 
 const Login = () => {
   const { setUserData, setUserToken } = useContext(UserContext);
@@ -57,10 +56,11 @@ const Login = () => {
     <div className="login">
       <div className="login-card">
         <div className="logo">
-          <img style={{ width: "150px" }} src={logo} alt="Company Logo" />
+          <div className="logo-text">SBTC</div>
+          <div className="logo-subtitle">Sales Analysis Platform</div>
         </div>
         <div className="title">
-          <p>Log in to App</p>
+          <p>Welcome back</p>
         </div>
         <Form
           name="login"
@@ -79,14 +79,14 @@ const Login = () => {
             name="password"
             rules={[{ required: true, message: "Please input your Password!" }]}
           >
-            <Input type="password" placeholder="Password" />
+            <Input.Password placeholder="Password" />
           </Form.Item>
 
           <Form.Item>
             <Button
               type="primary"
               htmlType="submit"
-              className="login-form-button"
+              className="login-btn"
               loading={loading}
             >
               Log In

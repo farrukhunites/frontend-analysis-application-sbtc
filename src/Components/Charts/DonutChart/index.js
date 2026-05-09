@@ -1,10 +1,11 @@
 import Chart from "react-apexcharts";
 import GraphLayout from "../../GraphLayout";
+import { CHART_COLORS, CHART_LEGEND_COLOR } from "../chartConfig";
 
 const DonutChart = ({
   graphTitle,
   labels,
-  colourTheme,
+  colourTheme = CHART_COLORS,
   series,
   seriesValues = [],
   units = [],
@@ -19,6 +20,25 @@ const DonutChart = ({
     colors: colourTheme,
     legend: {
       position: "bottom",
+      labels: {
+        colors: CHART_LEGEND_COLOR,
+      },
+    },
+    plotOptions: {
+      pie: {
+        donut: {
+          size: "65%",
+          labels: {
+            show: true,
+            total: {
+              show: true,
+              label: "Total",
+              color: CHART_LEGEND_COLOR,
+              fontSize: "13px",
+            },
+          },
+        },
+      },
     },
     dataLabels: {
       enabled: true,

@@ -1,11 +1,12 @@
 import { Empty } from "antd";
 import ReactApexChart from "react-apexcharts";
 import GraphLayout from "../../GraphLayout";
+import { CHART_COLORS, CHART_AXIS_COLOR, CHART_LEGEND_COLOR } from "../chartConfig";
 
 const LineChart = ({
   labels,
   series,
-  colourTheme = ["#000", "#fff"],
+  colourTheme = CHART_COLORS,
   graphTitle = "Undefined",
   units = [],
   extraCols = [],
@@ -66,11 +67,11 @@ const LineChart = ({
       },
       axisBorder: {
         show: true,
-        color: "#ccc",
+        color: CHART_AXIS_COLOR,
       },
       axisTicks: {
         show: true,
-        color: "#ccc",
+        color: CHART_AXIS_COLOR,
       },
     },
     yaxis: {
@@ -81,11 +82,11 @@ const LineChart = ({
       },
       axisBorder: {
         show: true,
-        color: "#ccc",
+        color: CHART_AXIS_COLOR,
       },
       axisTicks: {
         show: true,
-        color: "#ccc",
+        color: CHART_AXIS_COLOR,
       },
     },
     legend: {
@@ -93,7 +94,7 @@ const LineChart = ({
       horizontalAlign: "center",
       offsetY: 8,
       labels: {
-        colors: "#000",
+        colors: CHART_LEGEND_COLOR,
         useSeriesColors: false,
         style: {
           fontFamily: "Inter",
@@ -103,7 +104,7 @@ const LineChart = ({
       },
     },
     grid: {
-      borderColor: "#ccc",
+      borderColor: CHART_AXIS_COLOR,
       strokeDashArray: 0,
       xaxis: {
         lines: {

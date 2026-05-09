@@ -1,11 +1,12 @@
 import { Empty } from "antd";
 import ReactApexChart from "react-apexcharts";
 import GraphLayout from "../../GraphLayout";
+import { CHART_COLORS, CHART_AXIS_COLOR, CHART_LEGEND_COLOR } from "../chartConfig";
 
 const BarChart = ({
   labels,
   series,
-  colourTheme = ["#000", "#fff"],
+  colourTheme = CHART_COLORS,
   graphTitle = "Undefined",
   units = [],
   dottedline = [],
@@ -59,11 +60,11 @@ const BarChart = ({
       },
       axisBorder: {
         show: true,
-        color: "#ccc",
+        color: CHART_AXIS_COLOR,
       },
       axisTicks: {
         show: true,
-        color: "#ccc",
+        color: CHART_AXIS_COLOR,
       },
     },
     legend: {
@@ -71,7 +72,7 @@ const BarChart = ({
       position: "top",
       fontSize: "12px",
       labels: {
-        colors: "#000",
+        colors: CHART_LEGEND_COLOR,
         style: {
           fontFamily: "Inter",
           fontSize: "12px",
@@ -104,15 +105,15 @@ const BarChart = ({
       },
       axisBorder: {
         show: true,
-        color: "#ccc",
+        color: CHART_AXIS_COLOR,
       },
       axisTicks: {
         show: true,
-        color: "#ccc",
+        color: CHART_AXIS_COLOR,
       },
     },
     grid: {
-      borderColor: "#ccc",
+      borderColor: CHART_AXIS_COLOR,
       xaxis: { lines: { show: false } },
       yaxis: { lines: { show: true } },
     },
