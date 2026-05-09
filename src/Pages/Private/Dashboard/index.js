@@ -12,10 +12,11 @@ import AreaChart from "../../../Components/Charts/AreaChart";
 import BarChart from "../../../Components/Charts/BarChart";
 import DonutChart from "../../../Components/Charts/DonutChart";
 import { useContext, useEffect, useState } from "react";
-import { message, Radio, Select, Spin } from "antd";
+import { message, Select, Spin } from "antd";
 import { getDashboardData } from "../../../API/AnalysisSnapshot";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
 import { ProductContext } from "../../../Contexts/ProductContext";
+import { UnitValueContext } from "../../../Contexts/UnitValueContext";
 import { CHART_COLORS } from "../../../Components/Charts/chartConfig";
 
 // Define a safe initial structure for dashboardData
@@ -38,12 +39,11 @@ const initialDashboardData = {
 const Dashboard = () => {
   const { selectedMonth } = useDateFilter();
   const { selectedProduct } = useContext(ProductContext);
+  const { unitType, valueType } = useContext(UnitValueContext);
 
   // State for dashboard data and filters
   const [dashboardData, setDashboardData] = useState(initialDashboardData);
   const [loading, setLoading] = useState(false);
-  const [valueType, setValueType] = useState("net"); // 'net' or 'gross'
-  const [unitType, setUnitType] = useState("ctn"); // 'pcs' or 'ctn'
   const [selectedBranch, setSelectedBranch] = useState("all");
 
   const [weeklySalesGraphData, setWeeklySalesGraphData] = useState({});
@@ -172,41 +172,6 @@ const Dashboard = () => {
     }
   };
 
-  const renderRadioButtons = () => (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "32px",
-      }}
-    >
-      {/* Unit Type */}
-      <div>
-        <span style={{ marginRight: 8, fontWeight: 500 }}>Unit:</span>
-        <Radio.Group
-          value={unitType}
-          onChange={(e) => setUnitType(e.target.value)}
-        >
-          <Radio value="ctn">CTN</Radio>
-          <Radio value="pcs">PCS</Radio>
-        </Radio.Group>
-      </div>
-
-      {/* Price Type */}
-      <div>
-        <span style={{ marginRight: 8, fontWeight: 500 }}>Type:</span>
-        <Radio.Group
-          value={valueType}
-          onChange={(e) => setValueType(e.target.value)}
-        >
-          <Radio value="net">NET</Radio>
-          <Radio value="gross">GROSS</Radio>
-        </Radio.Group>
-      </div>
-    </div>
-  );
-
   // Safely derive tabs data, using initialDashboardData.tabs default
   const tabs = (dashboardData.tabs || initialDashboardData.tabs).map(
     (tab, index) => ({
@@ -302,7 +267,6 @@ const Dashboard = () => {
         </div>
       ) : (
         <div className="dashboard">
-          {renderRadioButtons()}
           <div className="top-tabs-container">
             {/* Tabs access is safe due to the mapping/padding above */}
             {tabs.map((tab, index) => (

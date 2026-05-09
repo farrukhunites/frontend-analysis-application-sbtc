@@ -1,9 +1,10 @@
 import { useContext, useEffect, useMemo, useState } from "react";
-import { Table, Select, message, Radio } from "antd";
+import { Table, Select, message } from "antd";
 import "./style.css";
 import { getAllProducts } from "../../../API/Products";
 import { ProductContext } from "../../../Contexts/ProductContext";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
+import { UnitValueContext } from "../../../Contexts/UnitValueContext";
 import { getDailySTT } from "../../../API/Daily STT Report";
 
 const branch_region_map = {
@@ -40,8 +41,7 @@ const DailySTT = () => {
   );
   const [dailySTTReport, setDailySTTReport] = useState([]);
   const [msgApi, contextHolder] = message.useMessage();
-  const [valueType, setValueType] = useState("net"); // 'net' or 'gross'
-  const [unitType, setUnitType] = useState("ctn");
+  const { unitType, valueType } = useContext(UnitValueContext);
 
   const getProductColumns = (product) => {
     const slug =
@@ -203,41 +203,6 @@ const DailySTT = () => {
 
     fetchDailySTTReport();
   }, [selectedMonth, selectedProducts, msgApi]);
-
-  const renderRadioButtons = () => (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "32px",
-      }}
-    >
-      {/* Unit Type */}
-      <div>
-        <span style={{ marginRight: 8, fontWeight: 500 }}>Unit:</span>
-        <Radio.Group
-          value={unitType}
-          onChange={(e) => setUnitType(e.target.value)}
-        >
-          <Radio value="ctn">CTN</Radio>
-          <Radio value="pcs">PCS</Radio>
-        </Radio.Group>
-      </div>
-
-      {/* Price Type */}
-      <div>
-        <span style={{ marginRight: 8, fontWeight: 500 }}>Type:</span>
-        <Radio.Group
-          value={valueType}
-          onChange={(e) => setValueType(e.target.value)}
-        >
-          <Radio value="net">NET</Radio>
-          <Radio value="gross">GROSS</Radio>
-        </Radio.Group>
-      </div>
-    </div>
-  );
 
   const columns = useMemo(() => {
     const dynamicCols = selectedProducts?.map(getProductColumns) || [];
@@ -436,7 +401,6 @@ const DailySTT = () => {
     <>
       {contextHolder}
       <div className="daily-stt" style={{ padding: 16 }}>
-        {renderRadioButtons()}
         <div style={{ marginBottom: 16 }}>
           <strong>Show Products: </strong>
           <Select

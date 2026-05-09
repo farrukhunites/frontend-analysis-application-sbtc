@@ -30,11 +30,15 @@ const DonutChart = ({
           size: "65%",
           labels: {
             show: true,
+            value: {
+              formatter: (val) => `${parseFloat(val).toFixed(2)}%`,
+            },
             total: {
               show: true,
               label: "Total",
               color: CHART_LEGEND_COLOR,
               fontSize: "13px",
+              formatter: () => "100%",
             },
           },
         },

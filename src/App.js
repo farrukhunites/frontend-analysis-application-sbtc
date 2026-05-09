@@ -1,5 +1,6 @@
 import { DateFilterProvider } from "./Contexts/DateFilterContext";
 import { ProductProvider } from "./Contexts/ProductContext";
+import { UnitValueProvider } from "./Contexts/UnitValueContext";
 import { createContext, useEffect, useState } from "react";
 import updateUserStates, {
   getRefreshToken,
@@ -127,6 +128,7 @@ function App() {
 
   return (
     <ConfigProvider theme={appTheme}>
+    <UnitValueProvider>
     <DateFilterProvider>
       <ProductProvider>
         <UserContext.Provider
@@ -155,6 +157,7 @@ function App() {
         </UserContext.Provider>
       </ProductProvider>
     </DateFilterProvider>
+    </UnitValueProvider>
     </ConfigProvider>
   );
 }

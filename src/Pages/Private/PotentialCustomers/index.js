@@ -1,6 +1,7 @@
-import { Table, message, Radio, Spin, Input, Button, Space } from "antd";
+import { Table, message, Spin, Input, Button, Space } from "antd";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
 import { ProductContext } from "../../../Contexts/ProductContext";
+import { UnitValueContext } from "../../../Contexts/UnitValueContext";
 import { useContext, useEffect, useRef, useState } from "react";
 import { getPotentialCustomers } from "../../../API/Potential Customers";
 import { SearchOutlined } from "@ant-design/icons";
@@ -49,51 +50,11 @@ const channelOptions = [
 const PotentialCustomers = () => {
   const { selectedMonth } = useDateFilter();
   const { selectedProduct } = useContext(ProductContext);
+  const { unitType, valueType } = useContext(UnitValueContext);
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
-  const [valueType, setValueType] = useState("net");
-  const [unitType, setUnitType] = useState("ctn");
   const [potentialCustomers, setPotentialCustomers] = useState([]);
-
-  // -------------------------
-  // Radio buttons for Unit & Type
-  // -------------------------
-  const renderRadioButtons = () => (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "32px",
-        marginBottom: "16px",
-      }}
-    >
-      {/* Unit Type */}
-      <div>
-        <span style={{ marginRight: 8, fontWeight: 500 }}>Unit:</span>
-        <Radio.Group
-          value={unitType}
-          onChange={(e) => setUnitType(e.target.value)}
-        >
-          <Radio value="ctn">CTN</Radio>
-          <Radio value="pcs">PCS</Radio>
-        </Radio.Group>
-      </div>
-
-      {/* Value Type */}
-      <div>
-        <span style={{ marginRight: 8, fontWeight: 500 }}>Type:</span>
-        <Radio.Group
-          value={valueType}
-          onChange={(e) => setValueType(e.target.value)}
-        >
-          <Radio value="net">NET</Radio>
-          <Radio value="gross">GROSS</Radio>
-        </Radio.Group>
-      </div>
-    </div>
-  );
 
   // -------------------------
   // Fetch API Data
@@ -379,7 +340,6 @@ const PotentialCustomers = () => {
 
   return (
     <div>
-      {renderRadioButtons()}
       {loading ? (
         <div style={{ textAlign: "center", padding: "50px" }}>
           <Spin size="large" />

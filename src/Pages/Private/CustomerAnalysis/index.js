@@ -7,7 +7,7 @@ import {
   UserOutlined,
   DollarOutlined,
 } from "@ant-design/icons";
-import { message, Radio, Select, Table, Tag } from "antd";
+import { message, Select, Table, Tag } from "antd";
 import "./style.css";
 import { useContext, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
@@ -20,6 +20,7 @@ import {
   getCustomersByBranchByCHannel,
 } from "../../../API/Customer";
 import { ProductContext } from "../../../Contexts/ProductContext";
+import { UnitValueContext } from "../../../Contexts/UnitValueContext";
 import { getAllChannels } from "../../../API/Channels";
 import { CHART_COLORS } from "../../../Components/Charts/chartConfig";
 
@@ -27,12 +28,11 @@ const { Option } = Select;
 
 const CustomerAnalysis = () => {
   const { selectedProduct } = useContext(ProductContext);
+  const { unitType, valueType } = useContext(UnitValueContext);
 
   const [loading, setLoading] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState();
   const [selectedChannel, setSelectedChannel] = useState();
-  const [unitType, setUnitType] = useState("ctn");
-  const [priceType, setPriceType] = useState("net");
   const [customers, setCustomers] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerData, setCustomerData] = useState(null);
@@ -114,7 +114,7 @@ const CustomerAnalysis = () => {
       !selectedCustomer ||
       !selectedBranch ||
       !selectedProduct ||
-      !priceType ||
+      !valueType ||
       !unitType
     ) {
       return;
@@ -126,7 +126,7 @@ const CustomerAnalysis = () => {
         const res = await getCustomerInsight({
           customer_code: selectedCustomer.code,
           branch_code: selectedBranch.code,
-          sales_type: priceType,
+          sales_type: valueType,
           unit: unitType,
           product_code: selectedProduct.code,
         });
@@ -145,7 +145,7 @@ const CustomerAnalysis = () => {
     };
 
     fetchCustomerInsight();
-  }, [selectedCustomer, selectedBranch, priceType, unitType, selectedProduct]);
+  }, [selectedCustomer, selectedBranch, valueType, unitType, selectedProduct]);
 
   useEffect(() => {
     // Do nothing unless BOTH branch + channel selected
@@ -205,7 +205,7 @@ const CustomerAnalysis = () => {
       const res = await getCustomerInsight({
         customer_code: customer.code,
         branch_code: selectedBranch.code,
-        sales_type: priceType,
+        sales_type: valueType,
         unit: unitType,
         product_code: selectedProduct?.code, // or any dynamic code if needed
       });
@@ -381,42 +381,6 @@ const CustomerAnalysis = () => {
               </Option>
             ))}
           </Select>
-        </div>
-
-        {/* Radio Buttons */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            marginTop: 24,
-            gap: "32px",
-            marginBottom: 24,
-          }}
-        >
-          {/* Unit Type */}
-          <div>
-            <span style={{ marginRight: 8, fontWeight: 500 }}>Unit:</span>
-            <Radio.Group
-              value={unitType}
-              onChange={(e) => setUnitType(e.target.value)}
-            >
-              <Radio value="ctn">CTN</Radio>
-              <Radio value="pcs">PCS</Radio>
-            </Radio.Group>
-          </div>
-
-          {/* Price Type */}
-          <div>
-            <span style={{ marginRight: 8, fontWeight: 500 }}>Type:</span>
-            <Radio.Group
-              value={priceType}
-              onChange={(e) => setPriceType(e.target.value)}
-            >
-              <Radio value="net">NET</Radio>
-              <Radio value="gross">GROSS</Radio>
-            </Radio.Group>
-          </div>
         </div>
 
         {/* Tabs */}

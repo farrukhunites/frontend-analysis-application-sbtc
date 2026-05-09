@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useContext } from "react";
-import { Table, Radio, message, Spin, Tabs, Select } from "antd";
+import { Table, message, Spin, Tabs, Select } from "antd";
 import { ProductContext } from "../../../Contexts/ProductContext";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
+import { UnitValueContext } from "../../../Contexts/UnitValueContext";
 import { getAllProducts } from "../../../API/Products";
 import { getDailyBranchSales } from "../../../API/Daily STT Report";
 import "./style.css";
@@ -16,8 +17,7 @@ const DailySalesByBranch = () => {
   const [loading, setLoading] = useState(false);
   const [salesData, setSalesData] = useState([]);
   const [dayColumns, setDayColumns] = useState([]);
-  const [unitType, setUnitType] = useState("ctn");
-  const [valueType, setValueType] = useState("net");
+  const { unitType, valueType } = useContext(UnitValueContext);
   const [channels, setChannels] = useState([
     "BRN",
     "RTI",
@@ -319,28 +319,6 @@ const DailySalesByBranch = () => {
             </Option>
           ))}
         </Select>
-        <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
-          <div>
-            <span style={{ marginRight: 8, fontWeight: 500 }}>Unit:</span>
-            <Radio.Group
-              value={unitType}
-              onChange={(e) => setUnitType(e.target.value)}
-            >
-              <Radio value="ctn">CTN</Radio>
-              <Radio value="pcs">PCS</Radio>
-            </Radio.Group>
-          </div>
-          <div>
-            <span style={{ marginRight: 8, fontWeight: 500 }}>Type:</span>
-            <Radio.Group
-              value={valueType}
-              onChange={(e) => setValueType(e.target.value)}
-            >
-              <Radio value="net">NET</Radio>
-              <Radio value="gross">GROSS</Radio>
-            </Radio.Group>
-          </div>
-        </div>
       </div>
 
       {loading && <Spin size="large" style={{ marginBottom: 20 }} />}
