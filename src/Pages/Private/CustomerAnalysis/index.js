@@ -9,7 +9,8 @@ import {
 } from "@ant-design/icons";
 import { message, Radio, Select, Table, Tag } from "antd";
 import "./style.css";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import LineChart from "../../../Components/Charts/LineChart";
 import RiyalIcon from "../../../Utils/RiyalIcon";
 import AreaChart from "../../../Components/Charts/AreaChart";
@@ -38,6 +39,35 @@ const CustomerAnalysis = () => {
 
   const [branches, setBranches] = useState([]);
   const [channels, setChannels] = useState([]);
+
+  const preselect = useLocation().state;
+  const hasAutoSelected = useRef(false);
+
+  // Auto-select branch from navigation state
+  useEffect(() => {
+    if (!hasAutoSelected.current && preselect?.branch_code && branches.length > 0 && !selectedBranch) {
+      const branch = branches.find((b) => b.code === preselect.branch_code);
+      if (branch) setSelectedBranch(branch);
+    }
+  }, [branches]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-select channel — otlcd from PotentialCustomers may match channel.name, not channel.code
+  useEffect(() => {
+    if (!hasAutoSelected.current && preselect?.channel_code && channels.length > 0 && !selectedChannel) {
+      const channel =
+        channels.find((c) => c.code === preselect.channel_code) ||
+        channels.find((c) => c.name === preselect.channel_code);
+      if (channel) setSelectedChannel(channel);
+    }
+  }, [channels]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-select customer once customer list is loaded for the pre-selected branch+channel
+  useEffect(() => {
+    if (!hasAutoSelected.current && preselect?.customer_code && customers.length > 0 && !selectedCustomer) {
+      hasAutoSelected.current = true;
+      handleCustomerChange(preselect.customer_code);
+    }
+  }, [customers]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const fetchBranches = async () => {

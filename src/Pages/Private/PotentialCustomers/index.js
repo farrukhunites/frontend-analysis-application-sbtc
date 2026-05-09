@@ -7,6 +7,7 @@ import { SearchOutlined } from "@ant-design/icons";
 import Highlighter from "react-highlight-words";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import { useNavigate } from "react-router-dom";
 
 const branchOptions = [
   "SBTC JEDDAH",
@@ -48,6 +49,7 @@ const channelOptions = [
 const PotentialCustomers = () => {
   const { selectedMonth } = useDateFilter();
   const { selectedProduct } = useContext(ProductContext);
+  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
   const [valueType, setValueType] = useState("net");
@@ -234,10 +236,37 @@ const PotentialCustomers = () => {
       dataIndex: "customer_code",
       key: "customer_code",
     },
-    Object.assign(
-      { title: "Customer", dataIndex: "customer_name", key: "customer_name" },
-      getColumnSearchProps("customer_name"),
-    ),
+    {
+      title: "Customer",
+      dataIndex: "customer_name",
+      key: "customer_name",
+      ...getColumnSearchProps("customer_name"),
+      render: (text, record) => (
+        <span
+          style={{ color: "var(--color-accent)", cursor: "pointer", fontWeight: 500 }}
+          onClick={() =>
+            navigate("/customer-analysis", {
+              state: {
+                customer_code: record.customer_code,
+                branch_code: record.branch_code,
+                channel_code: record.otlcd,
+              },
+            })
+          }
+        >
+          {searchedColumn === "customer_name" ? (
+            <Highlighter
+              highlightStyle={{ backgroundColor: "#ffc069", padding: 0 }}
+              searchWords={[searchText]}
+              autoEscape
+              textToHighlight={text ? text.toString() : ""}
+            />
+          ) : (
+            text
+          )}
+        </span>
+      ),
+    },
     Object.assign(
       { title: "Salesman", dataIndex: "salesman_name", key: "salesman_name" },
       getColumnSearchProps("salesman_name"),
