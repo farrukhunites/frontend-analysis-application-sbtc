@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { Form, Input, Button, message, Divider } from "antd";
 import {
   LockOutlined,
@@ -8,6 +8,8 @@ import {
   AppstoreOutlined,
 } from "@ant-design/icons";
 import { changePassword } from "../../../API/Auth";
+import { getAllBranches } from "../../../API/Branches";
+import { getAllProducts } from "../../../API/Products";
 import { UserContext } from "../../../App";
 import "./style.css";
 
@@ -16,6 +18,64 @@ const Settings = () => {
   const [form] = Form.useForm();
   const { userData } = useContext(UserContext);
   const [msgAPI, contextHolder] = message.useMessage();
+
+  const [branchNames, setBranchNames] = useState([]);
+  const [productNames, setProductNames] = useState([]);
+
+  // Resolve allowed_branches / allowed_products codes → names
+  useEffect(() => {
+    const resolveCodes = async () => {
+      try {
+        const [branchRes, productRes] = await Promise.all([
+          getAllBranches(),
+          getAllProducts(),
+        ]);
+
+        const allBranches = branchRes?.results || [];
+        const allProducts = productRes?.results || [];
+
+        const allowedBranchCodes = Array.isArray(userData?.allowed_branches)
+          ? userData.allowed_branches
+          : [];
+
+        const allowedProductCodes = Array.isArray(userData?.allowed_products)
+          ? userData.allowed_products
+          : [];
+
+        if (allowedBranchCodes.length === 0) {
+          setBranchNames(["All Branches"]);
+        } else {
+          const names = allowedBranchCodes.map(
+            (code) => allBranches.find((b) => b.code === code)?.name || code
+          );
+          setBranchNames(names);
+        }
+
+        if (allowedProductCodes.length === 0) {
+          setProductNames(["All Products"]);
+        } else {
+          const names = allowedProductCodes.map(
+            (code) => allProducts.find((p) => p.code === code)?.name || code
+          );
+          setProductNames(names);
+        }
+      } catch {
+        // Fall back to raw codes on error
+        setBranchNames(
+          Array.isArray(userData?.allowed_branches)
+            ? userData.allowed_branches
+            : ["All Branches"]
+        );
+        setProductNames(
+          Array.isArray(userData?.allowed_products)
+            ? userData.allowed_products
+            : ["All Products"]
+        );
+      }
+    };
+
+    if (userData) resolveCodes();
+  }, [userData]);
 
   const onFinish = async (values) => {
     setLoading(true);
@@ -37,14 +97,6 @@ const Settings = () => {
         .toUpperCase()
         .slice(0, 2)
     : "U";
-
-  const allowedBranches = Array.isArray(userData?.allowed_branches)
-    ? userData.allowed_branches.join(", ") || "All Branches"
-    : userData?.allowed_branches || "All Branches";
-
-  const allowedProducts = Array.isArray(userData?.allowed_products)
-    ? userData.allowed_products.join(", ") || "All Products"
-    : userData?.allowed_products || "All Products";
 
   return (
     <div className="settings-page">
@@ -73,9 +125,7 @@ const Settings = () => {
             <div className="profile-avatar">{initials}</div>
             <div>
               <div className="profile-name">{userData?.name || "—"}</div>
-              <div className="profile-position">
-                {userData?.position || "—"}
-              </div>
+              <div className="profile-position">{userData?.position || "—"}</div>
             </div>
           </div>
 
@@ -84,23 +134,35 @@ const Settings = () => {
               <IdcardOutlined className="info-icon" />
               <div>
                 <div className="info-label">Employee Code</div>
-                <div className="info-value">
-                  {userData?.employee_code || "—"}
+                <div className="info-value">{userData?.employee_code || "—"}</div>
+              </div>
+            </div>
+
+            <div className="info-row">
+              <BankOutlined className="info-icon" />
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div className="info-label">Allowed Branches</div>
+                <div className="info-tags">
+                  {branchNames.map((name) => (
+                    <span key={name} className="info-tag info-tag--branch">
+                      {name}
+                    </span>
+                  ))}
                 </div>
               </div>
             </div>
-            <div className="info-row">
-              <BankOutlined className="info-icon" />
-              <div>
-                <div className="info-label">Allowed Branches</div>
-                <div className="info-value">{allowedBranches}</div>
-              </div>
-            </div>
+
             <div className="info-row">
               <AppstoreOutlined className="info-icon" />
-              <div>
+              <div style={{ minWidth: 0, flex: 1 }}>
                 <div className="info-label">Allowed Products</div>
-                <div className="info-value">{allowedProducts}</div>
+                <div className="info-tags">
+                  {productNames.map((name) => (
+                    <span key={name} className="info-tag info-tag--product">
+                      {name}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -123,9 +185,7 @@ const Settings = () => {
             <Form.Item
               name="old_password"
               label="Current Password"
-              rules={[
-                { required: true, message: "Please enter current password" },
-              ]}
+              rules={[{ required: true, message: "Please enter current password" }]}
             >
               <Input.Password size="large" placeholder="Enter current password" />
             </Form.Item>
@@ -133,9 +193,7 @@ const Settings = () => {
             <Form.Item
               name="new_password"
               label="New Password"
-              rules={[
-                { required: true, message: "Please enter new password" },
-              ]}
+              rules={[{ required: true, message: "Please enter new password" }]}
             >
               <Input.Password size="large" placeholder="Enter new password" />
             </Form.Item>
