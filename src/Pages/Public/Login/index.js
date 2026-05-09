@@ -52,10 +52,30 @@ const Login = () => {
     setLoading(false);
   };
 
+  const logoIcon = (
+    <svg width="52" height="52" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="loginLogoGrad" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#3B82F6" />
+          <stop offset="100%" stopColor="#6366F1" />
+        </linearGradient>
+      </defs>
+      <rect width="36" height="36" rx="9" fill="url(#loginLogoGrad)" />
+      <rect x="7"  y="22" width="5" height="9" rx="1.5" fill="rgba(255,255,255,0.45)" />
+      <rect x="15" y="16" width="5" height="15" rx="1.5" fill="rgba(255,255,255,0.7)" />
+      <rect x="23" y="9"  width="5" height="22" rx="1.5" fill="#FFFFFF" />
+      <polyline points="9.5,21 17.5,14.5 25.5,8" stroke="rgba(255,255,255,0.9)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="9.5"  cy="21"   r="1.8" fill="#FFFFFF" />
+      <circle cx="17.5" cy="14.5" r="1.8" fill="#FFFFFF" />
+      <circle cx="25.5" cy="8"    r="1.8" fill="#FFFFFF" />
+    </svg>
+  );
+
   return (
     <div className="login">
       <div className="login-card">
         <div className="logo">
+          {logoIcon}
           <div className="logo-text">SBTC</div>
           <div className="logo-subtitle">Sales Analysis Platform</div>
         </div>

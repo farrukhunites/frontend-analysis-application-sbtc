@@ -1,13 +1,13 @@
 import {
   AimOutlined,
-  BranchesOutlined,
   SettingOutlined,
   DashboardOutlined,
-  FileTextOutlined,
   UserOutlined,
   UsergroupAddOutlined,
+  LogoutOutlined,
+  CalendarOutlined,
 } from "@ant-design/icons";
-import { Menu, Layout, Button } from "antd";
+import { Layout, Tooltip } from "antd";
 import "./style.css";
 import { useNavigate, useLocation } from "react-router-dom";
 import { handleLogout } from "../../Utils/UpdateUserState";
@@ -16,77 +16,64 @@ import { UserContext } from "../../App";
 
 const { Sider } = Layout;
 
+const menuItems = [
+  { key: "1", icon: <DashboardOutlined />,      label: "Dashboard",           path: "/" },
+  { key: "3", icon: <UserOutlined />,           label: "Customer Analysis",   path: "/customer-analysis" },
+  { key: "5", icon: <AimOutlined />,            label: "Monthly Sales",       path: "/daily-stt" },
+  { key: "7", icon: <UsergroupAddOutlined />,   label: "Potential Customers", path: "/potential-customers" },
+  { key: "8", icon: <CalendarOutlined />,       label: "Daily Sales",         path: "/daily-sales" },
+];
+
+const bottomItems = [
+  { key: "9", icon: <SettingOutlined />, label: "Settings", path: "/settings" },
+];
+
+const logoIcon = (
+  <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="logoGrad" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#3B82F6" />
+        <stop offset="100%" stopColor="#6366F1" />
+      </linearGradient>
+    </defs>
+    <rect width="36" height="36" rx="9" fill="url(#logoGrad)" />
+    <rect x="7"  y="22" width="5" height="9"  rx="1.5" fill="rgba(255,255,255,0.45)" />
+    <rect x="15" y="16" width="5" height="15" rx="1.5" fill="rgba(255,255,255,0.7)" />
+    <rect x="23" y="9"  width="5" height="22" rx="1.5" fill="#FFFFFF" />
+    <polyline points="9.5,21 17.5,14.5 25.5,8" stroke="rgba(255,255,255,0.9)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    <circle cx="9.5"  cy="21"   r="1.8" fill="#FFFFFF" />
+    <circle cx="17.5" cy="14.5" r="1.8" fill="#FFFFFF" />
+    <circle cx="25.5" cy="8"    r="1.8" fill="#FFFFFF" />
+  </svg>
+);
+
+const NavItem = ({ item, isActive, collapsed, onClick }) => {
+  const content = (
+    <div className={`nav-item ${isActive ? "nav-item--active" : ""}`} onClick={onClick}>
+      {isActive && <span className="nav-item__accent" />}
+      <span className="nav-item__icon">{item.icon}</span>
+      {!collapsed && <span className="nav-item__label">{item.label}</span>}
+    </div>
+  );
+
+  // Show tooltip with label when sidebar is collapsed
+  if (collapsed) {
+    return (
+      <Tooltip title={item.label} placement="right">
+        {content}
+      </Tooltip>
+    );
+  }
+  return content;
+};
+
 const Sidebar = ({ collapsed }) => {
   const { setUserData, setUserToken } = useContext(UserContext);
   const navigate = useNavigate();
   const location = useLocation();
 
-  const menuItems = [
-    {
-      key: "1",
-      icon: <DashboardOutlined />,
-      label: "Dashboard",
-      path: "/",
-    },
-    // {
-    //   key: "2",
-    //   icon: <BranchesOutlined />,
-    //   label: "Branch Analysis",
-    //   path: "/branch-analysis",
-    // },
-    {
-      key: "3",
-      icon: <UserOutlined />,
-      label: "Customer Analysis",
-      path: "/customer-analysis",
-    },
-    // {
-    //   key: "4",
-    //   icon: <UserOutlined />,
-    //   label: "Channel Analysis",
-    //   path: "/channel-analysis",
-    // },
-    {
-      key: "5",
-      icon: <AimOutlined />,
-      label: "Monthly Sales",
-      path: "/daily-stt",
-    },
-    // {
-    //   key: "6",
-    //   icon: <FileTextOutlined />,
-    //   label: "M-O-R",
-    //   path: "/mor",
-    // },
-
-    {
-      key: "7",
-      icon: <UsergroupAddOutlined />,
-      label: "Potential Customers",
-      path: "/potential-customers",
-    },
-    {
-      key: "8",
-      icon: <AimOutlined />,
-      label: "Daily Sales",
-      path: "/daily-sales",
-    },
-    {
-      key: "9",
-      icon: <SettingOutlined />,
-      label: "Settings",
-      path: "/settings",
-    },
-  ];
-
-  // Determine which menu item is active based on current URL
-  const selectedKey =
-    menuItems.find((item) => item.path === location.pathname)?.key || "1";
-
-  const onMenuClick = (e) => {
-    const item = menuItems.find((i) => i.key === e.key);
-    if (item) navigate(item.path);
-  };
+  const allItems = [...menuItems, ...bottomItems];
+  const activePath = location.pathname;
 
   const onLogout = () => {
     handleLogout(setUserData, setUserToken);
@@ -99,30 +86,60 @@ const Sidebar = ({ collapsed }) => {
       trigger={null}
       collapsible
       collapsed={collapsed}
-      style={{
-        height: "100vh",
-        position: "sticky",
-        top: 0,
-        background: "linear-gradient(180deg, #0F2744 0%, #1E3A5F 100%)",
-      }}
+      style={{ height: "100vh", position: "sticky", top: 0 }}
     >
-      <div>
-        <div className="logo-container">
-          <div className="logo-text">{collapsed ? "S" : "SBTC"}</div>
-        </div>
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[selectedKey]}
-          items={menuItems}
-          onClick={onMenuClick}
-        />
+      {/* Logo */}
+      <div className="sidebar__logo">
+        {collapsed ? (
+          <div className="logo-icon-only">{logoIcon}</div>
+        ) : (
+          <div className="logo-full">
+            {logoIcon}
+            <div className="logo-text-block">
+              <span className="logo-text">SBTC</span>
+              <span className="logo-subtext">Sales Analysis</span>
+            </div>
+          </div>
+        )}
       </div>
-      {/* Logout button at the bottom */}
-      <div style={{ padding: "16px" }}>
-        <Button className="logout-btn" block onClick={onLogout}>
-          Logout
-        </Button>
+
+      {/* Divider */}
+      <div className="sidebar__divider" />
+
+      {/* Main nav */}
+      <nav className="sidebar__nav">
+        {menuItems.map((item) => (
+          <NavItem
+            key={item.key}
+            item={item}
+            isActive={activePath === item.path}
+            collapsed={collapsed}
+            onClick={() => navigate(item.path)}
+          />
+        ))}
+      </nav>
+
+      {/* Bottom: settings + logout */}
+      <div className="sidebar__bottom">
+        <div className="sidebar__divider" />
+        {bottomItems.map((item) => (
+          <NavItem
+            key={item.key}
+            item={item}
+            isActive={activePath === item.path}
+            collapsed={collapsed}
+            onClick={() => navigate(item.path)}
+          />
+        ))}
+
+        <Tooltip title={collapsed ? "Logout" : ""} placement="right">
+          <div className="nav-item nav-item--logout" onClick={onLogout}>
+            <span className="nav-item__icon">
+              <LogoutOutlined />
+            </span>
+            {!collapsed && <span className="nav-item__label">Logout</span>}
+          </div>
+        </Tooltip>
       </div>
     </Sider>
   );
