@@ -31,7 +31,11 @@ const DonutChart = ({
           labels: {
             show: true,
             value: {
-              formatter: (val) => `${parseFloat(val).toFixed(2)}%`,
+              // val is the raw series value on hover; compute % using series closure
+              formatter: (val) => {
+                const total = series.reduce((a, b) => a + b, 0) || 1;
+                return `${((parseFloat(val) / total) * 100).toFixed(1)}%`;
+              },
             },
             total: {
               show: true,
@@ -52,9 +56,12 @@ const DonutChart = ({
     },
     tooltip: {
       y: {
+        // val is the raw series value; compute % from series closure
         formatter: function (val, { seriesIndex }) {
-          const actual = seriesValues[seriesIndex]?.toLocaleString() || "0";
-          return `${val.toFixed(1)}% (${actual})`;
+          const total = series.reduce((a, b) => a + b, 0) || 1;
+          const pct = ((val / total) * 100).toFixed(1);
+          const actual = (seriesValues[seriesIndex] ?? val).toLocaleString();
+          return `${pct}% (${actual})`;
         },
       },
     },

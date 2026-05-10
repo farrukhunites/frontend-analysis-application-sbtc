@@ -6,14 +6,20 @@ import {
   StopOutlined,
   UserOutlined,
   DollarOutlined,
+  TrophyOutlined,
+  ClockCircleOutlined,
+  FileTextOutlined,
+  SwapOutlined,
 } from "@ant-design/icons";
 import { message, Select, Table, Tag } from "antd";
 import "./style.css";
 import { useContext, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import LineChart from "../../../Components/Charts/LineChart";
-import RiyalIcon from "../../../Utils/RiyalIcon";
+import BarChart from "../../../Components/Charts/BarChart";
 import AreaChart from "../../../Components/Charts/AreaChart";
+import DonutChart from "../../../Components/Charts/DonutChart";
+import RiyalIcon from "../../../Utils/RiyalIcon";
 import { getAllBranches } from "../../../API/Branches";
 import {
   getCustomerInsight,
@@ -36,14 +42,13 @@ const CustomerAnalysis = () => {
   const [customers, setCustomers] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerData, setCustomerData] = useState(null);
-
   const [branches, setBranches] = useState([]);
   const [channels, setChannels] = useState([]);
 
   const preselect = useLocation().state;
   const hasAutoSelected = useRef(false);
 
-  // Auto-select branch from navigation state
+  // Auto-select branch from navigation state (e.g. from Potential Customers click)
   useEffect(() => {
     if (!hasAutoSelected.current && preselect?.branch_code && branches.length > 0 && !selectedBranch) {
       const branch = branches.find((b) => b.code === preselect.branch_code);
@@ -51,7 +56,7 @@ const CustomerAnalysis = () => {
     }
   }, [branches]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-select channel — otlcd from PotentialCustomers may match channel.name, not channel.code
+  // Auto-select channel — otlcd may match channel.name rather than channel.code
   useEffect(() => {
     if (!hasAutoSelected.current && preselect?.channel_code && channels.length > 0 && !selectedChannel) {
       const channel =
@@ -61,7 +66,7 @@ const CustomerAnalysis = () => {
     }
   }, [channels]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-select customer once customer list is loaded for the pre-selected branch+channel
+  // Auto-select customer once the customer list is populated
   useEffect(() => {
     if (!hasAutoSelected.current && preselect?.customer_code && customers.length > 0 && !selectedCustomer) {
       hasAutoSelected.current = true;
@@ -69,18 +74,14 @@ const CustomerAnalysis = () => {
     }
   }, [customers]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Fetch branches + channels once on mount
   useEffect(() => {
     const fetchBranches = async () => {
       setLoading(true);
       try {
         const res = await getAllBranches();
-        if (res?.results) {
-          setBranches(res.results);
-        } else {
-          message.error(
-            "Failed to fetch branches: " + (res?.message || "Unknown error")
-          );
-        }
+        if (res?.results) setBranches(res.results);
+        else message.error("Failed to fetch branches: " + (res?.message || "Unknown error"));
       } catch (error) {
         message.error("Error fetching branches: " + error?.message);
       }
@@ -91,13 +92,8 @@ const CustomerAnalysis = () => {
       setLoading(true);
       try {
         const res = await getAllChannels();
-        if (res?.results) {
-          setChannels(res.results);
-        } else {
-          message.error(
-            "Failed to fetch channels: " + (res?.message || "Unknown error")
-          );
-        }
+        if (res?.results) setChannels(res.results);
+        else message.error("Failed to fetch channels: " + (res?.message || "Unknown error"));
       } catch (error) {
         message.error("Error fetching channels: " + error?.message);
       }
@@ -108,17 +104,9 @@ const CustomerAnalysis = () => {
     fetchChannels();
   }, []);
 
+  // Fetch customer insight whenever selection or unit/value type changes
   useEffect(() => {
-    // Only call API if all required variables are present
-    if (
-      !selectedCustomer ||
-      !selectedBranch ||
-      !selectedProduct ||
-      !valueType ||
-      !unitType
-    ) {
-      return;
-    }
+    if (!selectedCustomer || !selectedBranch || !selectedProduct || !valueType || !unitType) return;
 
     const fetchCustomerInsight = async () => {
       setLoading(true);
@@ -130,14 +118,13 @@ const CustomerAnalysis = () => {
           unit: unitType,
           product_code: selectedProduct.code,
         });
-
         if (res?.success === false) {
           message.warning("No data found for this customer");
           setCustomerData(null);
         } else {
           setCustomerData(res);
         }
-      } catch (err) {
+      } catch {
         message.error("Failed to fetch customer insight");
         setCustomerData(null);
       }
@@ -147,8 +134,8 @@ const CustomerAnalysis = () => {
     fetchCustomerInsight();
   }, [selectedCustomer, selectedBranch, valueType, unitType, selectedProduct]);
 
+  // Fetch customer list when branch + channel are both selected
   useEffect(() => {
-    // Do nothing unless BOTH branch + channel selected
     if (!selectedBranch || !selectedChannel) {
       setCustomers([]);
       setSelectedCustomer(null);
@@ -158,18 +145,14 @@ const CustomerAnalysis = () => {
     const fetchCustomers = async () => {
       setLoading(true);
       try {
-        const res = await getCustomersByBranchByCHannel(
-          selectedBranch?.code,
-          selectedChannel?.name
-        );
-
+        const res = await getCustomersByBranchByCHannel(selectedBranch?.code, selectedChannel?.name);
         if (res?.length > 0) {
           setCustomers(res);
         } else {
           setCustomers([]);
           message.warning("No customers found for this branch + channel");
         }
-      } catch (error) {
+      } catch {
         message.error("Failed to fetch customers");
       }
       setLoading(false);
@@ -178,7 +161,6 @@ const CustomerAnalysis = () => {
     fetchCustomers();
   }, [selectedBranch, selectedChannel]);
 
-  // Branch Select handler
   const handleBranchChange = (code) => {
     const branch = branches.find((b) => b.code === code);
     setSelectedBranch(branch);
@@ -186,7 +168,6 @@ const CustomerAnalysis = () => {
     setCustomers([]);
   };
 
-  // Channel Select handler
   const handleChannelChange = (code) => {
     const channel = channels.find((c) => c.code === code);
     setSelectedChannel(channel);
@@ -194,7 +175,6 @@ const CustomerAnalysis = () => {
     setCustomers([]);
   };
 
-  // Customer Select handler
   const handleCustomerChange = async (code) => {
     const customer = customers.find((c) => c.code === code) || null;
     setSelectedCustomer(customer);
@@ -207,7 +187,7 @@ const CustomerAnalysis = () => {
         branch_code: selectedBranch.code,
         sales_type: valueType,
         unit: unitType,
-        product_code: selectedProduct?.code, // or any dynamic code if needed
+        product_code: selectedProduct?.code,
       });
       if (res?.success === false) {
         message.warning("No data found for this customer");
@@ -215,61 +195,51 @@ const CustomerAnalysis = () => {
       } else {
         setCustomerData(res);
       }
-    } catch (err) {
+    } catch {
       message.error("Failed to fetch customer insight");
       setCustomerData(null);
     }
     setLoading(false);
   };
 
-  // Customer info based on selection
+  // ── Derived data ─────────────────────────────────────────────────────────
+
   const customer = {
     name: customerData?.customer_name || "-",
     code: customerData?.customer_code || "-",
     branch: customerData?.branch || selectedBranch?.name || "-",
-    channel: customerData?.channel || "WS",
+    channel: customerData?.channel || "-",
     totalSales: customerData?.total_sales_forever || 0,
     ytdSales: customerData?.sales_ytd || 0,
     mtdSales: customerData?.sales_mtd || 0,
     dryMonths: customerData?.dry_months ?? 0,
     salesman: customerData?.salesman || "-",
     contribution: customerData?.contribution_percent || 0,
-    pendingAmount: customerData?.pendingAmount || 0, // keep dummy if API doesn't return
-    pendingMonths: customerData?.pendingMonths || 0, // keep dummy if API doesn't return
+    pendingAmount: customerData?.pendingAmount || 0,
+    pendingMonths: customerData?.pendingMonths || 0,
   };
 
+  const ranking = customerData?.ranking || {};
+  const cadence = customerData?.purchase_cadence || {};
+  const orderQuality = customerData?.order_quality || {};
+  const skuMix = customerData?.sku_mix || [];
+
   const tabs = [
-    { title: "Customer Name", value: customer.name, icon: <UserOutlined /> },
-    { title: "Customer Code", value: customer.code, icon: <UserOutlined /> },
-    { title: "Branch", value: customer.branch, icon: <AimOutlined /> },
-    { title: "Channel", value: customer.channel, icon: <SlidersOutlined /> },
-    {
-      title: "Total Sales (From 2023)",
-      value: customer.totalSales.toLocaleString() + " " + unitType,
-      icon: <DollarOutlined />,
-    },
-    {
-      title: "Sales YTD",
-      value: customer.ytdSales.toLocaleString() + " " + unitType,
-      icon: <LineChartOutlined />,
-    },
-    {
-      title: "Sales MTD",
-      value: customer.mtdSales.toLocaleString() + " " + unitType,
-      icon: <CalendarOutlined />,
-    },
-    { title: "Dry Months", value: customer.dryMonths, icon: <StopOutlined /> },
-    { title: "Salesman", value: customer.salesman, icon: <UserOutlined /> },
-    {
-      title: "Contribution",
-      value: customer?.contribution ? customer?.contribution + " %" : "-",
-      icon: <LineChartOutlined />,
-    },
+    { title: "Customer Name",        value: customer.name,                                           icon: <UserOutlined /> },
+    { title: "Customer Code",        value: customer.code,                                           icon: <UserOutlined /> },
+    { title: "Branch",               value: customer.branch,                                         icon: <AimOutlined /> },
+    { title: "Channel",              value: customer.channel,                                        icon: <SlidersOutlined /> },
+    { title: "Total Sales (2023+)",  value: customer.totalSales.toLocaleString() + " " + unitType,  icon: <DollarOutlined /> },
+    { title: "Sales YTD",            value: customer.ytdSales.toLocaleString() + " " + unitType,    icon: <LineChartOutlined /> },
+    { title: "Sales MTD",            value: customer.mtdSales.toLocaleString() + " " + unitType,    icon: <CalendarOutlined /> },
+    { title: "Dry Months",           value: customer.dryMonths,                                     icon: <StopOutlined /> },
+    { title: "Salesman",             value: customer.salesman,                                      icon: <UserOutlined /> },
+    { title: "Contribution",         value: customer.contribution ? customer.contribution + " %" : "-", icon: <LineChartOutlined /> },
     {
       title: "Payment Pending",
       value: (
         <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <RiyalIcon /> {customer?.pendingAmount?.toLocaleString()}{" "}
+          <RiyalIcon /> {customer.pendingAmount?.toLocaleString()}
           <Tag color="orange">Dummy Data</Tag>
         </span>
       ),
@@ -279,10 +249,8 @@ const CustomerAnalysis = () => {
       title: "Pending Since",
       value: (
         <span>
-          {customer?.pendingMonths
-            ? `${customer?.pendingMonths} months`
-            : "5th Oct, 2025"}{" "}
-          <Tag color="orange">Dummy Data</Tag>
+          {customer.pendingMonths ? `${customer.pendingMonths} months` : "5th Oct, 2025"}
+          <Tag color="orange" style={{ marginLeft: 4 }}>Dummy Data</Tag>
         </span>
       ),
       icon: <CalendarOutlined />,
@@ -292,164 +260,265 @@ const CustomerAnalysis = () => {
   const salesOrders = customerData?.invoices || [];
 
   const salesOrderColumns = [
-    { title: "Customer Code", dataIndex: "cust_cd", key: "cust_cd" },
-    { title: "Customer Name", dataIndex: "cust_nm", key: "cust_nm" },
-    { title: "Channel", dataIndex: "otlcd", key: "otlcd" },
-    { title: "Group Code", dataIndex: "cusgrcd", key: "cusgrcd" },
-    { title: "Group Name", dataIndex: "cusgrcd_nm", key: "cusgrcd_nm" },
-    { title: "Salesman", dataIndex: "salesman_nm", key: "salesman_nm" },
-    { title: "Driver", dataIndex: "driver_nm", key: "driver_nm" },
-    { title: "Order Type", dataIndex: "tp", key: "tp" },
-    { title: "SO Number", dataIndex: "so_cd", key: "so_cd" },
-    { title: "SO Date", dataIndex: "so_dt", key: "so_dt" },
-    { title: "Invoice Number", dataIndex: "inv_no", key: "inv_no" },
-    { title: "Invoice Date", dataIndex: "inv_dt", key: "inv_dt" },
-    { title: "Item Code", dataIndex: "item_cd", key: "item_cd" },
-    { title: "Item Name", dataIndex: "item_nm", key: "item_nm" },
-    { title: "Quantity Ordered", dataIndex: "qtyorder", key: "qtyorder" },
-    { title: "Quantity Converted", dataIndex: "qtyconv", key: "qtyconv" },
-    { title: "Unit Price", dataIndex: "unitprice", key: "unitprice" },
-    { title: "Total Quantity", dataIndex: "totqty", key: "totqty" },
-    { title: "Product Name", dataIndex: "prod_nm", key: "prod_nm" },
-    { title: "Brand", dataIndex: "branded_nm", key: "branded_nm" },
-    { title: "Size", dataIndex: "size", key: "size" },
-    { title: "Sales Point", dataIndex: "salespoint_nm", key: "salespoint_nm" },
-    { title: "Bin Code", dataIndex: "bin_cd", key: "bin_cd" },
+    { title: "Customer Code",      dataIndex: "cust_cd",       key: "cust_cd" },
+    { title: "Customer Name",      dataIndex: "cust_nm",       key: "cust_nm" },
+    { title: "Channel",            dataIndex: "otlcd",         key: "otlcd" },
+    { title: "Group Code",         dataIndex: "cusgrcd",       key: "cusgrcd" },
+    { title: "Group Name",         dataIndex: "cusgrcd_nm",    key: "cusgrcd_nm" },
+    { title: "Salesman",           dataIndex: "salesman_nm",   key: "salesman_nm" },
+    { title: "Driver",             dataIndex: "driver_nm",     key: "driver_nm" },
+    { title: "Order Type",         dataIndex: "tp",            key: "tp" },
+    { title: "SO Number",          dataIndex: "so_cd",         key: "so_cd" },
+    { title: "SO Date",            dataIndex: "so_dt",         key: "so_dt" },
+    { title: "Invoice Number",     dataIndex: "inv_no",        key: "inv_no" },
+    { title: "Invoice Date",       dataIndex: "inv_dt",        key: "inv_dt" },
+    { title: "Item Code",          dataIndex: "item_cd",       key: "item_cd" },
+    { title: "Item Name",          dataIndex: "item_nm",       key: "item_nm" },
+    { title: "Qty Ordered",        dataIndex: "qtyorder",      key: "qtyorder" },
+    { title: "Qty Converted",      dataIndex: "qtyconv",       key: "qtyconv" },
+    { title: "Unit Price",         dataIndex: "unitprice",     key: "unitprice" },
+    { title: "Total Qty",          dataIndex: "totqty",        key: "totqty" },
+    { title: "Product Name",       dataIndex: "prod_nm",       key: "prod_nm" },
+    { title: "Brand",              dataIndex: "branded_nm",    key: "branded_nm" },
+    { title: "Size",               dataIndex: "size",          key: "size" },
+    { title: "Sales Point",        dataIndex: "salespoint_nm", key: "salespoint_nm" },
+    { title: "Bin Code",           dataIndex: "bin_cd",        key: "bin_cd" },
   ];
 
+  // Return rate severity colour
+  const returnRateColor =
+    orderQuality.return_rate_percent > 10 ? "#EF4444"
+    : orderQuality.return_rate_percent > 5  ? "#F59E0B"
+    : "#10B981";
+
   return (
-    <>
-      <div className="customer-analysis">
-        <div style={{ display: "flex", gap: "16px" }}>
-          {/* Branch Select */}
-          <Select
-            loading={loading}
-            showSearch
-            value={selectedBranch?.code || null}
-            onChange={handleBranchChange}
-            style={{ flex: 1, width: "100%" }}
-            placeholder="Select Branch"
-            optionFilterProp="children"
-            filterOption={(input, option) =>
-              option.children.toLowerCase().includes(input.toLowerCase())
-            }
-          >
-            {branches.map((branch) => (
-              <Option key={branch.code} value={branch.code}>
-                {branch?.name}
-              </Option>
-            ))}
-          </Select>
+    <div className="customer-analysis">
 
-          {/* Channel Select */}
-          <Select
-            loading={loading}
-            showSearch
-            value={selectedChannel?.name || null}
-            onChange={handleChannelChange}
-            style={{ flex: 1, width: "100%" }}
-            placeholder="Select Channel"
-            optionFilterProp="children"
-            filterOption={(input, option) =>
-              option.children.toLowerCase().includes(input.toLowerCase())
-            }
-          >
-            {channels.map((channel) => (
-              <Option key={channel.code} value={channel.code}>
-                {channel?.name}
-              </Option>
-            ))}
-          </Select>
-
-          <Select
-            disabled={!selectedBranch || !selectedChannel}
-            loading={loading}
-            showSearch
-            value={selectedCustomer?.code || null}
-            onChange={handleCustomerChange}
-            style={{ flex: 1, width: "100%" }}
-            placeholder="Select Customer"
-            optionFilterProp="label"
-          >
-            {customers.map((c) => (
-              <Option
-                key={c.code}
-                value={c.code}
-                label={`${c.code} - ${c.name}`}
-              >
-                {`${c.code} - ${c.name}`}
-              </Option>
-            ))}
-          </Select>
-        </div>
-
-        {/* Tabs */}
-        <div className="top-tabs-container">
-          {tabs.map((tab, index) => (
-            <div key={index} className="tab-card">
-              <div className="tab-header">
-                <div className="tab-icon">{tab.icon}</div>
-                <div className="tab-title">{tab.title}</div>
-              </div>
-              <div className="tab-value">{tab.value}</div>
-            </div>
+      {/* ── Selectors ─────────────────────────────────────────────────── */}
+      <div style={{ display: "flex", gap: "16px" }}>
+        <Select
+          loading={loading}
+          showSearch
+          value={selectedBranch?.code || null}
+          onChange={handleBranchChange}
+          style={{ flex: 1 }}
+          placeholder="Select Branch"
+          optionFilterProp="children"
+          filterOption={(input, option) =>
+            option.children.toLowerCase().includes(input.toLowerCase())
+          }
+        >
+          {branches.map((branch) => (
+            <Option key={branch.code} value={branch.code}>{branch.name}</Option>
           ))}
-        </div>
+        </Select>
 
-        <div className="row">
-          <div className="graph">
-            <AreaChart
-              graphTitle="Monthly Sales"
-              labels={customerData?.monthly_sales_current_year?.months || []} // fallback
-              colourTheme={[CHART_COLORS[2]]}
-              units={[unitType, unitType]}
-              series={[
-                {
-                  name: "Actual Sales",
-                  data: customerData?.monthly_sales_current_year?.sales || [], // fallback
-                },
-              ]}
-            />
+        <Select
+          loading={loading}
+          showSearch
+          value={selectedChannel?.name || null}
+          onChange={handleChannelChange}
+          style={{ flex: 1 }}
+          placeholder="Select Channel"
+          optionFilterProp="children"
+          filterOption={(input, option) =>
+            option.children.toLowerCase().includes(input.toLowerCase())
+          }
+        >
+          {channels.map((channel) => (
+            <Option key={channel.code} value={channel.code}>{channel.name}</Option>
+          ))}
+        </Select>
+
+        <Select
+          disabled={!selectedBranch || !selectedChannel}
+          loading={loading}
+          showSearch
+          value={selectedCustomer?.code || null}
+          onChange={handleCustomerChange}
+          style={{ flex: 1 }}
+          placeholder="Select Customer"
+          optionFilterProp="label"
+        >
+          {customers.map((c) => (
+            <Option key={c.code} value={c.code} label={`${c.code} - ${c.name}`}>
+              {`${c.code} - ${c.name}`}
+            </Option>
+          ))}
+        </Select>
+      </div>
+
+      {/* ── Info tab cards ────────────────────────────────────────────── */}
+      <div className="top-tabs-container">
+        {tabs.map((tab, index) => (
+          <div key={index} className="tab-card">
+            <div className="tab-header">
+              <div className="tab-icon">{tab.icon}</div>
+              <div className="tab-title">{tab.title}</div>
+            </div>
+            <div className="tab-value">{tab.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Ranking cards ─────────────────────────────────────────────── */}
+      {customerData && (
+        <div className="ca-section-row">
+          <div className="ca-rank-card">
+            <div className="ca-rank-icon"><TrophyOutlined /></div>
+            <div className="ca-rank-body">
+              <div className="ca-rank-label">Branch Rank (YTD)</div>
+              <div className="ca-rank-value">
+                {ranking.rank_in_branch
+                  ? <><span className="ca-rank-num">#{ranking.rank_in_branch}</span> <span className="ca-rank-total">of {ranking.total_in_branch}</span></>
+                  : "—"}
+              </div>
+            </div>
+          </div>
+
+          <div className="ca-rank-card">
+            <div className="ca-rank-icon ca-rank-icon--channel"><SlidersOutlined /></div>
+            <div className="ca-rank-body">
+              <div className="ca-rank-label">Channel Rank (YTD)</div>
+              <div className="ca-rank-value">
+                {ranking.rank_in_channel
+                  ? <><span className="ca-rank-num">#{ranking.rank_in_channel}</span> <span className="ca-rank-total">of {ranking.total_in_channel}</span></>
+                  : "—"}
+              </div>
+            </div>
+          </div>
+
+          {/* ── Purchase Cadence ──────────────────────────────────────── */}
+          <div className="ca-rank-card">
+            <div className="ca-rank-icon ca-rank-icon--cadence"><ClockCircleOutlined /></div>
+            <div className="ca-rank-body">
+              <div className="ca-rank-label">Last Order</div>
+              <div className="ca-rank-value">
+                <span className="ca-rank-num" style={{ fontSize: 16 }}>
+                  {cadence.last_order_date || "—"}
+                </span>
+                {cadence.days_since_last_order != null && (
+                  <span className="ca-rank-total">{cadence.days_since_last_order}d ago</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="ca-rank-card">
+            <div className="ca-rank-icon ca-rank-icon--cadence"><SwapOutlined /></div>
+            <div className="ca-rank-body">
+              <div className="ca-rank-label">Avg Order Frequency</div>
+              <div className="ca-rank-value">
+                {cadence.avg_days_between_orders != null
+                  ? <><span className="ca-rank-num">every {cadence.avg_days_between_orders}</span> <span className="ca-rank-total">days</span></>
+                  : "—"}
+              </div>
+            </div>
+          </div>
+
+          <div className="ca-rank-card">
+            <div className="ca-rank-icon ca-rank-icon--invoice"><FileTextOutlined /></div>
+            <div className="ca-rank-body">
+              <div className="ca-rank-label">Total Invoices</div>
+              <div className="ca-rank-value">
+                <span className="ca-rank-num">{orderQuality.total_invoice_count?.toLocaleString() || "—"}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Return Rate ───────────────────────────────────────────── */}
+          <div className="ca-rank-card">
+            <div className="ca-rank-icon" style={{ background: `${returnRateColor}18`, color: returnRateColor }}>
+              <SwapOutlined />
+            </div>
+            <div className="ca-rank-body">
+              <div className="ca-rank-label">Return Rate</div>
+              <div className="ca-rank-value">
+                <span className="ca-rank-num" style={{ color: returnRateColor }}>
+                  {orderQuality.return_rate_percent != null ? `${orderQuality.return_rate_percent}%` : "—"}
+                </span>
+                {orderQuality.return_amount > 0 && (
+                  <span className="ca-rank-total">{orderQuality.return_amount?.toLocaleString()} {unitType} returned</span>
+                )}
+              </div>
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Yearly Comparison Line Chart */}
-        <div className="row" style={{ marginTop: 20 }}>
+      {/* ── Monthly Sales + SKU Mix ───────────────────────────────────── */}
+      <div className="row">
+        <div className="graph">
+          <AreaChart
+            graphTitle="Monthly Sales (Current Year)"
+            labels={customerData?.monthly_sales_current_year?.months || []}
+            colourTheme={[CHART_COLORS[2]]}
+            units={[unitType]}
+            series={[{ name: "Sales", data: customerData?.monthly_sales_current_year?.sales || [] }]}
+          />
+        </div>
+
+        {skuMix.length > 0 && (
           <div className="graph">
-            <LineChart
-              graphTitle="Customer Sales Comparison (Previous Years)"
-              labels={customerData?.graph?.months || []} // fallback
-              colourTheme={[CHART_COLORS[3], CHART_COLORS[6], CHART_COLORS[0]]}
+            <DonutChart
+              graphTitle="Product Mix YTD"
+              labels={skuMix.map((s) => s.name)}
+              colourTheme={CHART_COLORS.slice(0, skuMix.length)}
+              series={skuMix.map((s) => s.sales)}
+              seriesValues={skuMix.map((s) => s.sales)}
               units={[unitType]}
-              series={[
-                {
-                  name: "2023 Sales",
-                  data: customerData?.graph?.["2023"] || [],
-                },
-                {
-                  name: "2024 Sales",
-                  data: customerData?.graph?.["2024"] || [],
-                },
-                {
-                  name: "2025 Sales",
-                  data: customerData?.graph?.["2025"] || [],
-                },
-              ]}
+              showTable={false}
             />
           </div>
-        </div>
+        )}
+      </div>
 
-        <div className="sales-orders-table" style={{ marginTop: 20 }}>
-          <Table
-            columns={salesOrderColumns}
-            dataSource={salesOrders}
-            bordered
-            scroll={{ x: "max-content" }}
-            pagination={{ pageSize: 100 }}
+      {/* ── YoY Grouped Bar Comparison ───────────────────────────────── */}
+      <div className="row">
+        <div className="graph">
+          <BarChart
+            graphTitle="Year-over-Year Monthly Comparison"
+            labels={customerData?.graph?.months || []}
+            colourTheme={[CHART_COLORS[1], CHART_COLORS[0], CHART_COLORS[2]]}
+            units={[unitType, unitType, unitType]}
+            series={[
+              { name: "2023", data: customerData?.graph?.["2023"] || [] },
+              { name: "2024", data: customerData?.graph?.["2024"] || [] },
+              { name: "2025", data: customerData?.graph?.["2025"] || [] },
+            ]}
           />
         </div>
       </div>
-    </>
+
+      {/* ── Order Quality: Gross vs Net bar ──────────────────────────── */}
+      {customerData && orderQuality.total_gross > 0 && (
+        <div className="row">
+          <div className="graph">
+            <BarChart
+              graphTitle="Gross vs Net Sales (All Time)"
+              labels={["Total Sales"]}
+              colourTheme={[CHART_COLORS[0], CHART_COLORS[4]]}
+              units={[unitType, unitType]}
+              series={[
+                { name: "Gross Sales", data: [orderQuality.total_gross] },
+                { name: "Net Sales",   data: [orderQuality.total_net] },
+              ]}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ── Current Month Invoices Table ──────────────────────────────── */}
+      <div className="sales-orders-table" style={{ marginTop: 20 }}>
+        <Table
+          columns={salesOrderColumns}
+          dataSource={salesOrders}
+          bordered
+          scroll={{ x: "max-content" }}
+          pagination={{ pageSize: 100 }}
+        />
+      </div>
+    </div>
   );
 };
 
