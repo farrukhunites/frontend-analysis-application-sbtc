@@ -57,6 +57,7 @@ const BarChart = ({
     yaxis: {
       labels: {
         show: true,
+        formatter: (val) => parseFloat(val.toFixed(2)).toLocaleString(),
       },
       axisBorder: {
         show: true,

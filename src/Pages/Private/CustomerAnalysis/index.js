@@ -479,12 +479,13 @@ const CustomerAnalysis = () => {
           <BarChart
             graphTitle="Year-over-Year Monthly Comparison"
             labels={customerData?.graph?.months || []}
-            colourTheme={[CHART_COLORS[1], CHART_COLORS[0], CHART_COLORS[2]]}
-            units={[unitType, unitType, unitType]}
+            colourTheme={[CHART_COLORS[1], CHART_COLORS[0], CHART_COLORS[2], CHART_COLORS[3]]}
+            units={[unitType, unitType, unitType, unitType]}
             series={[
               { name: "2023", data: customerData?.graph?.["2023"] || [] },
               { name: "2024", data: customerData?.graph?.["2024"] || [] },
               { name: "2025", data: customerData?.graph?.["2025"] || [] },
+              { name: "2026", data: customerData?.graph?.["2026"] || [] },
             ]}
           />
         </div>
