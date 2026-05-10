@@ -1,24 +1,15 @@
 import axios from "axios";
 import { getToken } from "../../Utils/UpdateUserState";
+import { cached } from "../../Utils/apiCache";
 
-// Function to fetch all products
-const getAllProducts = async () => {
-  const API_URL = `${process.env.REACT_APP_BACKEND_URL}products/`;
+const _fetchProducts = () =>
+  axios
+    .get(`${process.env.REACT_APP_BACKEND_URL}products/`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    })
+    .then((r) => r.data)
+    .catch((err) => ({ success: false, error: err.response?.data || err.message }));
 
-  try {
-    const response = await axios.get(API_URL, {
-      headers: {
-        Authorization: `Bearer ${getToken()}`,
-      },
-    });
-    return response?.data;
-  } catch (error) {
-    console.error("Error fetching products:", error);
-    return {
-      success: false,
-      error: error.response?.data || error.message || "Unknown error",
-    };
-  }
-};
+const getAllProducts = () => cached("products", _fetchProducts);
 
 export { getAllProducts };

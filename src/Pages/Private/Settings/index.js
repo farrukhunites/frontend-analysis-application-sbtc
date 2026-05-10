@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
-import { Form, Input, Button, message, Divider } from "antd";
+import { Form, Input, Button, message, Divider, Skeleton } from "antd";
 import {
   LockOutlined,
   UserOutlined,
@@ -21,10 +21,12 @@ const Settings = () => {
 
   const [branchNames, setBranchNames] = useState([]);
   const [productNames, setProductNames] = useState([]);
+  const [resolving, setResolving] = useState(true);
 
   // Resolve allowed_branches / allowed_products codes → names
   useEffect(() => {
     const resolveCodes = async () => {
+      setResolving(true);
       try {
         const [branchRes, productRes] = await Promise.all([
           getAllBranches(),
@@ -60,7 +62,6 @@ const Settings = () => {
           setProductNames(names);
         }
       } catch {
-        // Fall back to raw codes on error
         setBranchNames(
           Array.isArray(userData?.allowed_branches)
             ? userData.allowed_branches
@@ -71,6 +72,8 @@ const Settings = () => {
             ? userData.allowed_products
             : ["All Products"]
         );
+      } finally {
+        setResolving(false);
       }
     };
 
@@ -142,13 +145,13 @@ const Settings = () => {
               <BankOutlined className="info-icon" />
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div className="info-label">Allowed Branches</div>
-                <div className="info-tags">
-                  {branchNames.map((name) => (
-                    <span key={name} className="info-tag info-tag--branch">
-                      {name}
-                    </span>
-                  ))}
-                </div>
+                {resolving
+                  ? <Skeleton active title={false} paragraph={{ rows: 1, width: "80%" }} style={{ marginTop: 8 }} />
+                  : <div className="info-tags">
+                      {branchNames.map((name) => (
+                        <span key={name} className="info-tag info-tag--branch">{name}</span>
+                      ))}
+                    </div>}
               </div>
             </div>
 
@@ -156,13 +159,13 @@ const Settings = () => {
               <AppstoreOutlined className="info-icon" />
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div className="info-label">Allowed Products</div>
-                <div className="info-tags">
-                  {productNames.map((name) => (
-                    <span key={name} className="info-tag info-tag--product">
-                      {name}
-                    </span>
-                  ))}
-                </div>
+                {resolving
+                  ? <Skeleton active title={false} paragraph={{ rows: 1, width: "60%" }} style={{ marginTop: 8 }} />
+                  : <div className="info-tags">
+                      {productNames.map((name) => (
+                        <span key={name} className="info-tag info-tag--product">{name}</span>
+                      ))}
+                    </div>}
               </div>
             </div>
           </div>

@@ -11,7 +11,7 @@ import {
   FileTextOutlined,
   SwapOutlined,
 } from "@ant-design/icons";
-import { Collapse, message, Select, Table, Tag } from "antd";
+import { Collapse, message, Select, Skeleton, Table, Tag } from "antd";
 import "./style.css";
 import { useContext, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
@@ -351,15 +351,21 @@ const CustomerAnalysis = () => {
 
       {/* ── Info tab cards ────────────────────────────────────────────── */}
       <div className="top-tabs-container">
-        {tabs.map((tab, index) => (
-          <div key={index} className="tab-card">
-            <div className="tab-header">
-              <div className="tab-icon">{tab.icon}</div>
-              <div className="tab-title">{tab.title}</div>
-            </div>
-            <div className="tab-value">{tab.value}</div>
-          </div>
-        ))}
+        {loading && !customerData
+          ? Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="tab-card">
+                <Skeleton active title={{ width: "60%" }} paragraph={{ rows: 1, width: "40%" }} />
+              </div>
+            ))
+          : tabs.map((tab, index) => (
+              <div key={index} className="tab-card">
+                <div className="tab-header">
+                  <div className="tab-icon">{tab.icon}</div>
+                  <div className="tab-title">{tab.title}</div>
+                </div>
+                <div className="tab-value">{tab.value}</div>
+              </div>
+            ))}
       </div>
 
       {/* ── Ranking cards ─────────────────────────────────────────────── */}
@@ -444,6 +450,17 @@ const CustomerAnalysis = () => {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── Chart skeletons while first load ─────────────────────────── */}
+      {loading && !customerData && selectedCustomer && (
+        <div className="row">
+          {[1, 2].map((i) => (
+            <div key={i} className="graph">
+              <Skeleton active paragraph={{ rows: 10 }} />
+            </div>
+          ))}
         </div>
       )}
 

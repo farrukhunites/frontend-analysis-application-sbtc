@@ -1,4 +1,4 @@
-import { Table, message, Spin, Input, Button, Space } from "antd";
+import { Table, message, Skeleton, Input, Button, Space } from "antd";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
 import { ProductContext } from "../../../Contexts/ProductContext";
 import { UnitValueContext } from "../../../Contexts/UnitValueContext";
@@ -6,7 +6,6 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { getPotentialCustomers } from "../../../API/Potential Customers";
 import { SearchOutlined } from "@ant-design/icons";
 import Highlighter from "react-highlight-words";
-import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { useNavigate } from "react-router-dom";
 
@@ -301,13 +300,15 @@ const PotentialCustomers = () => {
     },
   ];
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     if (!potentialCustomers.length) {
       message.warning("No data to export");
       return;
     }
 
-    // Map data to worksheet format
+    // Dynamic import keeps xlsx (~400 KB) out of the initial bundle
+    const XLSX = await import("xlsx");
+
     const wsData = potentialCustomers.map((item) => ({
       "Customer Code": item.customer_code,
       "Customer Name": item.customer_name,
@@ -327,24 +328,17 @@ const PotentialCustomers = () => {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Potential Customers");
 
-    const excelBuffer = XLSX.write(workbook, {
-      bookType: "xlsx",
-      type: "array",
-    });
+    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
     const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
-    saveAs(
-      blob,
-      `Potential_Customers_${selectedMonth}_${selectedProduct?.name}.xlsx`,
-    );
+    saveAs(blob, `Potential_Customers_${selectedMonth}_${selectedProduct?.name}.xlsx`);
   };
 
   return (
     <div>
       {loading ? (
-        <div style={{ textAlign: "center", padding: "50px" }}>
-          <Spin size="large" />
-          <h2>Loading Data...</h2>
-          <p>Please wait while the data is being fetched.</p>
+        <div>
+          <Skeleton active paragraph={{ rows: 2 }} style={{ marginBottom: 16 }} />
+          <Skeleton active paragraph={{ rows: 10 }} />
         </div>
       ) : (
         <>

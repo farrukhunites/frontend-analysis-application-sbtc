@@ -1,33 +1,40 @@
+import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import Dashboard from "../Pages/Private/Dashboard";
-import BranchAnalysis from "../Pages/Private/BranchAnalysis";
-import CustomerAnalysis from "../Pages/Private/CustomerAnalysis";
-import ChannelAnalysis from "../Pages/Private/ChannelAnalysis";
-import DailySTT from "../Pages/Private/DailySTT";
-import MOR from "../Pages/Private/MOR";
-import Settings from "../Pages/Private/Settings";
-import PotentialCustomers from "../Pages/Private/PotentialCustomers";
-import DailySalesByBranch from "../Pages/Private/DailySalesByBranch";
+import { Skeleton } from "antd";
 
-const UserRoutes = () => {
-  return (
+// Lazy-load every page so each route is its own JS chunk
+const Dashboard          = lazy(() => import("../Pages/Private/Dashboard"));
+const BranchAnalysis     = lazy(() => import("../Pages/Private/BranchAnalysis"));
+const CustomerAnalysis   = lazy(() => import("../Pages/Private/CustomerAnalysis"));
+const ChannelAnalysis    = lazy(() => import("../Pages/Private/ChannelAnalysis"));
+const DailySTT           = lazy(() => import("../Pages/Private/DailySTT"));
+const DailySalesByBranch = lazy(() => import("../Pages/Private/DailySalesByBranch"));
+const PotentialCustomers = lazy(() => import("../Pages/Private/PotentialCustomers"));
+const MOR                = lazy(() => import("../Pages/Private/MOR"));
+const Settings           = lazy(() => import("../Pages/Private/Settings"));
+
+const PageLoader = () => (
+  <div style={{ padding: 24 }}>
+    <Skeleton active paragraph={{ rows: 4 }} style={{ marginBottom: 24 }} />
+    <Skeleton active paragraph={{ rows: 6 }} />
+  </div>
+);
+
+const UserRoutes = () => (
+  <Suspense fallback={<PageLoader />}>
     <Routes>
       <Route index element={<Dashboard />} />
-      <Route path="branch-analysis" element={<BranchAnalysis />} />
-      <Route path="customer-analysis" element={<CustomerAnalysis />} />
-      <Route path="channel-analysis" element={<ChannelAnalysis />} />
-
-      <Route path="daily-stt" element={<DailySTT />} />
-      <Route path="daily-sales" element={<DailySalesByBranch />} />
+      <Route path="branch-analysis"     element={<BranchAnalysis />} />
+      <Route path="customer-analysis"   element={<CustomerAnalysis />} />
+      <Route path="channel-analysis"    element={<ChannelAnalysis />} />
+      <Route path="daily-stt"           element={<DailySTT />} />
+      <Route path="daily-sales"         element={<DailySalesByBranch />} />
       <Route path="potential-customers" element={<PotentialCustomers />} />
-      <Route path="mor" element={<MOR />} />
-
-      <Route path="settings" element={<Settings />} />
-
-      {/* Catch-all redirect */}
-      <Route path="*" element={<Navigate to="/" />} />
+      <Route path="mor"                 element={<MOR />} />
+      <Route path="settings"            element={<Settings />} />
+      <Route path="*"                   element={<Navigate to="/" />} />
     </Routes>
-  );
-};
+  </Suspense>
+);
 
 export default UserRoutes;

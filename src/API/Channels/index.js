@@ -1,24 +1,15 @@
 import axios from "axios";
 import { getToken } from "../../Utils/UpdateUserState";
+import { cached } from "../../Utils/apiCache";
 
-// Function to fetch all branches
-const getAllChannels = async () => {
-  const API_URL = `${process.env.REACT_APP_BACKEND_URL}channels/`;
+const _fetchChannels = () =>
+  axios
+    .get(`${process.env.REACT_APP_BACKEND_URL}channels/`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    })
+    .then((r) => r.data)
+    .catch((err) => ({ success: false, error: err.response?.data || err.message }));
 
-  try {
-    const response = await axios.get(API_URL, {
-      headers: {
-        Authorization: `Bearer ${getToken()}`,
-      },
-    });
-    return response?.data;
-  } catch (error) {
-    console.error("Error fetching channels:", error);
-    return {
-      success: false,
-      error: error.response?.data || error.message || "Unknown error",
-    };
-  }
-};
+const getAllChannels = () => cached("channels", _fetchChannels);
 
 export { getAllChannels };

@@ -12,7 +12,7 @@ import AreaChart from "../../../Components/Charts/AreaChart";
 import BarChart from "../../../Components/Charts/BarChart";
 import DonutChart from "../../../Components/Charts/DonutChart";
 import { useContext, useEffect, useState } from "react";
-import { message, Select, Spin } from "antd";
+import { message, Select, Skeleton } from "antd";
 import { getDashboardData } from "../../../API/AnalysisSnapshot";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
 import { ProductContext } from "../../../Contexts/ProductContext";
@@ -257,13 +257,28 @@ const Dashboard = () => {
   return (
     <>
       {isLoadingOrNoData ? (
-        <div
-          className="loader-container"
-          style={{ textAlign: "center", padding: "50px" }}
-        >
-          <Spin size="large" />
-          <h2>Loading Dashboard Data...</h2>
-          <p>Please wait while the data is being fetched.</p>
+        <div className="dashboard">
+          <div className="top-tabs-container">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="tab-card">
+                <Skeleton active title={{ width: "60%" }} paragraph={{ rows: 1, width: "40%" }} />
+              </div>
+            ))}
+          </div>
+          <div className="row">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i} className="graph" style={{ flex: 1 }}>
+                <Skeleton active paragraph={{ rows: 8 }} />
+              </div>
+            ))}
+          </div>
+          <div className="row">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i} className="graph" style={{ flex: 1 }}>
+                <Skeleton active paragraph={{ rows: 8 }} />
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
         <div className="dashboard">

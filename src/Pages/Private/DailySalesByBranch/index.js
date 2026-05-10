@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useContext } from "react";
-import { Table, message, Spin, Tabs, Select } from "antd";
+import { Table, message, Skeleton, Tabs, Select } from "antd";
 import { ProductContext } from "../../../Contexts/ProductContext";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
 import { UnitValueContext } from "../../../Contexts/UnitValueContext";
@@ -321,7 +321,7 @@ const DailySalesByBranch = () => {
         </Select>
       </div>
 
-      {loading && <Spin size="large" style={{ marginBottom: 20 }} />}
+      {loading && <Skeleton active paragraph={{ rows: 10 }} style={{ marginBottom: 20 }} />}
 
       <Tabs
         activeKey={selectedProduct?.code}
