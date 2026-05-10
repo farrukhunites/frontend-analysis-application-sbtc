@@ -11,7 +11,7 @@ import {
   FileTextOutlined,
   SwapOutlined,
 } from "@ant-design/icons";
-import { message, Select, Table, Tag } from "antd";
+import { Collapse, message, Select, Table, Tag } from "antd";
 import "./style.css";
 import { useContext, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
@@ -223,6 +223,7 @@ const CustomerAnalysis = () => {
   const cadence = customerData?.purchase_cadence || {};
   const orderQuality = customerData?.order_quality || {};
   const skuMix = customerData?.sku_mix || [];
+  const schemeHistory = customerData?.scheme_history || [];
 
   const tabs = [
     { title: "Customer Name",        value: customer.name,                                           icon: <UserOutlined /> },
@@ -506,6 +507,63 @@ const CustomerAnalysis = () => {
               ]}
             />
           </div>
+        </div>
+      )}
+
+      {/* ── Last 10 Purchase Scheme History ──────────────────────────── */}
+      {schemeHistory.length > 0 && (
+        <div style={{ marginTop: 20 }}>
+          <div className="scheme-history-header">Last 10 Purchases — Scheme Breakdown</div>
+          <Collapse
+            size="small"
+            items={schemeHistory.map((inv) => {
+              const schemeItems = inv.items.filter((it) => it.scheme);
+              const label = schemeItems.length > 0
+                ? schemeItems.map((it) => it.scheme).join(" · ")
+                : "No scheme";
+              return {
+                key: inv.inv_no,
+                label: (
+                  <div className="scheme-collapse-label">
+                    <span className="scheme-inv-date">{inv.inv_dt}</span>
+                    <span className="scheme-inv-no">{inv.inv_no}</span>
+                    <span className="scheme-inv-tags">
+                      {schemeItems.length > 0
+                        ? schemeItems.map((it) => (
+                            <Tag key={it.item_cd} color="blue" style={{ fontWeight: 600 }}>
+                              {it.scheme}
+                            </Tag>
+                          ))
+                        : <span className="scheme-no-scheme">No scheme</span>}
+                    </span>
+                  </div>
+                ),
+                children: (
+                  <Table
+                    size="small"
+                    pagination={false}
+                    dataSource={inv.items}
+                    rowKey="item_cd"
+                    columns={[
+                      { title: "Item Code", dataIndex: "item_cd", key: "item_cd", width: 110 },
+                      { title: "Item Name", dataIndex: "item_nm", key: "item_nm" },
+                      { title: `Paid (${unitType})`, dataIndex: "paid_qty", key: "paid_qty", width: 110, align: "right" },
+                      { title: `Free (${unitType})`, dataIndex: "free_qty", key: "free_qty", width: 110, align: "right",
+                        render: (val) => val > 0
+                          ? <span style={{ color: "#10B981", fontWeight: 600 }}>{val}</span>
+                          : <span style={{ color: "#94A3B8" }}>—</span>
+                      },
+                      { title: "Scheme", dataIndex: "scheme", key: "scheme", width: 100,
+                        render: (val) => val
+                          ? <Tag color="blue" style={{ fontWeight: 700 }}>{val}</Tag>
+                          : <span style={{ color: "#94A3B8" }}>—</span>
+                      },
+                    ]}
+                  />
+                ),
+              };
+            })}
+          />
         </div>
       )}
 

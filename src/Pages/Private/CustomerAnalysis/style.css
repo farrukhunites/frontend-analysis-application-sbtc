@@ -162,3 +162,44 @@
   color: var(--color-text-secondary);
   font-weight: 400;
 }
+
+/* ── Scheme History ─────────────────────────────────────────────── */
+.scheme-history-header {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 8px;
+  padding-left: 2px;
+}
+
+.scheme-collapse-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.scheme-inv-date {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  min-width: 95px;
+}
+
+.scheme-inv-no {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  font-family: monospace;
+}
+
+.scheme-inv-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.scheme-no-scheme {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
