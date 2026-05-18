@@ -14,25 +14,26 @@ import AppRoutes from "./Routes/AppRoutes";
 
 const appTheme = {
   token: {
-    colorPrimary:         '#3B82F6',
-    colorBgContainer:     '#FFFFFF',
-    colorBgLayout:        '#F0F4F8',
-    borderRadius:         8,
-    fontFamily:           "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    colorBorderSecondary: '#E2E8F0',
-    colorText:            '#1E293B',
-    colorTextSecondary:   '#64748B',
+    colorPrimary: "#3B82F6",
+    colorBgContainer: "#FFFFFF",
+    colorBgLayout: "#F0F4F8",
+    borderRadius: 8,
+    fontFamily:
+      "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    colorBorderSecondary: "#E2E8F0",
+    colorText: "#1E293B",
+    colorTextSecondary: "#64748B",
   },
   components: {
     Table: {
-      headerBg:    '#1E3A5F',
-      headerColor: '#FFFFFF',
+      headerBg: "#1E3A5F",
+      headerColor: "#FFFFFF",
     },
     Menu: {
-      darkItemBg:            'transparent',
-      darkItemSelectedBg:    'rgba(59, 130, 246, 0.15)',
-      darkItemSelectedColor: '#3B82F6',
-      darkItemHoverBg:       'rgba(59, 130, 246, 0.08)',
+      darkItemBg: "transparent",
+      darkItemSelectedBg: "rgba(59, 130, 246, 0.15)",
+      darkItemSelectedColor: "#3B82F6",
+      darkItemHoverBg: "rgba(59, 130, 246, 0.08)",
     },
     Button: { borderRadius: 8 },
     Select: { borderRadius: 8 },
@@ -48,6 +49,7 @@ function App() {
     position: "",
     allowed_branches: "",
     allowed_products: "",
+    role: "",
   });
   const [userToken, setUserToken] = useState({ access: "", refresh: "" });
   const [loading, setLoading] = useState(false);
@@ -73,8 +75,8 @@ function App() {
           JSON.stringify({
             access: res?.data?.access,
             refresh: res?.data?.refresh,
-          })
-        )
+          }),
+        ),
       );
       updateUserStates(setUserData, setUserToken);
 
@@ -107,7 +109,7 @@ function App() {
         }
       }
       return Promise.reject(error);
-    }
+    },
   );
 
   useEffect(() => {
@@ -128,36 +130,36 @@ function App() {
 
   return (
     <ConfigProvider theme={appTheme}>
-    <UnitValueProvider>
-    <DateFilterProvider>
-      <ProductProvider>
-        <UserContext.Provider
-          value={{
-            userData,
-            setUserData,
-            userToken,
-            setUserToken,
-          }}
-        >
-          {loading ? (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                height: "100vh",
-                width: "100%",
+      <UnitValueProvider>
+        <DateFilterProvider>
+          <ProductProvider>
+            <UserContext.Provider
+              value={{
+                userData,
+                setUserData,
+                userToken,
+                setUserToken,
               }}
             >
-              <Spin size="large" />
-            </div>
-          ) : (
-            <AppRoutes />
-          )}
-        </UserContext.Provider>
-      </ProductProvider>
-    </DateFilterProvider>
-    </UnitValueProvider>
+              {loading ? (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: "100vh",
+                    width: "100%",
+                  }}
+                >
+                  <Spin size="large" />
+                </div>
+              ) : (
+                <AppRoutes />
+              )}
+            </UserContext.Provider>
+          </ProductProvider>
+        </DateFilterProvider>
+      </UnitValueProvider>
     </ConfigProvider>
   );
 }

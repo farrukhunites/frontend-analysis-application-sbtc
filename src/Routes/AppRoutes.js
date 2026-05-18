@@ -12,6 +12,7 @@ const AppRoutes = () => {
 
   switch (userData?.role) {
     case "user":
+    case "admin":
       routesComponent = (
         <AppLayout userType={"user"} contents={<UserRoutes />} />
       );

@@ -1,0 +1,66 @@
+import { getToken } from "../../Utils/UpdateUserState";
+
+/**
+ * Streams the force-refresh pipeline via SSE over fetch (supports JWT headers).
+ * @param {(log: {level: string, message: string}) => void} onLog - called for each log line
+ * @param {(status: string) => void} onDone - called once when the stream ends
+ * @returns {AbortController} — call .abort() to cancel the stream
+ */
+export const streamForceRefresh = (onLog, onDone) => {
+  const controller = new AbortController();
+  const token = getToken();
+
+  fetch(`${process.env.REACT_APP_BACKEND_URL}force-refresh/`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "text/event-stream",
+    },
+    signal: controller.signal,
+  })
+    .then((res) => {
+      if (!res.ok) {
+        onDone("error");
+        return;
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let doneCalled = false;
+
+      const read = () => {
+        reader
+          .read()
+          .then(({ done, value }) => {
+            if (done) {
+              if (!doneCalled) onDone("completed", null);
+              return;
+            }
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop();
+            for (const line of lines) {
+              if (!line.startsWith("data: ")) continue;
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.type === "done") {
+                  doneCalled = true;
+                  onDone(data.status, data.duration || null);
+                } else if (data.type === "log") {
+                  onLog({ level: data.level, message: data.message });
+                }
+              } catch (_) {}
+            }
+            read();
+          })
+          .catch((err) => {
+            if (err.name !== "AbortError") onDone("error");
+          });
+      };
+      read();
+    })
+    .catch((err) => {
+      if (err.name !== "AbortError") onDone("error");
+    });
+
+  return controller;
+};

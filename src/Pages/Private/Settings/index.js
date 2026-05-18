@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { Form, Input, Button, message, Divider, Skeleton } from "antd";
 import {
   LockOutlined,
@@ -6,10 +6,12 @@ import {
   IdcardOutlined,
   BankOutlined,
   AppstoreOutlined,
+  SyncOutlined,
 } from "@ant-design/icons";
 import { changePassword } from "../../../API/Auth";
 import { getAllBranches } from "../../../API/Branches";
 import { getAllProducts } from "../../../API/Products";
+import { streamForceRefresh } from "../../../API/ForceRefresh";
 import { UserContext } from "../../../App";
 import "./style.css";
 
@@ -18,6 +20,13 @@ const Settings = () => {
   const [form] = Form.useForm();
   const { userData } = useContext(UserContext);
   const [msgAPI, contextHolder] = message.useMessage();
+
+  const [refreshRunning, setRefreshRunning] = useState(false);
+  const [refreshLogs, setRefreshLogs] = useState([]);
+  const [refreshStatus, setRefreshStatus] = useState(null); // null | "completed" | "failed" | "skipped" | "error"
+  const [refreshDuration, setRefreshDuration] = useState(null);
+  const logEndRef = useRef(null);
+  const abortRef = useRef(null);
 
   const [branchNames, setBranchNames] = useState([]);
   const [productNames, setProductNames] = useState([]);
@@ -79,6 +88,29 @@ const Settings = () => {
 
     if (userData) resolveCodes();
   }, [userData]);
+
+  // Auto-scroll log console to bottom on new entries
+  useEffect(() => {
+    if (logEndRef.current) {
+      logEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [refreshLogs]);
+
+  const handleForceRefresh = () => {
+    setRefreshRunning(true);
+    setRefreshLogs([]);
+    setRefreshStatus(null);
+    setRefreshDuration(null);
+
+    abortRef.current = streamForceRefresh(
+      (log) => setRefreshLogs((prev) => [...prev, log]),
+      (status, duration) => {
+        setRefreshStatus(status);
+        setRefreshDuration(duration);
+        setRefreshRunning(false);
+      }
+    );
+  };
 
   const onFinish = async (values) => {
     setLoading(true);
@@ -232,6 +264,58 @@ const Settings = () => {
           </Form>
         </div>
       </div>
+
+      {/* Admin-only: Force Refresh */}
+      {userData?.role === "admin" && (
+        <div className="settings-card settings-card--full" style={{ marginTop: 20 }}>
+          <div className="card-section-header">
+            <div className="section-icon admin">
+              <SyncOutlined spin={refreshRunning} />
+            </div>
+            <div>
+              <div className="section-title">Force Refresh</div>
+              <div className="section-desc">Manually run the full daily data pipeline (admin only)</div>
+            </div>
+            <Button
+              type="primary"
+              danger={refreshStatus === "failed" || refreshStatus === "error"}
+              loading={refreshRunning}
+              disabled={refreshRunning}
+              onClick={handleForceRefresh}
+              style={{ marginLeft: "auto" }}
+              icon={<SyncOutlined />}
+            >
+              {refreshRunning ? "Running..." : "Run Refresh"}
+            </Button>
+          </div>
+
+          {(refreshLogs.length > 0 || refreshRunning) && (
+            <>
+              <Divider style={{ margin: "16px 0" }} />
+              <div className="refresh-console">
+                {refreshLogs.map((log, idx) => (
+                  <div key={idx} className={`refresh-log refresh-log--${log.level}`}>
+                    <span className="refresh-log-text">{log.message}</span>
+                  </div>
+                ))}
+                {refreshRunning && (
+                  <div className="refresh-log refresh-log--info">
+                    <span className="refresh-log-cursor">█</span>
+                  </div>
+                )}
+                <div ref={logEndRef} />
+              </div>
+              {refreshStatus && !refreshRunning && (
+                <div className={`refresh-status refresh-status--${refreshStatus}`}>
+                  {refreshStatus === "completed" && `✓ Refresh completed successfully${refreshDuration ? ` — ${refreshDuration}` : ""}`}
+                  {refreshStatus === "skipped" && `⚠ No new data — pipeline skipped${refreshDuration ? ` — ${refreshDuration}` : ""}`}
+                  {(refreshStatus === "failed" || refreshStatus === "error") && `✗ Refresh failed — check logs above${refreshDuration ? ` — ${refreshDuration}` : ""}`}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 };
