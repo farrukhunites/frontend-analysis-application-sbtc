@@ -214,6 +214,7 @@
 }
 
 .refresh-log--info    .refresh-log-text { color: #94A3B8; }
+.refresh-log--print   .refresh-log-text { color: #4B5563; padding-left: 16px; font-size: 12px; }
 .refresh-log--success .refresh-log-text { color: #4ADE80; }
 .refresh-log--warning .refresh-log-text { color: #FCD34D; }
 .refresh-log--error   .refresh-log-text { color: #F87171; }
