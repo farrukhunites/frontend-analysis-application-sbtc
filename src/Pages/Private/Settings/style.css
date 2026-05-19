@@ -12,7 +12,7 @@
   font-weight: 700;
   color: var(--color-text-primary);
   margin: 0 0 4px 0;
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
 }
 
 .settings-subtitle {
@@ -39,7 +39,9 @@
   border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 24px;
-  box-shadow: 0 1px 3px rgba(30, 58, 95, 0.06), 0 4px 12px rgba(30, 58, 95, 0.04);
+  box-shadow:
+    0 1px 3px rgba(30, 58, 95, 0.06),
+    0 4px 12px rgba(30, 58, 95, 0.04);
 }
 
 .card-section-header {
@@ -90,7 +92,7 @@
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #3B82F6, #6366F1);
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
   color: #fff;
   font-size: 18px;
   font-weight: 700;
@@ -169,13 +171,13 @@
 
 .info-tag--branch {
   background: rgba(59, 130, 246, 0.1);
-  color: #3B82F6;
+  color: #3b82f6;
   border: 1px solid rgba(59, 130, 246, 0.2);
 }
 
 .info-tag--product {
   background: rgba(99, 102, 241, 0.1);
-  color: #6366F1;
+  color: #6366f1;
   border: 1px solid rgba(99, 102, 241, 0.2);
 }
 
@@ -186,20 +188,20 @@
 
 .section-icon.admin {
   background: rgba(245, 158, 11, 0.1);
-  color: #F59E0B;
+  color: #f59e0b;
 }
 
 /* Terminal-style log console */
 .refresh-console {
-  background: #0F1117;
+  background: #0f1117;
   border-radius: 8px;
   padding: 14px 16px;
   max-height: 360px;
   overflow-y: auto;
-  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
   font-size: 13px;
   line-height: 1.6;
-  border: 1px solid #1E2433;
+  border: 1px solid #1e2433;
 }
 
 .refresh-log {
@@ -213,19 +215,33 @@
   word-break: break-word;
 }
 
-.refresh-log--info    .refresh-log-text { color: #94A3B8; }
-.refresh-log--print   .refresh-log-text { color: #4B5563; padding-left: 16px; font-size: 12px; }
-.refresh-log--success .refresh-log-text { color: #4ADE80; }
-.refresh-log--warning .refresh-log-text { color: #FCD34D; }
-.refresh-log--error   .refresh-log-text { color: #F87171; }
+.refresh-log--info .refresh-log-text {
+  color: #94a3b8;
+}
+.refresh-log--print .refresh-log-text {
+  color: #afb1b4;
+  padding-left: 16px;
+  font-size: 12px;
+}
+.refresh-log--success .refresh-log-text {
+  color: #4ade80;
+}
+.refresh-log--warning .refresh-log-text {
+  color: #fcd34d;
+}
+.refresh-log--error .refresh-log-text {
+  color: #f87171;
+}
 
 .refresh-log-cursor {
-  color: #3B82F6;
+  color: #3b82f6;
   animation: blink 1s step-start infinite;
 }
 
 @keyframes blink {
-  50% { opacity: 0; }
+  50% {
+    opacity: 0;
+  }
 }
 
 .refresh-status {
@@ -238,19 +254,19 @@
 
 .refresh-status--completed {
   background: rgba(16, 185, 129, 0.1);
-  color: #10B981;
+  color: #10b981;
   border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
 .refresh-status--skipped {
   background: rgba(245, 158, 11, 0.1);
-  color: #F59E0B;
+  color: #f59e0b;
   border: 1px solid rgba(245, 158, 11, 0.2);
 }
 
 .refresh-status--failed,
 .refresh-status--error {
   background: rgba(239, 68, 68, 0.1);
-  color: #EF4444;
+  color: #ef4444;
   border: 1px solid rgba(239, 68, 68, 0.2);
 }
