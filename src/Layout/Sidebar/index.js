@@ -6,6 +6,7 @@ import {
   UsergroupAddOutlined,
   LogoutOutlined,
   CalendarOutlined,
+  TeamOutlined,
 } from "@ant-design/icons";
 import { Layout, Tooltip } from "antd";
 import "./style.css";
@@ -22,6 +23,7 @@ const menuItems = [
   { key: "5", icon: <AimOutlined />,            label: "Monthly Sales",       path: "/daily-stt" },
   { key: "7", icon: <UsergroupAddOutlined />,   label: "Potential Customers", path: "/potential-customers" },
   { key: "8", icon: <CalendarOutlined />,       label: "Daily Sales",         path: "/daily-sales" },
+  { key: "10", icon: <TeamOutlined />,          label: "Salesman Performance", path: "/salesman-performance" },
 ];
 
 const bottomItems = [

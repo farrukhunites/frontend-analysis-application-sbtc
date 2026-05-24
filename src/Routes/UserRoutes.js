@@ -11,7 +11,8 @@ const DailySTT           = lazy(() => import("../Pages/Private/DailySTT"));
 const DailySalesByBranch = lazy(() => import("../Pages/Private/DailySalesByBranch"));
 const PotentialCustomers = lazy(() => import("../Pages/Private/PotentialCustomers"));
 const MOR                = lazy(() => import("../Pages/Private/MOR"));
-const Settings           = lazy(() => import("../Pages/Private/Settings"));
+const Settings              = lazy(() => import("../Pages/Private/Settings"));
+const SalesmanPerformance   = lazy(() => import("../Pages/Private/SalesmanPerformance"));
 
 const PageLoader = () => (
   <div style={{ padding: 24 }}>
@@ -31,7 +32,8 @@ const UserRoutes = () => (
       <Route path="daily-sales"         element={<DailySalesByBranch />} />
       <Route path="potential-customers" element={<PotentialCustomers />} />
       <Route path="mor"                 element={<MOR />} />
-      <Route path="settings"            element={<Settings />} />
+      <Route path="settings"             element={<Settings />} />
+      <Route path="salesman-performance" element={<SalesmanPerformance />} />
       <Route path="*"                   element={<Navigate to="/" />} />
     </Routes>
   </Suspense>
