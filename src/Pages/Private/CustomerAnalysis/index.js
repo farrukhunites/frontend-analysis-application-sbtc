@@ -14,7 +14,7 @@ import {
 import { Collapse, message, Select, Skeleton, Table, Tag } from "antd";
 import "./style.css";
 import { useContext, useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import LineChart from "../../../Components/Charts/LineChart";
 import BarChart from "../../../Components/Charts/BarChart";
 import AreaChart from "../../../Components/Charts/AreaChart";
@@ -45,7 +45,15 @@ const CustomerAnalysis = () => {
   const [branches, setBranches] = useState([]);
   const [channels, setChannels] = useState([]);
 
-  const preselect = useLocation().state;
+  const [searchParams] = useSearchParams();
+  const locationState = useLocation().state;
+  const preselect = locationState || (
+    searchParams.get("customer_code") ? {
+      customer_code: searchParams.get("customer_code"),
+      branch_code:   searchParams.get("branch_code"),
+      channel_code:  searchParams.get("channel_code"),
+    } : null
+  );
   const hasAutoSelected = useRef(false);
 
   // Auto-select branch from navigation state (e.g. from Potential Customers click)

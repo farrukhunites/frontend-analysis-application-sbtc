@@ -204,15 +204,14 @@ const PotentialCustomers = () => {
       render: (text, record) => (
         <span
           style={{ color: "var(--color-accent)", cursor: "pointer", fontWeight: 500 }}
-          onClick={() =>
-            navigate("/customer-analysis", {
-              state: {
-                customer_code: record.customer_code,
-                branch_code: record.branch_code,
-                channel_code: record.otlcd,
-              },
-            })
-          }
+          onClick={() => {
+            const params = new URLSearchParams({
+              customer_code: record.customer_code,
+              branch_code:   record.branch_code,
+              channel_code:  record.otlcd,
+            });
+            window.open(`/customer-analysis?${params.toString()}`, "_blank");
+          }}
         >
           {searchedColumn === "customer_name" ? (
             <Highlighter

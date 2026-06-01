@@ -52,7 +52,7 @@ function App() {
     role: "",
   });
   const [userToken, setUserToken] = useState({ access: "", refresh: "" });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const refreshAccessToken = async (token) => {
     let myRefreshToken = token?.refresh;
