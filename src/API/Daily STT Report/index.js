@@ -2,8 +2,11 @@ import axios from "axios";
 import { getToken } from "../../Utils/UpdateUserState";
 
 // Function to fetch Daily STT Report
-const getDailySTT = async (month, codes) => {
-  const API_URL = `${process.env.REACT_APP_BACKEND_URL}daily-stt/?month=${month}&product_codes=${codes}`;
+const getDailySTT = async (fromMonth, codes, toMonth = null) => {
+  const rangeParam = toMonth && toMonth !== fromMonth
+    ? `from_month=${fromMonth}&to_month=${toMonth}`
+    : `month=${fromMonth}`;
+  const API_URL = `${process.env.REACT_APP_BACKEND_URL}daily-stt/?${rangeParam}&product_codes=${codes}`;
 
   try {
     const response = await axios.get(API_URL, {

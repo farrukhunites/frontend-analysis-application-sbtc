@@ -3,13 +3,17 @@ import "./style.css";
 import { message, Radio, Select } from "antd";
 import DateFilter from "../../Components/DateFilter";
 import { useContext, useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { getAllProducts } from "../../API/Products";
 import { ProductContext } from "../../Contexts/ProductContext";
 import { UnitValueContext } from "../../Contexts/UnitValueContext";
 
 const { Option } = Select;
 
+const PAGES_WITHOUT_DATE_FILTER = ["/customer-analysis", "/daily-stt"];
+
 const Navbar = ({ colorBgContainer }) => {
+  const { pathname } = useLocation();
   const [productOptions, setProductOptions] = useState([]);
   const { selectedProduct, setSelectedProduct } = useContext(ProductContext);
   const { unitType, setUnitType, valueType, setValueType } = useContext(UnitValueContext);
@@ -126,10 +130,12 @@ const Navbar = ({ colorBgContainer }) => {
           </div>
         </div>
 
-        {/* Right side: date filter */}
-        <div>
-          <DateFilter />
-        </div>
+        {/* Right side: date filter (hidden on pages that manage their own date) */}
+        {!PAGES_WITHOUT_DATE_FILTER.includes(pathname) && (
+          <div>
+            <DateFilter />
+          </div>
+        )}
       </Header>
     </>
   );
