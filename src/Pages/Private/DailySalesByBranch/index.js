@@ -335,7 +335,7 @@ const DailySalesByBranch = () => {
     });
 
     // ── Data rows ─────────────────────────────────────────────
-    const numFmt    = '_(*  #,##0.00_);[Red]_(* (#,##0.00);_(* "-"??_);_(@_)';
+    const numFmt    = '_(* #,##0_);[Red]_(* (#,##0);_(* "-"_);_(@_)';
     const pctFmt    = "0.00%";
     const borderThin = (argb = "FFE2E8F0") => ({ style: "thin", color: { argb } });
     const cellBorder = {
