@@ -28,12 +28,13 @@ import {
 import { ProductContext } from "../../../Contexts/ProductContext";
 import { UnitValueContext } from "../../../Contexts/UnitValueContext";
 import { getAllChannels } from "../../../API/Channels";
+import { getAllProducts } from "../../../API/Products";
 import { CHART_COLORS } from "../../../Components/Charts/chartConfig";
 
 const { Option } = Select;
 
 const CustomerAnalysis = () => {
-  const { selectedProduct } = useContext(ProductContext);
+  const { selectedProduct, setSelectedProduct } = useContext(ProductContext);
   const { unitType, valueType } = useContext(UnitValueContext);
 
   const [loading, setLoading] = useState(false);
@@ -52,6 +53,7 @@ const CustomerAnalysis = () => {
       customer_code: searchParams.get("customer_code"),
       branch_code:   searchParams.get("branch_code"),
       channel_code:  searchParams.get("channel_code"),
+      product_code:  searchParams.get("product_code"),
     } : null
   );
   const hasAutoSelected = useRef(false);
@@ -81,6 +83,16 @@ const CustomerAnalysis = () => {
       handleCustomerChange(preselect.customer_code);
     }
   }, [customers]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-select product from URL param (new-tab navigation)
+  useEffect(() => {
+    if (!preselect?.product_code) return;
+    getAllProducts().then((res) => {
+      const products = res?.results || [];
+      const match = products.find((p) => p.code === preselect.product_code);
+      if (match) setSelectedProduct(match);
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch branches + channels once on mount
   useEffect(() => {

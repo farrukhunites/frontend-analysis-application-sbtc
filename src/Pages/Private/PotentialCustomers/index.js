@@ -209,6 +209,7 @@ const PotentialCustomers = () => {
               customer_code: record.customer_code,
               branch_code:   record.branch_code,
               channel_code:  record.otlcd,
+              ...(selectedProduct?.code && { product_code: selectedProduct.code }),
             });
             window.open(`/customer-analysis?${params.toString()}`, "_blank");
           }}
