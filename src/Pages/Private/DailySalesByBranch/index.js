@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useContext } from "react";
-import { Table, message, Skeleton, Tabs, Select } from "antd";
+import { Table, message, Skeleton, Tabs, Select, Button } from "antd";
+import { DownloadOutlined } from "@ant-design/icons";
 import { ProductContext } from "../../../Contexts/ProductContext";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
 import { UnitValueContext } from "../../../Contexts/UnitValueContext";
@@ -87,34 +88,10 @@ const DailySalesByBranch = () => {
         );
 
         const results = res?.results || [];
-
-        // Extract day columns (assuming keys like "01-12", "02-12" etc.)
-        const dayKeys = [];
-        if (results.length > 0) {
-          Object.keys(results[0]).forEach((key) => {
-            // Only include keys that are day names
-            if (
-              [
-                "Monday",
-                "Tuesday",
-                "Wednesday",
-                "Thursday",
-                "Friday",
-                "Saturday",
-                "Sunday",
-              ].includes(key)
-            ) {
-              dayKeys.push(key);
-            }
-          });
-        }
-
-        console.log(dayKeys);
-
-        // Map day keys to readable short names
-        const mappedDays = dayKeys.map((key) => ({
-          key,
-          title: key,
+        const mappedDays = (res?.day_columns || []).map((d) => ({
+          key:      d.key,
+          title:    d.title,
+          shortDay: d.shortDay,
         }));
 
         setDayColumns(mappedDays);
@@ -133,9 +110,15 @@ const DailySalesByBranch = () => {
   // ------------------------------
   const columns = useMemo(() => {
     const dayCols = dayColumns.map((d) => ({
-      title: d.title,
+      title: (
+        <div style={{ textAlign: "center", lineHeight: 1.3 }}>
+          <div>{d.title}</div>
+          <div style={{ fontSize: 10, opacity: 0.65 }}>{d.shortDay}</div>
+        </div>
+      ),
       dataIndex: d.key,
       key: d.key,
+      width: 52,
       align: "right",
       sorter: (a, b) =>
         a.isTotal ? 1 : b.isTotal ? -1 : (a[d.key] || 0) - (b[d.key] || 0),
@@ -278,6 +261,160 @@ const DailySalesByBranch = () => {
     key: p.code,
   }));
 
+  const exportToExcel = async () => {
+    if (!dataWithTotal.length) {
+      message.warning("No data to export");
+      return;
+    }
+
+    const ExcelJS = (await import("exceljs")).default;
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = "SBTC Sales Analysis";
+    const sheet = workbook.addWorksheet("Daily Sales", {
+      views: [{ state: "frozen", xSplit: 1, ySplit: 1 }],
+    });
+
+    // ── Palette ───────────────────────────────────────────────
+    const NAV   = "1E3A5F";
+    const BLUE  = "3B82F6";
+    const AMBER = "F59E0B";
+    const GREEN = "10B981";
+    const RED   = "EF4444";
+    const LGRAY = "F1F5F9";
+    const AGOLD = "FEF3C7";
+
+    // ── Column definitions ────────────────────────────────────
+    const summaryKeys = [
+      { key: "total",       header: "MTD",           width: 14, color: BLUE  },
+      { key: "target",      header: "Target",        width: 14, color: null  },
+      { key: "remaining",   header: "Remaining",     width: 14, color: AMBER },
+      { key: "achievement", header: "Achievement %", width: 16, color: null  },
+      { key: "dailyAch",    header: "Daily Ach %",   width: 16, color: null  },
+    ];
+
+    sheet.columns = [
+      { key: "branch", header: "Branch", width: 22 },
+      ...dayColumns.map((d) => ({ key: d.key, header: `${d.title}\n${d.shortDay}`, width: 8 })),
+      ...summaryKeys.map((s) => ({ key: s.key, header: s.header, width: s.width })),
+    ];
+
+    // ── Header row style ──────────────────────────────────────
+    const headerStyle = (bgArgb) => ({
+      font:      { bold: true, size: 10, color: { argb: "FFFFFFFF" } },
+      fill:      { type: "pattern", pattern: "solid", fgColor: { argb: `FF${bgArgb}` } },
+      alignment: { horizontal: "center", vertical: "middle", wrapText: true },
+      border: {
+        top:    { style: "thin", color: { argb: "FFE2E8F0" } },
+        bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
+        left:   { style: "thin", color: { argb: "FFE2E8F0" } },
+        right:  { style: "thin", color: { argb: "FFE2E8F0" } },
+      },
+    });
+
+    const hRow = sheet.getRow(1);
+    hRow.height = 32;
+
+    // Branch header
+    Object.assign(hRow.getCell(1), { value: "Branch", style: headerStyle(NAV) });
+
+    // Day headers
+    dayColumns.forEach((d, i) => {
+      Object.assign(hRow.getCell(i + 2), {
+        value: `${d.title}\n${d.shortDay}`,
+        style: headerStyle(NAV),
+      });
+    });
+
+    // Summary headers — slightly lighter shade for last columns
+    const summaryStartCol = dayColumns.length + 2;
+    summaryKeys.forEach((s, i) => {
+      Object.assign(hRow.getCell(summaryStartCol + i), {
+        value: s.header,
+        style: headerStyle(s.color || NAV),
+      });
+    });
+
+    // ── Data rows ─────────────────────────────────────────────
+    const numFmt    = '_(*  #,##0.00_);[Red]_(* (#,##0.00);_(* "-"??_);_(@_)';
+    const pctFmt    = "0.00%";
+    const borderThin = (argb = "FFE2E8F0") => ({ style: "thin", color: { argb } });
+    const cellBorder = {
+      top: borderThin(), bottom: borderThin(), left: borderThin(), right: borderThin(),
+    };
+
+    dataWithTotal.forEach((row, rowIdx) => {
+      const isGrandTotal = row.isTotal;
+      const isEven       = rowIdx % 2 === 0;
+      const bgArgb       = isGrandTotal ? `FF${AGOLD}` : isEven ? "FFFFFFFF" : `FF${LGRAY}`;
+
+      const dataRow  = sheet.addRow({});
+      dataRow.height = 18;
+
+      // Branch cell
+      const branchCell = dataRow.getCell(1);
+      branchCell.value = row.branch;
+      branchCell.style = {
+        font:      { bold: isGrandTotal, size: 10, color: { argb: "FF1E293B" } },
+        fill:      { type: "pattern", pattern: "solid", fgColor: { argb: bgArgb } },
+        alignment: { vertical: "middle" },
+        border:    cellBorder,
+      };
+
+      // Day value cells
+      dayColumns.forEach((d, i) => {
+        const cell = dataRow.getCell(i + 2);
+        const val  = row[d.key] || 0;
+        cell.value = val === 0 ? null : val;
+        cell.style = {
+          numFmt:    numFmt,
+          font:      { bold: isGrandTotal, size: 10 },
+          fill:      { type: "pattern", pattern: "solid", fgColor: { argb: bgArgb } },
+          alignment: { horizontal: "right", vertical: "middle" },
+          border:    cellBorder,
+        };
+      });
+
+      // Summary cells
+      summaryKeys.forEach((s, i) => {
+        const cell = dataRow.getCell(summaryStartCol + i);
+        const raw  = row[s.key];
+
+        if (s.key === "achievement" || s.key === "dailyAch") {
+          cell.value = raw ? raw / 100 : null;
+          const aboveTarget = raw >= 100;
+          cell.style = {
+            numFmt:    pctFmt,
+            font:      { bold: true, size: 10, color: { argb: raw ? `FF${aboveTarget ? GREEN : RED}` : "FF64748B" } },
+            fill:      { type: "pattern", pattern: "solid", fgColor: { argb: bgArgb } },
+            alignment: { horizontal: "right", vertical: "middle" },
+            border:    cellBorder,
+          };
+        } else {
+          const val = raw || 0;
+          cell.value = val === 0 ? null : val;
+          const txtArgb = s.color ? `FF${s.color}` : "FF1E293B";
+          cell.style = {
+            numFmt:    numFmt,
+            font:      { bold: isGrandTotal || !!s.color, size: 10, color: { argb: txtArgb } },
+            fill:      { type: "pattern", pattern: "solid", fgColor: { argb: bgArgb } },
+            alignment: { horizontal: "right", vertical: "middle" },
+            border:    cellBorder,
+          };
+        }
+      });
+    });
+
+    // ── Write & download ──────────────────────────────────────
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob   = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url    = URL.createObjectURL(blob);
+    const a      = document.createElement("a");
+    a.href     = url;
+    a.download = `Daily_Sales_${selectedMonth}_${selectedProduct?.name}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleChannelChange = (values) => {
     if (values.includes("ALL")) {
       setSelectedChannels(channels); // select all
@@ -335,6 +472,17 @@ const DailySalesByBranch = () => {
           <Tabs.TabPane tab={tab.label} key={tab.key} />
         ))}
       </Tabs>
+
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+        <Button
+          icon={<DownloadOutlined />}
+          onClick={exportToExcel}
+          disabled={loading || !dataWithTotal.length}
+          type="primary"
+        >
+          Export to Excel
+        </Button>
+      </div>
 
       <Table
         columns={columns}
