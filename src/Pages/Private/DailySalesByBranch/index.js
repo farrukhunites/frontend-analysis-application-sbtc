@@ -285,18 +285,29 @@ const DailySalesByBranch = () => {
 
     // ── Column definitions ────────────────────────────────────
     const summaryKeys = [
-      { key: "total",       header: "MTD",           width: 14, color: BLUE  },
-      { key: "target",      header: "Target",        width: 14, color: null  },
-      { key: "remaining",   header: "Remaining",     width: 14, color: AMBER },
-      { key: "achievement", header: "Achievement %", width: 16, color: null  },
-      { key: "dailyAch",    header: "Daily Ach %",   width: 16, color: null  },
+      { key: "total",       header: "MTD",           color: BLUE  },
+      { key: "target",      header: "Target",        color: null  },
+      { key: "remaining",   header: "Remaining",     color: AMBER },
+      { key: "achievement", header: "Achievement %", color: null  },
+      { key: "dailyAch",    header: "Daily Ach %",   color: null  },
     ];
 
+    // Widths will be patched after data rows are written — set 10 as placeholder
     sheet.columns = [
-      { key: "branch", header: "Branch", width: 22 },
-      ...dayColumns.map((d) => ({ key: d.key, header: `${d.title}\n${d.shortDay}`, width: 8 })),
-      ...summaryKeys.map((s) => ({ key: s.key, header: s.header, width: s.width })),
+      { key: "branch", header: "Branch", width: 10 },
+      ...dayColumns.map((d) => ({ key: d.key, header: `${d.title} ${d.shortDay}`, width: 10 })),
+      ...summaryKeys.map((s) => ({ key: s.key, header: s.header, width: 10 })),
     ];
+
+    // Track max char length per column index (1-based)
+    const colWidths = new Array(sheet.columns.length).fill(0);
+    const measureCol = (colIdx0, text) => {
+      const len = String(text ?? "").length;
+      if (len > colWidths[colIdx0]) colWidths[colIdx0] = len;
+    };
+
+    // Seed widths from header labels
+    sheet.columns.forEach((col, i) => measureCol(i, col.header));
 
     // ── Header row style ──────────────────────────────────────
     const headerStyle = (bgArgb) => ({
@@ -351,6 +362,7 @@ const DailySalesByBranch = () => {
       dataRow.height = 18;
 
       // Branch cell
+      measureCol(0, row.branch);
       const branchCell = dataRow.getCell(1);
       branchCell.value = row.branch;
       branchCell.style = {
@@ -365,6 +377,7 @@ const DailySalesByBranch = () => {
         const cell = dataRow.getCell(i + 2);
         const val  = row[d.key] || 0;
         cell.value = val === 0 ? null : val;
+        measureCol(i + 1, val === 0 ? "-" : val.toLocaleString());
         cell.style = {
           numFmt:    numFmt,
           font:      { bold: isGrandTotal, size: 10 },
@@ -381,6 +394,7 @@ const DailySalesByBranch = () => {
 
         if (s.key === "achievement" || s.key === "dailyAch") {
           cell.value = raw ? raw / 100 : null;
+          measureCol(summaryStartCol - 1 + i, raw ? `${raw.toFixed(2)}%` : "-");
           const aboveTarget = raw >= 100;
           cell.style = {
             numFmt:    pctFmt,
@@ -392,6 +406,7 @@ const DailySalesByBranch = () => {
         } else {
           const val = raw || 0;
           cell.value = val === 0 ? null : val;
+          measureCol(summaryStartCol - 1 + i, val === 0 ? "-" : val.toLocaleString());
           const txtArgb = s.color ? `FF${s.color}` : "FF1E293B";
           cell.style = {
             numFmt:    numFmt,
@@ -402,6 +417,11 @@ const DailySalesByBranch = () => {
           };
         }
       });
+    });
+
+    // ── Apply auto-fit column widths (min 8, max 40, +2 padding) ─
+    sheet.columns.forEach((col, i) => {
+      col.width = Math.min(40, Math.max(8, colWidths[i] + 2));
     });
 
     // ── Write & download ──────────────────────────────────────
