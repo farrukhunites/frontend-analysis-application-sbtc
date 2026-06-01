@@ -215,8 +215,9 @@ const CustomerAnalysis = () => {
     dryMonths: customerData?.dry_months ?? 0,
     salesman: customerData?.salesman || "-",
     contribution: customerData?.contribution_percent || 0,
-    pendingAmount: customerData?.pendingAmount || 0,
-    pendingMonths: customerData?.pendingMonths || 0,
+    paymentPending:   customerData?.payment_pending ?? 0,
+    lastPaymentDate:  customerData?.last_payment_date || null,
+    assignedSalesman: customerData?.assigned_salesman || "-",
   };
 
   const ranking = customerData?.ranking || {};
@@ -234,26 +235,23 @@ const CustomerAnalysis = () => {
     { title: "Sales YTD",            value: customer.ytdSales.toLocaleString() + " " + unitType,    icon: <LineChartOutlined /> },
     { title: "Sales MTD",            value: customer.mtdSales.toLocaleString() + " " + unitType,    icon: <CalendarOutlined /> },
     { title: "Dry Months",           value: customer.dryMonths,                                     icon: <StopOutlined /> },
-    { title: "Salesman",             value: customer.salesman,                                      icon: <UserOutlined /> },
+    { title: "Salesman (Last Sale)",  value: customer.salesman,                                      icon: <UserOutlined /> },
+    { title: "Assigned Salesman",    value: customer.assignedSalesman,                              icon: <UserOutlined /> },
     { title: "Contribution",         value: customer.contribution ? customer.contribution + " %" : "-", icon: <LineChartOutlined /> },
     {
       title: "Payment Pending",
       value: (
         <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <RiyalIcon /> {customer.pendingAmount?.toLocaleString()}
-          <Tag color="orange">Dummy Data</Tag>
+          <RiyalIcon /> {customer.paymentPending?.toLocaleString()}
         </span>
       ),
       icon: <DollarOutlined />,
     },
     {
-      title: "Pending Since",
-      value: (
-        <span>
-          {customer.pendingMonths ? `${customer.pendingMonths} months` : "5th Oct, 2025"}
-          <Tag color="orange" style={{ marginLeft: 4 }}>Dummy Data</Tag>
-        </span>
-      ),
+      title: "Last Payment Date",
+      value: customer.lastPaymentDate
+        ? new Date(customer.lastPaymentDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+        : "-",
       icon: <CalendarOutlined />,
     },
   ];
