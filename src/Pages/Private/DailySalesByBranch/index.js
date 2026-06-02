@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo, useContext } from "react";
-import { Table, message, Skeleton, Tabs, Select, Button } from "antd";
+import { Table, message, Skeleton, Tabs, Select, Button, Modal, Spin, Tag } from "antd";
 import { DownloadOutlined } from "@ant-design/icons";
 import { ProductContext } from "../../../Contexts/ProductContext";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
 import { UnitValueContext } from "../../../Contexts/UnitValueContext";
 import { getAllProducts } from "../../../API/Products";
-import { getDailyBranchSales } from "../../../API/Daily STT Report";
+import { getDailyBranchSales, getDailyCustomerBreakdown } from "../../../API/Daily STT Report";
 import "./style.css";
 
 const { Option } = Select;
@@ -34,6 +34,9 @@ const DailySalesByBranch = () => {
     "RTA",
   ]);
   const [selectedChannels, setSelectedChannels] = useState(channels);
+
+  // Drill-down modal state
+  const [drillModal, setDrillModal] = useState({ open: false, loading: false, title: "", data: [], total: 0 });
 
   // ------------------------------
   // Fetch products
@@ -122,7 +125,24 @@ const DailySalesByBranch = () => {
       align: "right",
       sorter: (a, b) =>
         a.isTotal ? 1 : b.isTotal ? -1 : (a[d.key] || 0) - (b[d.key] || 0),
-      render: (v) => renderNumber(v, "#000", false),
+      render: (v, row) => {
+        if (!v || row.isTotal) return renderNumber(v, "#000", false);
+        return (
+          <span
+            onClick={() => handleCellClick(row, d)}
+            style={{
+              color: "var(--color-accent)",
+              cursor: "pointer",
+              fontWeight: 500,
+              textDecoration: "underline",
+              textDecorationStyle: "dotted",
+              textUnderlineOffset: 3,
+            }}
+          >
+            {v.toLocaleString()}
+          </span>
+        );
+      },
     }));
 
     const renderNumber = (v, color = "#000", bold = true) => {
@@ -260,6 +280,32 @@ const DailySalesByBranch = () => {
     label: p.name,
     key: p.code,
   }));
+
+  const handleCellClick = async (row, dayMeta) => {
+    if (!row.branchCode || row.isTotal) return;
+    const dayNum = parseInt(dayMeta.title, 10);
+    const year   = parseInt(selectedMonth.slice(0, 4), 10);
+    const month  = parseInt(selectedMonth.slice(4), 10);
+    const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
+    const productCodes = selectedProduct?.code || "";
+
+    setDrillModal({ open: true, loading: true, title: `${row.branch} — ${dayMeta.title} ${dayMeta.shortDay}`, data: [], total: 0 });
+
+    const res = await getDailyCustomerBreakdown({
+      branchCode:   row.branchCode,
+      date:         dateStr,
+      productCodes,
+      unitType,
+      valueType,
+    });
+
+    if (res?.error) {
+      message.error("Failed to load breakdown");
+      setDrillModal((p) => ({ ...p, loading: false }));
+    } else {
+      setDrillModal((p) => ({ ...p, loading: false, data: res.results || [], total: res.total || 0 }));
+    }
+  };
 
   const exportToExcel = async () => {
     if (!dataWithTotal.length) {
@@ -514,6 +560,102 @@ const DailySalesByBranch = () => {
         rowClassName={(record) => (record.isTotal ? "grand-total-row" : "")}
         style={{ background: "#fff", borderRadius: 8 }}
       />
+
+      {/* ── Customer Breakdown Modal ───────────────────────── */}
+      <Modal
+        title={
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 15, color: "var(--color-text-primary)" }}>
+              {drillModal.title}
+            </div>
+            {!drillModal.loading && (
+              <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginTop: 2 }}>
+                {drillModal.data.length} customer{drillModal.data.length !== 1 ? "s" : ""}
+                {" · "}Total: <b style={{ color: "var(--color-primary)" }}>{drillModal.total?.toLocaleString()}</b>
+                {" "}{unitType?.toUpperCase()}
+              </div>
+            )}
+          </div>
+        }
+        open={drillModal.open}
+        onCancel={() => setDrillModal((p) => ({ ...p, open: false }))}
+        footer={null}
+        width={900}
+        styles={{ body: { padding: "12px 0 0" } }}
+      >
+        {drillModal.loading ? (
+          <div style={{ textAlign: "center", padding: 48 }}>
+            <Spin size="large" />
+          </div>
+        ) : (
+          <Table
+            size="small"
+            bordered
+            pagination={{ pageSize: 15, showSizeChanger: false, size: "small" }}
+            dataSource={drillModal.data.map((r, i) => ({ ...r, key: i }))}
+            columns={[
+              {
+                title: "#",
+                width: 40,
+                align: "center",
+                render: (_, __, i) => <span style={{ color: "var(--color-text-secondary)", fontSize: 11 }}>{i + 1}</span>,
+              },
+              {
+                title: "Customer",
+                dataIndex: "customer_name",
+                key: "customer_name",
+                ellipsis: true,
+                render: (v, r) => (
+                  <div>
+                    <div style={{ fontWeight: 500, fontSize: 12 }}>{v}</div>
+                    <div style={{ fontSize: 11, color: "var(--color-text-secondary)" }}>{r.customer_code}</div>
+                  </div>
+                ),
+              },
+              {
+                title: "Channel",
+                dataIndex: "channel",
+                key: "channel",
+                width: 80,
+                align: "center",
+                render: (v) => <Tag style={{ fontSize: 11, margin: 0 }}>{v}</Tag>,
+              },
+              {
+                title: "Salesman",
+                dataIndex: "salesman",
+                key: "salesman",
+                ellipsis: true,
+                render: (v, r) => (
+                  <div>
+                    <div style={{ fontWeight: 500, fontSize: 12 }}>{v}</div>
+                    <div style={{ fontSize: 11, color: "var(--color-text-secondary)" }}>{r.salesman_code}</div>
+                  </div>
+                ),
+              },
+              {
+                title: `Sales (${unitType?.toUpperCase()})`,
+                dataIndex: "sales",
+                key: "sales",
+                width: 110,
+                align: "right",
+                render: (v) => (
+                  <b style={{ color: "var(--color-primary)" }}>{v?.toLocaleString()}</b>
+                ),
+              },
+            ]}
+            summary={() => (
+              <Table.Summary.Row>
+                <Table.Summary.Cell index={0} colSpan={4}>
+                  <b style={{ color: "var(--color-text-secondary)", fontSize: 12 }}>Total</b>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={4} align="right">
+                  <b style={{ color: "var(--color-primary)" }}>{drillModal.total?.toLocaleString()}</b>
+                </Table.Summary.Cell>
+              </Table.Summary.Row>
+            )}
+          />
+        )}
+      </Modal>
     </div>
   );
 };

@@ -72,4 +72,25 @@ const getDailyBranchSales = async (
   }
 };
 
-export { getDailySTT, getDailyBranchSales };
+const getDailyCustomerBreakdown = async ({ branchCode, date, productCodes, unitType, valueType }) => {
+  try {
+    const response = await axios.get(
+      `${process.env.REACT_APP_BACKEND_URL}sales/daily-customer-breakdown/`,
+      {
+        headers: { Authorization: `Bearer ${getToken()}` },
+        params: {
+          branch_code:   branchCode,
+          date,
+          product_codes: productCodes,
+          unit_type:     unitType,
+          value_type:    valueType,
+        },
+      }
+    );
+    return response?.data;
+  } catch (error) {
+    return { error: error.response?.data || error.message };
+  }
+};
+
+export { getDailySTT, getDailyBranchSales, getDailyCustomerBreakdown };
