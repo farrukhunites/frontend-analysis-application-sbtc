@@ -72,7 +72,7 @@ const getDailyBranchSales = async (
   }
 };
 
-const getDailyCustomerBreakdown = async ({ branchCode, date, productCodes, unitType, valueType }) => {
+const getDailyCustomerBreakdown = async ({ branchCode, date, productCodes, unitType, valueType, channels }) => {
   try {
     const response = await axios.get(
       `${process.env.REACT_APP_BACKEND_URL}sales/daily-customer-breakdown/`,
@@ -84,6 +84,7 @@ const getDailyCustomerBreakdown = async ({ branchCode, date, productCodes, unitT
           product_codes: productCodes,
           unit_type:     unitType,
           value_type:    valueType,
+          "channels[]":  channels,
         },
       }
     );

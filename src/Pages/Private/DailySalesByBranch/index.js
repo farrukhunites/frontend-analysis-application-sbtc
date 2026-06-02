@@ -130,14 +130,7 @@ const DailySalesByBranch = () => {
         return (
           <span
             onClick={() => handleCellClick(row, d)}
-            style={{
-              color: "var(--color-accent)",
-              cursor: "pointer",
-              fontWeight: 500,
-              textDecoration: "underline",
-              textDecorationStyle: "dotted",
-              textUnderlineOffset: 3,
-            }}
+            style={{ cursor: "pointer" }}
           >
             {v.toLocaleString()}
           </span>
@@ -297,6 +290,7 @@ const DailySalesByBranch = () => {
       productCodes,
       unitType,
       valueType,
+      channels:     selectedChannels,
     });
 
     if (res?.error) {
