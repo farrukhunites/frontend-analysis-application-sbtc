@@ -36,7 +36,7 @@ const DailySalesByBranch = () => {
   const [selectedChannels, setSelectedChannels] = useState(channels);
 
   // Drill-down modal state
-  const [drillModal, setDrillModal] = useState({ open: false, loading: false, title: "", data: [], total: 0 });
+  const [drillModal, setDrillModal] = useState({ open: false, loading: false, title: "", data: [], total: 0, branchCode: "" });
 
   // ------------------------------
   // Fetch products
@@ -282,7 +282,7 @@ const DailySalesByBranch = () => {
     const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
     const productCodes = selectedProduct?.code || "";
 
-    setDrillModal({ open: true, loading: true, title: `${row.branch} — ${dayMeta.title} ${dayMeta.shortDay}`, data: [], total: 0 });
+    setDrillModal({ open: true, loading: true, title: `${row.branch} — ${dayMeta.title} ${dayMeta.shortDay}`, data: [], total: 0, branchCode: row.branchCode });
 
     const res = await getDailyCustomerBreakdown({
       branchCode:   row.branchCode,
@@ -599,12 +599,20 @@ const DailySalesByBranch = () => {
                 dataIndex: "customer_name",
                 key: "customer_name",
                 ellipsis: true,
-                render: (v, r) => (
-                  <div>
-                    <div style={{ fontWeight: 500, fontSize: 12 }}>{v}</div>
-                    <div style={{ fontSize: 11, color: "var(--color-text-secondary)" }}>{r.customer_code}</div>
-                  </div>
-                ),
+                render: (v, r) => {
+                  const params = new URLSearchParams({
+                    customer_code: r.customer_code,
+                    branch_code:   drillModal.branchCode,
+                    channel_code:  r.channel,
+                    ...(selectedProduct?.code && { product_code: selectedProduct.code }),
+                  });
+                  return (
+                    <div onClick={() => window.open(`/customer-analysis?${params.toString()}`, "_blank")} style={{ cursor: "pointer" }}>
+                      <div style={{ fontWeight: 500, fontSize: 12, color: "var(--color-accent)" }}>{v}</div>
+                      <div style={{ fontSize: 11, color: "var(--color-text-secondary)" }}>{r.customer_code}</div>
+                    </div>
+                  );
+                },
               },
               {
                 title: "Channel",
