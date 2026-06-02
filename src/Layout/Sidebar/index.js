@@ -6,6 +6,7 @@ import {
   UsergroupAddOutlined,
   LogoutOutlined,
   CalendarOutlined,
+  FileTextOutlined,
 } from "@ant-design/icons";
 import { Layout, Tooltip } from "antd";
 import "./style.css";
@@ -19,9 +20,8 @@ const { Sider } = Layout;
 const menuItems = [
   { key: "1", icon: <DashboardOutlined />,      label: "Dashboard",           path: "/" },
   { key: "3", icon: <UserOutlined />,           label: "Customer Analysis",   path: "/customer-analysis" },
-  { key: "5", icon: <AimOutlined />,            label: "Monthly Sales",       path: "/daily-stt" },
+  { key: "5", icon: <FileTextOutlined />,        label: "Reports",             path: "/reports" },
   { key: "7", icon: <UsergroupAddOutlined />,   label: "Potential Customers", path: "/potential-customers" },
-  { key: "8", icon: <CalendarOutlined />,       label: "Daily Sales",         path: "/daily-sales" },
 ];
 
 const bottomItems = [
