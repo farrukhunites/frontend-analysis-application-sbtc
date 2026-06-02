@@ -44,6 +44,10 @@ export const streamForceRefresh = (onLog, onDone) => {
                 const data = JSON.parse(line.slice(6));
                 if (data.type === "done") {
                   doneCalled = true;
+                  // If proxy swallowed the error log lines, surface the summary here
+                  if (data.status === "failed" && data.error) {
+                    onLog({ level: "error", message: `✖ ${data.failed_step || "Step"} failed: ${data.error}` });
+                  }
                   onDone(data.status, data.duration || null);
                 } else if (data.type === "log") {
                   onLog({ level: data.level, message: data.message });
