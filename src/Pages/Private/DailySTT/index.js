@@ -519,7 +519,7 @@ const DailySTT = () => {
           };
         } else if (c.isPct) {
           cell.value = val;
-          const above = val !== null && val >= 0;
+          const above = val !== null && (c.key.endsWith("_ach") ? val >= 0.9 : val >= 0);
           cell.style = {
             numFmt: pctFmt,
             font:   { bold: isSubtotal || isGrandTotal, size: 10, color: { argb: val === null ? "FF64748B" : above ? `FF${GREEN}` : `FF${RED}` } },
