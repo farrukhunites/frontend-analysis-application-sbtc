@@ -233,11 +233,37 @@ const CustomerAnalysis = () => {
     ytdSales: customerData?.sales_ytd || 0,
     mtdSales: customerData?.sales_mtd || 0,
     dryMonths: customerData?.dry_months ?? 0,
-    salesman: customerData?.salesman || "-",
+    salesman:            customerData?.salesman || "-",
+    salesmanCd:          customerData?.salesman_cd || null,
     contribution: customerData?.contribution_percent || 0,
     paymentPending:   customerData?.payment_pending ?? 0,
     lastPaymentDate:  customerData?.last_payment_date || null,
-    assignedSalesman: customerData?.assigned_salesman || "-",
+    assignedSalesman:    customerData?.assigned_salesman || "-",
+    assignedSalesmanCd:  customerData?.assigned_salesman_cd || null,
+    branchCode:          customerData?.branch_code || selectedBranch?.code || null,
+  };
+
+  const openSalesmanAnalysis = (salesmanCode) => {
+    if (!salesmanCode) return;
+    const params = new URLSearchParams();
+    params.set("salesman_code", salesmanCode);
+    if (customer.branchCode) params.set("branch_code", customer.branchCode);
+    if (selectedProduct?.code) params.set("product_code", selectedProduct.code);
+    window.open(`/salesman-analysis?${params.toString()}`, "_blank", "noopener");
+  };
+
+  const salesmanCell = (name, code) => {
+    if (!code || name === "-") return name;
+    return (
+      <span
+        className="report-clickable-name"
+        onClick={() => openSalesmanAnalysis(code)}
+        title="Open Salesman Analysis in new tab"
+        style={{ display: "inline-block" }}
+      >
+        {name}
+      </span>
+    );
   };
 
   const ranking = customerData?.ranking || {};
@@ -255,8 +281,8 @@ const CustomerAnalysis = () => {
     { title: "Sales YTD",            value: customer.ytdSales.toLocaleString() + " " + unitType,    icon: <LineChartOutlined /> },
     { title: "Sales MTD",            value: customer.mtdSales.toLocaleString() + " " + unitType,    icon: <CalendarOutlined /> },
     { title: "Dry Months",           value: customer.dryMonths,                                     icon: <StopOutlined /> },
-    { title: "Salesman (Last Sale)",  value: customer.salesman,                                      icon: <UserOutlined /> },
-    { title: "Assigned Salesman",    value: customer.assignedSalesman,                              icon: <UserOutlined /> },
+    { title: "Salesman (Last Sale)",  value: salesmanCell(customer.salesman, customer.salesmanCd),          icon: <UserOutlined /> },
+    { title: "Assigned Salesman",    value: salesmanCell(customer.assignedSalesman, customer.assignedSalesmanCd), icon: <UserOutlined /> },
     { title: "Contribution",         value: customer.contribution ? customer.contribution + " %" : "-", icon: <LineChartOutlined /> },
     {
       title: "Payment Pending",
@@ -284,7 +310,12 @@ const CustomerAnalysis = () => {
     { title: "Channel",            dataIndex: "otlcd",         key: "otlcd" },
     { title: "Group Code",         dataIndex: "cusgrcd",       key: "cusgrcd" },
     { title: "Group Name",         dataIndex: "cusgrcd_nm",    key: "cusgrcd_nm" },
-    { title: "Salesman",           dataIndex: "salesman_nm",   key: "salesman_nm" },
+    { title: "Salesman",           dataIndex: "salesman_nm",   key: "salesman_nm",
+      render: (v, r) => v
+        ? (r.salesman_cd
+            ? <span className="report-clickable-name" onClick={() => openSalesmanAnalysis(r.salesman_cd)} title="Open Salesman Analysis in new tab">{v}</span>
+            : v)
+        : "-" },
     { title: "Driver",             dataIndex: "driver_nm",     key: "driver_nm" },
     { title: "Order Type",         dataIndex: "tp",            key: "tp" },
     { title: "SO Number",          dataIndex: "so_cd",         key: "so_cd" },

@@ -6,6 +6,7 @@ import { Skeleton } from "antd";
 const Dashboard          = lazy(() => import("../Pages/Private/Dashboard"));
 const BranchAnalysis     = lazy(() => import("../Pages/Private/BranchAnalysis"));
 const CustomerAnalysis   = lazy(() => import("../Pages/Private/CustomerAnalysis"));
+const SalesmanAnalysis   = lazy(() => import("../Pages/Private/SalesmanAnalysis"));
 const ChannelAnalysis    = lazy(() => import("../Pages/Private/ChannelAnalysis"));
 const Reports            = lazy(() => import("../Pages/Private/Reports"));
 const PotentialCustomers = lazy(() => import("../Pages/Private/PotentialCustomers"));
@@ -25,6 +26,7 @@ const UserRoutes = () => (
       <Route index element={<Dashboard />} />
       <Route path="branch-analysis"     element={<BranchAnalysis />} />
       <Route path="customer-analysis"   element={<CustomerAnalysis />} />
+      <Route path="salesman-analysis"   element={<SalesmanAnalysis />} />
       <Route path="channel-analysis"    element={<ChannelAnalysis />} />
       <Route path="reports"              element={<Reports />} />
       <Route path="daily-stt"           element={<Navigate to="/reports" />} />

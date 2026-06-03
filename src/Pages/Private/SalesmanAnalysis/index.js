@@ -1,0 +1,556 @@
+import {
+  AimOutlined,
+  UserOutlined,
+  PhoneOutlined,
+  CalendarOutlined,
+  LineChartOutlined,
+  TrophyOutlined,
+  DollarOutlined,
+  ClockCircleOutlined,
+  SwapOutlined,
+  FileTextOutlined,
+  TeamOutlined,
+  ThunderboltOutlined,
+  ApartmentOutlined,
+  RiseOutlined,
+} from "@ant-design/icons";
+import { message, Select, Skeleton, Table, Tag, Empty } from "antd";
+import "./style.css";
+import { useContext, useEffect, useRef, useState } from "react";
+import { useLocation, useSearchParams } from "react-router-dom";
+import AreaChart from "../../../Components/Charts/AreaChart";
+import BarChart from "../../../Components/Charts/BarChart";
+import DonutChart from "../../../Components/Charts/DonutChart";
+import { getAllBranches } from "../../../API/Branches";
+import { getAllProducts } from "../../../API/Products";
+import { getSalesmanInsight, getSalesmenByBranch } from "../../../API/Salesman";
+import { ProductContext } from "../../../Contexts/ProductContext";
+import { UnitValueContext } from "../../../Contexts/UnitValueContext";
+import { useDateFilter } from "../../../Contexts/DateFilterContext";
+import { CHART_COLORS } from "../../../Components/Charts/chartConfig";
+
+const { Option } = Select;
+
+const fmtNum = (v) =>
+  v === 0 || v == null ? "-" : Number(v).toLocaleString("en-US", { maximumFractionDigits: 0 });
+const fmtPct = (v) => (v == null || !isFinite(v) ? "-" : `${(v * 100).toFixed(1)}%`);
+const pctColor = (v, threshold = 0.9) => {
+  if (v == null || !isFinite(v)) return "#94A3B8";
+  return v >= threshold ? "#10B981" : "#EF4444";
+};
+
+const SalesmanAnalysis = () => {
+  const { selectedProduct, setSelectedProduct } = useContext(ProductContext);
+  const { unitType, valueType } = useContext(UnitValueContext);
+  const { selectedMonth } = useDateFilter();
+
+  const [branches, setBranches]               = useState([]);
+  const [salesmen, setSalesmen]               = useState([]);
+  const [selectedBranch, setSelectedBranch]   = useState(null);
+  const [selectedSalesman, setSelectedSalesman] = useState(null);
+  const [loading, setLoading]                 = useState(false);
+  const [data, setData]                       = useState(null);
+
+  const [searchParams] = useSearchParams();
+  const locationState  = useLocation().state;
+  const preselect = locationState || (
+    searchParams.get("salesman_code") ? {
+      salesman_code: searchParams.get("salesman_code"),
+      branch_code:   searchParams.get("branch_code"),
+      product_code:  searchParams.get("product_code"),
+    } : null
+  );
+  const hasAutoSelected = useRef(false);
+
+  // Initial branches list
+  useEffect(() => {
+    getAllBranches().then((res) => setBranches(res?.results || []));
+  }, []);
+
+  // Auto-select branch from URL → triggers salesman list fetch
+  useEffect(() => {
+    if (!hasAutoSelected.current && preselect?.branch_code && branches.length > 0 && !selectedBranch) {
+      const b = branches.find((br) => br.code === preselect.branch_code);
+      if (b) setSelectedBranch(b);
+    }
+  }, [branches]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-select product from URL
+  useEffect(() => {
+    if (!preselect?.product_code) return;
+    getAllProducts().then((res) => {
+      const list = res?.results || [];
+      const match = list.find((p) => p.code === preselect.product_code);
+      if (match) setSelectedProduct(match);
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Salesmen list whenever branch changes
+  useEffect(() => {
+    if (!selectedBranch) { setSalesmen([]); setSelectedSalesman(null); return; }
+    getSalesmenByBranch(selectedBranch.code).then((res) => {
+      const list = res?.results || [];
+      setSalesmen(list);
+      // Auto-pick salesman from URL once list is loaded
+      if (!hasAutoSelected.current && preselect?.salesman_code) {
+        const match = list.find((s) => s.code === preselect.salesman_code);
+        if (match) {
+          hasAutoSelected.current = true;
+          setSelectedSalesman(match);
+        }
+      }
+    });
+  }, [selectedBranch]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch insight
+  useEffect(() => {
+    if (!selectedSalesman || !selectedBranch || !selectedProduct) return;
+    setLoading(true);
+    getSalesmanInsight({
+      salesmanCode: selectedSalesman.code,
+      branchCode:   selectedBranch.code,
+      productCode:  selectedProduct.code,
+      month:        selectedMonth || undefined,
+      unitType,
+      valueType,
+    }).then((res) => {
+      if (res?.error) {
+        message.warning("Failed to load salesman insight");
+        setData(null);
+      } else {
+        setData(res);
+      }
+      setLoading(false);
+    });
+  }, [selectedSalesman, selectedBranch, selectedProduct, selectedMonth, unitType, valueType]);
+
+  // ── Derived ───────────────────────────────────────────────────────────────
+  const ranking = data?.ranking || {};
+  const cadence = data?.cadence || {};
+  const quality = data?.order_quality || {};
+
+  const returnColor =
+    quality.return_rate_percent > 10 ? "#EF4444"
+    : quality.return_rate_percent > 5 ? "#F59E0B"
+    : "#10B981";
+
+  const tabs = data ? [
+    { title: "Salesman",         value: data.salesman_name,                                          icon: <UserOutlined /> },
+    { title: "Code",             value: data.salesman_code,                                          icon: <UserOutlined /> },
+    { title: "Branch",           value: data.branch_name,                                            icon: <AimOutlined /> },
+    { title: "Mobile",           value: data.mobile_no || "-",                                      icon: <PhoneOutlined /> },
+    { title: "Channels",         value: data.channels?.length ? data.channels.join(", ") : "-",     icon: <ApartmentOutlined /> },
+    { title: "Sales MTD",        value: `${fmtNum(data.sales_mtd)} ${unitType}`,                    icon: <CalendarOutlined /> },
+    { title: "Sales YTD",        value: `${fmtNum(data.sales_ytd)} ${unitType}`,                    icon: <LineChartOutlined /> },
+    { title: "Total Sales",      value: `${fmtNum(data.total_sales_forever)} ${unitType}`,          icon: <DollarOutlined /> },
+  ] : [];
+
+  // Build customer-analysis link with full context
+  const openCustomerInNewTab = (cust) => {
+    const params = new URLSearchParams();
+    params.set("customer_code", cust.customer_code);
+    if (cust.branch_code || data?.branch_code) params.set("branch_code", cust.branch_code || data?.branch_code);
+    if (cust.channel)      params.set("channel_code", cust.channel);
+    if (selectedProduct?.code) params.set("product_code", selectedProduct.code);
+    window.open(`/customer-analysis?${params.toString()}`, "_blank", "noopener");
+  };
+
+  const topCustomerColumns = [
+    { title: "#", width: 50, align: "center",
+      render: (_, __, i) => <span style={{ color: "#94A3B8" }}>{i + 1}</span> },
+    { title: "Customer", dataIndex: "customer_name",
+      render: (v, r) => (
+        <div className="report-clickable-name" title="Open Customer Analysis in new tab"
+             onClick={() => openCustomerInNewTab(r)}>
+          <div style={{ fontWeight: 600, fontSize: 12 }}>{v}</div>
+          <div style={{ fontSize: 11, color: "#64748B" }}>{r.customer_code}</div>
+        </div>
+      ) },
+    { title: "Channel", dataIndex: "channel", width: 110,
+      render: (v) => v ? <Tag color="blue">{v}</Tag> : <span style={{ color: "#CBD5E1" }}>-</span> },
+    { title: `Sales YTD (${unitType.toUpperCase()})`, dataIndex: "sales", align: "right", width: 160,
+      sorter: (a, b) => (a.sales || 0) - (b.sales || 0),
+      defaultSortOrder: "descend",
+      render: (v) => <b>{fmtNum(v)}</b> },
+  ];
+
+  const invoiceColumns = [
+    { title: "Inv Date",   dataIndex: "inv_dt",   width: 110 },
+    { title: "Invoice #",  dataIndex: "inv_no",   width: 130 },
+    { title: "Customer",   dataIndex: "cust_nm",
+      render: (v, r) => (
+        <div className="report-clickable-name" title="Open Customer Analysis in new tab"
+             onClick={() => openCustomerInNewTab({
+               customer_code: r.cust_cd, branch_code: r.salespointcd, channel: r.otlcd,
+             })}>
+          <div style={{ fontSize: 12, fontWeight: 500 }}>{v}</div>
+          <div style={{ fontSize: 10, color: "#94A3B8" }}>{r.cust_cd}</div>
+        </div>
+      ) },
+    { title: "Channel",    dataIndex: "otlcd",     width: 100 },
+    { title: "Item",       dataIndex: "item_nm",   width: 220,
+      render: (v, r) => (
+        <div>
+          <div style={{ fontSize: 12 }}>{v}</div>
+          <div style={{ fontSize: 10, color: "#94A3B8" }}>{r.item_cd}</div>
+        </div>
+      ) },
+    { title: "Type",       dataIndex: "tp",        width: 110 },
+    { title: "Qty",        dataIndex: "qtyconv",   width: 80, align: "right" },
+    { title: "Price",      dataIndex: "unitprice", width: 90, align: "right" },
+  ];
+
+  return (
+    <div className="salesman-analysis">
+      {/* ── Selectors ─────────────────────────────────────────────── */}
+      <div style={{ display: "flex", gap: 16 }}>
+        <Select
+          showSearch
+          value={selectedBranch?.code || null}
+          onChange={(code) => {
+            setSelectedBranch(branches.find((b) => b.code === code) || null);
+            setSelectedSalesman(null);
+          }}
+          style={{ flex: 1 }}
+          placeholder="Select Branch"
+          optionFilterProp="children"
+          filterOption={(input, option) => option.children.toLowerCase().includes(input.toLowerCase())}
+        >
+          {branches.map((b) => (
+            <Option key={b.code} value={b.code}>{b.name}</Option>
+          ))}
+        </Select>
+
+        <Select
+          disabled={!selectedBranch}
+          showSearch
+          value={selectedSalesman?.code || null}
+          onChange={(code) => setSelectedSalesman(salesmen.find((s) => s.code === code) || null)}
+          style={{ flex: 2 }}
+          placeholder={selectedBranch ? "Select Salesman" : "Pick a branch first"}
+          optionFilterProp="label"
+        >
+          {salesmen.map((s) => (
+            <Option key={s.code} value={s.code} label={`${s.code} - ${s.name}`}>
+              {`${s.code} - ${s.name}`}
+            </Option>
+          ))}
+        </Select>
+      </div>
+
+      {/* ── Empty state ───────────────────────────────────────────── */}
+      {!selectedSalesman && !loading && (
+        <div style={{ marginTop: 40 }}>
+          <Empty description="Select a branch and a salesman to see the analysis" />
+        </div>
+      )}
+
+      {/* ── Info card row ─────────────────────────────────────────── */}
+      {(loading || data) && (
+        <div className="top-tabs-container">
+          {loading && !data
+            ? Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="tab-card">
+                  <Skeleton active title={{ width: "60%" }} paragraph={{ rows: 1, width: "40%" }} />
+                </div>
+              ))
+            : tabs.map((tab, idx) => (
+                <div key={idx} className="tab-card">
+                  <div className="tab-header">
+                    <div className="tab-icon">{tab.icon}</div>
+                    <div className="tab-title">{tab.title}</div>
+                  </div>
+                  <div className="tab-value">{tab.value}</div>
+                </div>
+              ))}
+        </div>
+      )}
+
+      {/* ── KPI row: target / achievement ─────────────────────────── */}
+      {data && (
+        <div className="sa-section-row">
+          <div className="sa-rank-card">
+            <div className="sa-rank-icon"><AimOutlined /></div>
+            <div className="sa-rank-body">
+              <div className="sa-rank-label">Target ({unitType.toUpperCase()})</div>
+              <div className="sa-rank-value">
+                <span className="sa-rank-num">{fmtNum(data.month_target)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="sa-rank-card">
+            <div className="sa-rank-icon sa-rank-icon--cadence"><LineChartOutlined /></div>
+            <div className="sa-rank-body">
+              <div className="sa-rank-label">MTD Sales</div>
+              <div className="sa-rank-value">
+                <span className="sa-rank-num">{fmtNum(data.sales_mtd)}</span>
+                <span className="sa-rank-total">{unitType.toUpperCase()}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="sa-rank-card">
+            <div className="sa-rank-icon" style={{ background: `${pctColor(data.achievement_pct)}18`, color: pctColor(data.achievement_pct) }}>
+              <TrophyOutlined />
+            </div>
+            <div className="sa-rank-body">
+              <div className="sa-rank-label">Achievement</div>
+              <div className="sa-rank-value">
+                <span className="sa-rank-num" style={{ color: pctColor(data.achievement_pct) }}>
+                  {fmtPct(data.achievement_pct)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="sa-rank-card">
+            <div className="sa-rank-icon" style={{ background: `${pctColor(data.daily_ach_pct)}18`, color: pctColor(data.daily_ach_pct) }}>
+              <ThunderboltOutlined />
+            </div>
+            <div className="sa-rank-body">
+              <div className="sa-rank-label">Daily Ach (day {data.elapsed_days}/{data.total_days})</div>
+              <div className="sa-rank-value">
+                <span className="sa-rank-num" style={{ color: pctColor(data.daily_ach_pct) }}>
+                  {fmtPct(data.daily_ach_pct)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="sa-rank-card">
+            <div className="sa-rank-icon sa-rank-icon--channel"><TeamOutlined /></div>
+            <div className="sa-rank-body">
+              <div className="sa-rank-label">Active Customers (MTD)</div>
+              <div className="sa-rank-value">
+                <span className="sa-rank-num">{data.active_customers_mtd || 0}</span>
+                <span className="sa-rank-total">of {data.active_customers_ytd} YTD</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="sa-rank-card">
+            <div className="sa-rank-icon sa-rank-icon--invoice"><FileTextOutlined /></div>
+            <div className="sa-rank-body">
+              <div className="sa-rank-label">Invoices (MTD)</div>
+              <div className="sa-rank-value">
+                <span className="sa-rank-num">{cadence.mtd_invoice_count || 0}</span>
+                <span className="sa-rank-total">{cadence.ytd_invoice_count || 0} YTD</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Ranking + cadence row ─────────────────────────────────── */}
+      {data && (
+        <div className="sa-section-row">
+          <div className="sa-rank-card">
+            <div className="sa-rank-icon"><TrophyOutlined /></div>
+            <div className="sa-rank-body">
+              <div className="sa-rank-label">Branch Rank (YTD)</div>
+              <div className="sa-rank-value">
+                {ranking.rank_in_branch
+                  ? <><span className="sa-rank-num">#{ranking.rank_in_branch}</span>
+                      <span className="sa-rank-total">of {ranking.total_in_branch}</span></>
+                  : "—"}
+              </div>
+            </div>
+          </div>
+
+          <div className="sa-rank-card">
+            <div className="sa-rank-icon sa-rank-icon--channel"><RiseOutlined /></div>
+            <div className="sa-rank-body">
+              <div className="sa-rank-label">Kingdom Rank (YTD)</div>
+              <div className="sa-rank-value">
+                {ranking.rank_in_kingdom
+                  ? <><span className="sa-rank-num">#{ranking.rank_in_kingdom}</span>
+                      <span className="sa-rank-total">of {ranking.total_in_kingdom}</span></>
+                  : "—"}
+              </div>
+            </div>
+          </div>
+
+          <div className="sa-rank-card">
+            <div className="sa-rank-icon sa-rank-icon--cadence"><ClockCircleOutlined /></div>
+            <div className="sa-rank-body">
+              <div className="sa-rank-label">Last Invoice</div>
+              <div className="sa-rank-value">
+                <span className="sa-rank-num" style={{ fontSize: 16 }}>
+                  {cadence.last_invoice_date || "—"}
+                </span>
+                {cadence.days_since_last_invoice != null && (
+                  <span className="sa-rank-total">{cadence.days_since_last_invoice}d ago</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="sa-rank-card">
+            <div className="sa-rank-icon sa-rank-icon--cadence"><SwapOutlined /></div>
+            <div className="sa-rank-body">
+              <div className="sa-rank-label">Avg Invoices / Day</div>
+              <div className="sa-rank-value">
+                <span className="sa-rank-num">{cadence.avg_invoices_per_day ?? "—"}</span>
+                <span className="sa-rank-total">{cadence.working_days_ytd || 0} working days</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="sa-rank-card">
+            <div className="sa-rank-icon sa-rank-icon--invoice"><TeamOutlined /></div>
+            <div className="sa-rank-body">
+              <div className="sa-rank-label">Assigned Customers</div>
+              <div className="sa-rank-value">
+                <span className="sa-rank-num">{data.assigned_customer_count}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="sa-rank-card">
+            <div className="sa-rank-icon" style={{ background: `${returnColor}18`, color: returnColor }}>
+              <SwapOutlined />
+            </div>
+            <div className="sa-rank-body">
+              <div className="sa-rank-label">Return Rate</div>
+              <div className="sa-rank-value">
+                <span className="sa-rank-num" style={{ color: returnColor }}>
+                  {quality.return_rate_percent != null ? `${quality.return_rate_percent}%` : "—"}
+                </span>
+                {quality.return_amount > 0 && (
+                  <span className="sa-rank-total">{fmtNum(quality.return_amount)} {unitType} returned</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Loading charts skeleton ──────────────────────────────── */}
+      {loading && !data && selectedSalesman && (
+        <div className="row">
+          {[1, 2].map((i) => (
+            <div key={i} className="graph"><Skeleton active paragraph={{ rows: 10 }} /></div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Monthly Sales + Channel Mix ─────────────────────────── */}
+      {data && (
+        <div className="row">
+          <div className="graph">
+            <AreaChart
+              graphTitle={`Monthly Sales — ${data.year}`}
+              labels={data.monthly_sales_current_year?.months || []}
+              colourTheme={[CHART_COLORS[0]]}
+              units={[unitType]}
+              series={[{ name: "Sales", data: data.monthly_sales_current_year?.sales || [] }]}
+            />
+          </div>
+          {data.channel_mix?.length > 0 && (
+            <div className="graph">
+              <DonutChart
+                graphTitle="Channel Mix (YTD)"
+                labels={data.channel_mix.map((c) => c.channel)}
+                colourTheme={CHART_COLORS.slice(0, data.channel_mix.length)}
+                series={data.channel_mix.map((c) => c.sales)}
+                seriesValues={data.channel_mix.map((c) => c.sales)}
+                units={[unitType]}
+                showTable={false}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── YoY Bar ─────────────────────────────────────────────── */}
+      {data && (
+        <div className="row">
+          <div className="graph">
+            <BarChart
+              graphTitle="Year-over-Year Monthly Comparison"
+              labels={data.graph?.months || []}
+              colourTheme={[CHART_COLORS[1], CHART_COLORS[0], CHART_COLORS[2], CHART_COLORS[3]]}
+              units={[unitType, unitType, unitType, unitType]}
+              series={[
+                { name: "2023", data: data.graph?.["2023"] || [] },
+                { name: "2024", data: data.graph?.["2024"] || [] },
+                { name: "2025", data: data.graph?.["2025"] || [] },
+                { name: "2026", data: data.graph?.["2026"] || [] },
+              ]}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ── Top Products + Gross vs Net ─────────────────────────── */}
+      {data && (
+        <div className="row">
+          {data.top_products?.length > 0 && (
+            <div className="graph">
+              <BarChart
+                graphTitle="Top 10 Products (YTD)"
+                labels={data.top_products.map((p) => p.product_name)}
+                colourTheme={[CHART_COLORS[2]]}
+                units={[unitType]}
+                series={[{ name: "Sales", data: data.top_products.map((p) => p.sales) }]}
+              />
+            </div>
+          )}
+          {quality.total_gross > 0 && (
+            <div className="graph">
+              <BarChart
+                graphTitle="Gross vs Net (All-Time)"
+                labels={["Total Sales"]}
+                colourTheme={[CHART_COLORS[0], CHART_COLORS[4]]}
+                units={[unitType, unitType]}
+                series={[
+                  { name: "Gross", data: [quality.total_gross] },
+                  { name: "Net",   data: [quality.total_net] },
+                ]}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Top Customers table ─────────────────────────────────── */}
+      {data?.top_customers?.length > 0 && (
+        <div style={{ marginTop: 20 }}>
+          <div className="sa-section-title">Top 10 Customers (YTD)</div>
+          <Table
+            size="small"
+            bordered
+            rowKey={(r) => `${r.customer_code}-${r.branch_code}`}
+            columns={topCustomerColumns}
+            dataSource={data.top_customers}
+            pagination={false}
+          />
+        </div>
+      )}
+
+      {/* ── Selected-month invoice list ─────────────────────────── */}
+      {data && (
+        <div style={{ marginTop: 20 }}>
+          <div className="sa-section-title">
+            Invoices — {data.month_yyyymm}
+            <span style={{ fontSize: 12, color: "#94A3B8", marginLeft: 8, fontWeight: 400 }}>
+              ({data.invoices?.length || 0} line items)
+            </span>
+          </div>
+          <Table
+            size="small"
+            bordered
+            rowKey={(_, i) => i}
+            columns={invoiceColumns}
+            dataSource={data.invoices || []}
+            scroll={{ x: "max-content" }}
+            pagination={{ pageSize: 50, showSizeChanger: false, size: "small" }}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default SalesmanAnalysis;

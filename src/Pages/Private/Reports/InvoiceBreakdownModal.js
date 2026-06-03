@@ -40,6 +40,15 @@ const InvoiceBreakdownModal = ({ state, onClose, unitType }) => {
     window.open(`/customer-analysis?${params.toString()}`, "_blank", "noopener");
   };
 
+  const openSalesmanAnalysis = (row) => {
+    if (!row.salesman_cd) return;
+    const params = new URLSearchParams();
+    params.set("salesman_code", row.salesman_cd);
+    if (branchCode && branchCode !== "ALL") params.set("branch_code", branchCode);
+    if (productCode) params.set("product_code", productCode);
+    window.open(`/salesman-analysis?${params.toString()}`, "_blank", "noopener");
+  };
+
   const itemColumns = [
     { title: "Item", dataIndex: "item_nm", key: "item_nm",
       render: (v, r) => (
@@ -82,7 +91,11 @@ const InvoiceBreakdownModal = ({ state, onClose, unitType }) => {
     { title: "Salesman", dataIndex: "salesman_nm", key: "salesman_nm", width: 180,
       render: (v, r) => v
         ? (
-          <div>
+          <div
+            className="report-clickable-name"
+            onClick={() => openSalesmanAnalysis(r)}
+            title="Open Salesman Analysis in new tab"
+          >
             <div style={{ fontSize: 12 }}>{v}</div>
             <div style={{ fontSize: 10, color: "#94A3B8" }}>{r.salesman_cd}</div>
           </div>

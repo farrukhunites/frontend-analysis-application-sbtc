@@ -20,6 +20,15 @@ const openCustomerAnalysis = ({ customerCode, branchCode, channel, productCode }
   window.open(`/customer-analysis?${params.toString()}`, "_blank");
 };
 
+const openSalesmanAnalysis = ({ salesmanCode, branchCode, productCode }) => {
+  if (!salesmanCode) return;
+  const params = new URLSearchParams();
+  params.set("salesman_code", salesmanCode);
+  if (branchCode) params.set("branch_code", branchCode);
+  if (productCode) params.set("product_code", productCode);
+  window.open(`/salesman-analysis?${params.toString()}`, "_blank", "noopener");
+};
+
 // Column search-by-name props (keeps grand-total row pinned regardless of filter)
 const nameSearchProps = (getName) => ({
   filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
@@ -201,7 +210,15 @@ const SalesmanAchievement = () => {
         render:    (_, r) => r.isGrandTotal ? (
           <b>GRAND TOTAL</b>
         ) : (
-          <div>
+          <div
+            className="report-clickable-name"
+            onClick={() => openSalesmanAnalysis({
+              salesmanCode: r.salesman_code,
+              branchCode:   r.branch_code,
+              productCode:  selectedProducts.length === 1 ? selectedProducts[0] : "",
+            })}
+            title="Open Salesman Analysis in new tab"
+          >
             <div style={{ fontWeight: 600, fontSize: 12 }}>{r.salesman_name}</div>
             <div style={{ fontSize: 11, color: "#64748B" }}>{r.salesman_code}</div>
           </div>

@@ -3,6 +3,7 @@ import {
   SettingOutlined,
   DashboardOutlined,
   UserOutlined,
+  TeamOutlined,
   UsergroupAddOutlined,
   LogoutOutlined,
   CalendarOutlined,
@@ -20,6 +21,7 @@ const { Sider } = Layout;
 const menuItems = [
   { key: "1", icon: <DashboardOutlined />,      label: "Dashboard",           path: "/" },
   { key: "3", icon: <UserOutlined />,           label: "Customer Analysis",   path: "/customer-analysis" },
+  { key: "4", icon: <TeamOutlined />,           label: "Salesman Analysis",   path: "/salesman-analysis" },
   { key: "5", icon: <FileTextOutlined />,        label: "Reports",             path: "/reports" },
   { key: "7", icon: <UsergroupAddOutlined />,   label: "Potential Customers", path: "/potential-customers" },
 ];

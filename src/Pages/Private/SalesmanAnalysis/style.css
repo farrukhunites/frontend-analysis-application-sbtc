@@ -1,0 +1,171 @@
+.salesman-analysis .top-tabs-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  gap: 16px;
+  margin: 16px 0 20px 0;
+  flex-wrap: wrap;
+}
+
+.salesman-analysis .tab-card {
+  flex: 1;
+  background: var(--color-bg-card);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(30, 58, 95, 0.06), 0 4px 12px rgba(30, 58, 95, 0.04);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  min-width: 200px;
+  border: 1px solid var(--color-border);
+}
+
+.salesman-analysis .tab-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(30, 58, 95, 0.12);
+}
+
+.salesman-analysis .tab-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.salesman-analysis .tab-icon {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: var(--color-accent);
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.salesman-analysis .tab-title {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.salesman-analysis .tab-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 4px 0 0 0;
+  word-break: break-word;
+}
+
+.salesman-analysis .row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.salesman-analysis .row .graph {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Ranking / Cadence / Quality strip ─────────────────────── */
+.sa-section-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.sa-rank-card {
+  flex: 1;
+  min-width: 160px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  box-shadow: 0 1px 3px rgba(30, 58, 95, 0.06);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.sa-rank-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(30, 58, 95, 0.1);
+}
+
+.sa-rank-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--color-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.sa-rank-icon--channel {
+  background: rgba(99, 102, 241, 0.1);
+  color: #6366F1;
+}
+
+.sa-rank-icon--cadence {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10B981;
+}
+
+.sa-rank-icon--invoice {
+  background: rgba(245, 158, 11, 0.1);
+  color: #F59E0B;
+}
+
+.sa-rank-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sa-rank-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.sa-rank-value {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.sa-rank-num {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.1;
+}
+
+.sa-rank-total {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  font-weight: 400;
+}
+
+.sa-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 4px 0 12px 2px;
+}
