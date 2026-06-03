@@ -31,6 +31,27 @@ export const getChannelCustomerYoY = ({ channel, branchCode, productCodes, unitT
     .then((r) => r.data)
     .catch((err) => ({ error: err.response?.data || err.message }));
 
+export const getCustomerInvoiceBreakdown = ({
+  customerCode, isKa, channel, branchCode, productCodes, year, month, unitType, valueType,
+}) =>
+  axios
+    .get(`${process.env.REACT_APP_BACKEND_URL}reports/customer-invoice-breakdown/`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+      params: {
+        customer_code: customerCode,
+        is_ka:         isKa ? "true" : "false",
+        channel,
+        branch_code:   branchCode,
+        product_codes: productCodes,
+        year,
+        month:         month || undefined,
+        unit_type:     unitType,
+        value_type:    valueType,
+      },
+    })
+    .then((r) => r.data)
+    .catch((err) => ({ error: err.response?.data || err.message }));
+
 export const getSalesmanCustomerBreakdown = ({ salesmanCd, month, productCodes, unitType, valueType, branchCodes }) =>
   axios
     .get(`${process.env.REACT_APP_BACKEND_URL}reports/salesman-customer-breakdown/`, {

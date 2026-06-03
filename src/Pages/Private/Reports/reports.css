@@ -11,3 +11,25 @@
 .report-clickable-name:hover {
   text-decoration: underline;
 }
+
+/* Expanded invoice → item table: lighter header to distinguish from parent */
+.invoice-item-subtable .ant-table-thead > tr > th {
+  background: #F1F5F9 !important;
+  color: #475569 !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  border-bottom: 1px solid #E2E8F0 !important;
+  padding: 6px 10px !important;
+}
+.invoice-item-subtable .ant-table-tbody > tr > td {
+  background: #FAFCFE !important;
+  border-bottom: 1px dashed #E2E8F0 !important;
+}
+.invoice-item-subtable .ant-table {
+  margin: 14px 0 16px 24px;
+  border-left: 3px solid var(--color-accent);
+  border-radius: 6px;
+  overflow: hidden;
+}

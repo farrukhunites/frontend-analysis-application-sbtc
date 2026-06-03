@@ -1,11 +1,11 @@
 import { useContext, useEffect, useMemo, useState } from "react";
-import { Table, Select, Skeleton, message, Button, Empty, Input, Space } from "antd";
+import { Table, Select, Skeleton, message, Button, Empty, Input, Space, Modal, Tag } from "antd";
 import { DownloadOutlined, PlusOutlined, MinusOutlined, SearchOutlined } from "@ant-design/icons";
 import { ProductContext } from "../../../Contexts/ProductContext";
 import { UnitValueContext } from "../../../Contexts/UnitValueContext";
 import { getAllBranches } from "../../../API/Branches";
 import { getAllChannels } from "../../../API/Channels";
-import { getChannelCustomerYoY } from "../../../API/Reports";
+import { getChannelCustomerYoY, getCustomerInvoiceBreakdown } from "../../../API/Reports";
 import "./ChannelCustomerYoY.css";
 import "./reports.css";
 
@@ -72,6 +72,11 @@ const ChannelCustomerYoY = () => {
   const [loading, setLoading]                 = useState(false);
   const [data, setData]                       = useState(null);
   const [expandedYears, setExpandedYears]     = useState(new Set());
+  const [breakdown, setBreakdown]             = useState({
+    open: false, loading: false, data: null,
+    customerCode: null, customerName: null,
+    year: null, month: null, isKa: false,
+  });
 
   // Load channels + branches once
   useEffect(() => {
@@ -117,6 +122,39 @@ const ChannelCustomerYoY = () => {
       return next;
     });
   };
+
+  // Cell click only works with a single branch (need branch_code on the backend)
+  const breakdownClickable = selectedBranch !== "ALL";
+
+  const openBreakdown = ({ row, year, month }) => {
+    if (!breakdownClickable || row.isGrandTotal) return;
+    setBreakdown({
+      open: true, loading: true, data: null,
+      customerCode: row.code,
+      customerName: row.name,
+      year, month, isKa: isKAChannel,
+    });
+    getCustomerInvoiceBreakdown({
+      customerCode: row.code,
+      isKa:         isKAChannel,
+      channel:      selectedChannel,
+      branchCode:   selectedBranch,
+      productCodes: selectedProduct?.code,
+      year,
+      month,
+      unitType,
+      valueType,
+    }).then((res) => {
+      if (res?.error) {
+        message.error("Failed to load invoice breakdown");
+        setBreakdown((b) => ({ ...b, loading: false }));
+      } else {
+        setBreakdown((b) => ({ ...b, loading: false, data: res }));
+      }
+    });
+  };
+
+  const closeBreakdown = () => setBreakdown((b) => ({ ...b, open: false }));
 
   const columns = useMemo(() => {
     if (!data) return [];
@@ -167,7 +205,20 @@ const ChannelCustomerYoY = () => {
             dataIndex: `m_${year}_${String(m).padStart(2, "0")}`,
             align: "right",
             width: 64,
-            render: (v) => <span style={{ fontSize: 12 }}>{fmtNum(v)}</span>,
+            render: (v, r) => {
+              if (v == null || v === 0 || r.isGrandTotal || !breakdownClickable) {
+                return <span style={{ fontSize: 12 }}>{fmtNum(v)}</span>;
+              }
+              return (
+                <span
+                  className="report-clickable-name"
+                  style={{ fontSize: 12 }}
+                  onClick={() => openBreakdown({ row: r, year, month: m })}
+                >
+                  {fmtNum(v)}
+                </span>
+              );
+            },
           }))
         : [];
 
@@ -192,7 +243,20 @@ const ChannelCustomerYoY = () => {
             align: "right",
             width: 96,
             sorter: (a, b) => (a[`y_${year}`] || 0) - (b[`y_${year}`] || 0),
-            render: (v) => <b style={{ color: "var(--color-primary)" }}>{fmtNum(v)}</b>,
+            render: (v, r) => {
+              if (v == null || v === 0 || r.isGrandTotal || !breakdownClickable) {
+                return <b style={{ color: "var(--color-primary)" }}>{fmtNum(v)}</b>;
+              }
+              return (
+                <b
+                  className="report-clickable-name"
+                  style={{ color: "var(--color-primary)" }}
+                  onClick={() => openBreakdown({ row: r, year, month: null })}
+                >
+                  {fmtNum(v)}
+                </b>
+              );
+            },
             onCell: () => ({ style: { background: "rgba(245,158,11,0.08)" } }),
             onHeaderCell: () => ({ style: { background: "#243f6a" } }),
           },
@@ -213,7 +277,7 @@ const ChannelCustomerYoY = () => {
     });
 
     return cols;
-  }, [data, expandedYears, selectedChannel, selectedBranch, selectedProduct]);
+  }, [data, expandedYears, selectedChannel, selectedBranch, selectedProduct, breakdownClickable]);
 
   const dataSource = useMemo(() => {
     if (!data) return [];
@@ -408,8 +472,135 @@ const ChannelCustomerYoY = () => {
           * Latest growth column compares Jan–{MONTHS[data.current_month]} of both years (year-to-date).
         </div>
       )}
+
+      <InvoiceBreakdownModal
+        state={breakdown}
+        onClose={closeBreakdown}
+        unitType={unitType}
+      />
     </div>
   );
 };
+
+// ── Invoice-level paid/free breakdown modal ───────────────────────────────
+const InvoiceBreakdownModal = ({ state, onClose, unitType }) => {
+  const { open, loading, data, customerName, customerCode, year, month, isKa } = state;
+
+  const period = month ? `${MONTHS[month]} ${year}` : `${year}`;
+  const unitLabel = (unitType || "ctn").toUpperCase();
+
+  const itemColumns = [
+    { title: "Item", dataIndex: "item_nm", key: "item_nm",
+      render: (v, r) => (
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 500 }}>{v}</div>
+          <div style={{ fontSize: 10, color: "#94A3B8" }}>{r.item_cd} · {r.prod_nm}</div>
+        </div>
+      ) },
+    { title: `Paid (${unitLabel})`, dataIndex: "paid_qty", align: "right", width: 110,
+      render: (v) => <span style={{ fontWeight: 600 }}>{fmtNum(v)}</span> },
+    { title: `Free (${unitLabel})`, dataIndex: "free_qty", align: "right", width: 110,
+      render: (v) => v > 0
+        ? <span style={{ color: "#10B981", fontWeight: 600 }}>{fmtNum(v)}</span>
+        : <span style={{ color: "#94A3B8" }}>-</span> },
+    { title: "Scheme", align: "center", width: 100,
+      render: (_, r) => r.free_qty > 0
+        ? <Tag color="green" style={{ margin: 0 }}>{`${Math.round(r.paid_qty)}+${Math.round(r.free_qty)}`}</Tag>
+        : <span style={{ color: "#CBD5E1" }}>-</span> },
+  ];
+
+  const invoiceColumns = [
+    { title: "Invoice #", dataIndex: "inv_no", key: "inv_no",
+      render: (v, r) => (
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 12 }}>{v}</div>
+          <div style={{ fontSize: 11, color: "#64748B" }}>{r.inv_dt}</div>
+        </div>
+      ) },
+    { title: "Customer", dataIndex: "cust_nm", key: "cust_nm",
+      render: (v, r) => (
+        <div>
+          <div style={{ fontSize: 12 }}>{v}</div>
+          <div style={{ fontSize: 10, color: "#94A3B8" }}>{r.cust_cd}</div>
+        </div>
+      ) },
+    { title: `Paid (${unitLabel})`, dataIndex: "paid_total", align: "right", width: 120,
+      render: (v) => <b>{fmtNum(v)}</b> },
+    { title: `Free (${unitLabel})`, dataIndex: "free_total", align: "right", width: 120,
+      render: (v) => v > 0
+        ? <b style={{ color: "#10B981" }}>{fmtNum(v)}</b>
+        : <span style={{ color: "#94A3B8" }}>-</span> },
+    { title: "Items", dataIndex: "items", align: "center", width: 80,
+      render: (items) => items?.length || 0 },
+  ];
+
+  return (
+    <Modal
+      open={open}
+      onCancel={onClose}
+      footer={null}
+      width={960}
+      title={
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>{customerName}</div>
+          <div style={{ fontSize: 12, color: "#64748B", fontWeight: 400 }}>
+            {customerCode} · {period} · Invoice-level paid vs free
+          </div>
+        </div>
+      }
+      destroyOnClose
+    >
+      {loading ? (
+        <Skeleton active paragraph={{ rows: 8 }} />
+      ) : !data || !data.invoices?.length ? (
+        <Empty description="No invoices in this period" />
+      ) : (
+        <>
+          <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
+            <StatChip label="Invoices" value={data.invoice_count} />
+            <StatChip label={`Total Paid (${unitLabel})`} value={fmtNum(data.total_paid)} accent="#3B82F6" />
+            <StatChip label={`Total Free (${unitLabel})`} value={fmtNum(data.total_free)} accent="#10B981" />
+            {isKa && <Tag color="purple" style={{ alignSelf: "center" }}>KA group ({customerCode})</Tag>}
+          </div>
+          <Table
+            size="small"
+            bordered
+            rowKey="inv_no"
+            columns={invoiceColumns}
+            dataSource={data.invoices}
+            pagination={{ pageSize: 20, size: "small", showSizeChanger: false }}
+            scroll={{ y: "55vh" }}
+            expandable={{
+              expandedRowRender: (record) => (
+                <Table
+                  className="invoice-item-subtable"
+                  size="small"
+                  bordered={false}
+                  rowKey="item_cd"
+                  columns={itemColumns}
+                  dataSource={record.items}
+                  pagination={false}
+                />
+              ),
+              rowExpandable: (record) => (record.items?.length || 0) > 0,
+            }}
+          />
+        </>
+      )}
+    </Modal>
+  );
+};
+
+const StatChip = ({ label, value, accent }) => (
+  <div style={{
+    padding: "8px 14px",
+    background: "#F1F5F9",
+    borderRadius: 8,
+    minWidth: 120,
+  }}>
+    <div style={{ fontSize: 10, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</div>
+    <div style={{ fontSize: 16, fontWeight: 700, color: accent || "#1E293B" }}>{value}</div>
+  </div>
+);
 
 export default ChannelCustomerYoY;
