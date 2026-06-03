@@ -52,6 +52,39 @@ export const getCustomerInvoiceBreakdown = ({
     .then((r) => r.data)
     .catch((err) => ({ error: err.response?.data || err.message }));
 
+export const getChannelAchievement = ({ productCodes, branchCode, month, unitType, valueType }) =>
+  axios
+    .get(`${process.env.REACT_APP_BACKEND_URL}reports/channel-achievement/`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+      params: {
+        product_codes: productCodes,
+        branch_code:   branchCode,
+        month,
+        unit_type:     unitType,
+        value_type:    valueType,
+      },
+    })
+    .then((r) => r.data)
+    .catch((err) => ({ error: err.response?.data || err.message }));
+
+export const getChannelCustomerMonthBreakdown = ({
+  channel, branchCode, month, productCodes, unitType, valueType,
+}) =>
+  axios
+    .get(`${process.env.REACT_APP_BACKEND_URL}reports/channel-customer-month-breakdown/`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+      params: {
+        channel,
+        branch_code:   branchCode,
+        month,
+        product_codes: productCodes,
+        unit_type:     unitType,
+        value_type:    valueType,
+      },
+    })
+    .then((r) => r.data)
+    .catch((err) => ({ error: err.response?.data || err.message }));
+
 export const getSalesmanCustomerBreakdown = ({ salesmanCd, month, productCodes, unitType, valueType, branchCodes }) =>
   axios
     .get(`${process.env.REACT_APP_BACKEND_URL}reports/salesman-customer-breakdown/`, {

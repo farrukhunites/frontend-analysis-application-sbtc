@@ -1,11 +1,12 @@
 import { lazy, Suspense, useState } from "react";
 import { Tabs, Skeleton } from "antd";
-import { CalendarOutlined, AimOutlined, TrophyOutlined, RiseOutlined } from "@ant-design/icons";
+import { CalendarOutlined, AimOutlined, TrophyOutlined, RiseOutlined, AppstoreOutlined } from "@ant-design/icons";
 
 const DailySalesByBranch  = lazy(() => import("../DailySalesByBranch"));
 const DailySTT            = lazy(() => import("../DailySTT"));
 const SalesmanAchievement = lazy(() => import("./SalesmanAchievement"));
 const ChannelCustomerYoY  = lazy(() => import("./ChannelCustomerYoY"));
+const ChannelAchievement  = lazy(() => import("./ChannelAchievement"));
 
 const TabLoader = () => (
   <div style={{ padding: "24px 0" }}>
@@ -63,6 +64,19 @@ const TABS = [
     children: (
       <Suspense fallback={<TabLoader />}>
         <ChannelCustomerYoY />
+      </Suspense>
+    ),
+  },
+  {
+    key:      "channel-achievement",
+    label:    (
+      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <AppstoreOutlined /> Channel Achievement
+      </span>
+    ),
+    children: (
+      <Suspense fallback={<TabLoader />}>
+        <ChannelAchievement />
       </Suspense>
     ),
   },
