@@ -77,6 +77,7 @@ const ChannelCustomerYoY = () => {
     open: false, loading: false, data: null,
     customerCode: null, customerName: null,
     year: null, month: null, isKa: false,
+    channel: null, branchCode: null, productCode: null,
   });
 
   // Load channels + branches once
@@ -134,6 +135,9 @@ const ChannelCustomerYoY = () => {
       customerCode: row.code,
       customerName: row.name,
       year, month, isKa: isKAChannel,
+      channel:     selectedChannel,
+      branchCode:  selectedBranch,
+      productCode: selectedProduct?.code,
     });
     getCustomerInvoiceBreakdown({
       customerCode: row.code,

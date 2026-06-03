@@ -57,6 +57,7 @@ const ChannelAchievement = () => {
     open: false, loading: false, data: null,
     customerCode: null, customerName: null,
     year: null, month: null, isKa: false,
+    channel: null, branchCode: null, productCode: null,
   });
 
   useEffect(() => {
@@ -121,6 +122,9 @@ const ChannelAchievement = () => {
       customerCode: customer.customer_code,
       customerName: customer.customer_name,
       year, month: monthNum, isKa: false,
+      channel:     custBreakdown.channel,
+      branchCode:  customer.branch_code,
+      productCode: selectedProduct?.code,
     });
     getCustomerInvoiceBreakdown({
       customerCode: customer.customer_code,
@@ -193,7 +197,12 @@ const ChannelAchievement = () => {
       },
       ...monthCols,
       {
-        title: "Target",
+        title: (
+          <span>
+            Target
+            <span style={{ fontSize: 9, marginLeft: 4, color: "#94A3B8", fontStyle: "italic" }}>(est.)</span>
+          </span>
+        ),
         dataIndex: "month_target",
         align: "right",
         width: 110,
@@ -286,87 +295,120 @@ const ChannelAchievement = () => {
     const ExcelJS = (await import("exceljs")).default;
     const wb = new ExcelJS.Workbook();
     wb.creator = "SBTC Sales Analysis";
-    const sheetName = `${data.product_label} - ${branchCode === "ALL"
+    const brName = branchCode === "ALL"
       ? "All Kingdom"
-      : (branches.find((b) => b.code === branchCode)?.name || branchCode)}`.slice(0, 31);
-    const ws = wb.addWorksheet(sheetName, { views: [{ state: "frozen", ySplit: 1 }] });
+      : (branches.find((b) => b.code === branchCode)?.name || branchCode);
+    const ws = wb.addWorksheet("Channel Achievement", { views: [{ state: "frozen", xSplit: 1, ySplit: 1 }] });
 
-    const NAV = "1E3A5F";  const GOLD = "FEF3C7";
-    const ORANGE = "FFC000"; const YELLOW = "FFFF99";
+    const NAV = "1E3A5F";  const NAV2 = "243F6A";
+    const GOLD = "FEF3C7"; const TOTAL_FILL = "FFF3CD";
     const WHITE = "FFFFFFFF";
     const thin = (a = "FFE2E8F0") => ({ style: "thin", color: { argb: a } });
     const bdr = { top: thin(), bottom: thin(), left: thin(), right: thin() };
     const numFmt = '_(* #,##0_);[Red]_(* (#,##0);_(* "-"_);_(@_)';
     const pctFmt = "0.0%";
 
-    const headers = [
-      "Channel",
-      ...data.months.map((m) => MONTHS[m]),
-      "Target", "Contrib %", "MTD", "Ach %", "Daily Ach %",
-    ];
-    const headerRow = ws.addRow(headers);
-    headerRow.height = 22;
-    headerRow.eachCell((c) => {
-      c.style = {
-        font: { bold: true, color: { argb: WHITE }, size: 11 },
-        fill: { type: "pattern", pattern: "solid", fgColor: { argb: `FF${ORANGE}` } },
-        alignment: { horizontal: "center", vertical: "middle", wrapText: true },
-        border: bdr,
-      };
+    const hdr = (bg) => ({
+      font: { bold: true, size: 10, color: { argb: WHITE } },
+      fill: { type: "pattern", pattern: "solid", fgColor: { argb: `FF${bg}` } },
+      alignment: { horizontal: "center", vertical: "middle", wrapText: true },
+      border: bdr,
     });
 
-    const writeRow = (row, isTotal) => {
-      const r = ws.addRow([
-        row.channel,
-        ...data.months.map((m) => row[`m_${String(m).padStart(2, "0")}`] || null),
-        row.month_target || null,
-        row.contribution == null ? null : row.contribution,
-        row.mtd_sales || null,
-        row.achievement_pct == null ? null : row.achievement_pct,
-        row.daily_ach_pct == null ? null : row.daily_ach_pct,
-      ]);
-      r.height = 16;
-      r.eachCell((c, colIdx) => {
-        const isPct = colIdx === headers.length || colIdx === headers.length - 1 || colIdx === headers.length - 3;
-        c.style = {
-          numFmt: isPct ? pctFmt : (colIdx === 1 ? undefined : numFmt),
-          font: {
-            bold: isTotal || colIdx === 1,
-            size: isTotal ? 11 : 10,
-            color: { argb: "FF1E293B" },
-          },
-          fill: { type: "pattern", pattern: "solid", fgColor: { argb: isTotal ? `FF${YELLOW}` : `FF${WHITE.slice(2)}` } },
-          alignment: { horizontal: colIdx === 1 ? "left" : "right", vertical: "middle" },
+    const monthKeys = data.months.map((m) => ({ m, key: `m_${String(m).padStart(2, "0")}` }));
+    const tailCols = [
+      { key: "month_target",    label: "Target (est.)", pct: false, emphasis: true  },
+      { key: "contribution",    label: "Contrib %",   pct: true,  emphasis: false },
+      { key: "mtd_sales",       label: "MTD",         pct: false, emphasis: true  },
+      { key: "achievement_pct", label: "Ach %",       pct: true,  emphasis: true  },
+      { key: "daily_ach_pct",   label: "Daily Ach %", pct: true,  emphasis: true, colored: true },
+    ];
+
+    // Header row
+    const headerRow = ws.getRow(1); headerRow.height = 20;
+    headerRow.getCell(1).value = "Channel"; headerRow.getCell(1).style = hdr(NAV);
+    monthKeys.forEach((mk, i) => {
+      const c = headerRow.getCell(2 + i);
+      c.value = MONTHS[mk.m];
+      c.style = hdr(NAV);
+    });
+    tailCols.forEach((t, i) => {
+      const c = headerRow.getCell(2 + monthKeys.length + i);
+      c.value = t.label;
+      c.style = hdr(t.emphasis ? NAV2 : NAV);
+    });
+
+    // Data rows + total
+    const allRows = [
+      ...(data.rows || []).map((r) => ({ ...r, isTotal: false })),
+      ...(data.total ? [{ ...data.total, isTotal: true }] : []),
+    ];
+
+    allRows.forEach((row, ri) => {
+      const dr = ws.addRow({}); dr.height = 16;
+      const isGT = row.isTotal;
+      const baseBg = isGT ? `FF${GOLD}` : ri % 2 === 0 ? WHITE : "FFF8FAFC";
+
+      // Channel name
+      const nameCell = dr.getCell(1);
+      nameCell.value = row.channel;
+      nameCell.style = {
+        font: { bold: isGT, size: 10 },
+        fill: { type: "pattern", pattern: "solid", fgColor: { argb: baseBg } },
+        alignment: { vertical: "middle" },
+        border: bdr,
+      };
+
+      // Monthly pivot
+      monthKeys.forEach((mk, i) => {
+        const cell = dr.getCell(2 + i);
+        const v = row[mk.key];
+        cell.value = v || null;
+        cell.style = {
+          numFmt,
+          font: { bold: isGT, size: 10, color: { argb: "FF1E293B" } },
+          fill: { type: "pattern", pattern: "solid", fgColor: { argb: baseBg } },
+          alignment: { horizontal: "right", vertical: "middle" },
           border: bdr,
         };
-        // Color the Daily Ach % cell red/green
-        if (colIdx === headers.length && c.value != null && isFinite(c.value)) {
-          c.style = {
-            ...c.style,
-            font: { ...c.style.font, color: { argb: c.value >= 0.9 ? "FF008000" : "FFFF0000" } },
-          };
-        }
       });
-    };
 
-    (data.rows || []).forEach((row) => writeRow(row, false));
-    if (data.total) writeRow(data.total, true);
+      // Tail columns
+      tailCols.forEach((t, i) => {
+        const cell = dr.getCell(2 + monthKeys.length + i);
+        const v = row[t.key];
+        cell.value = (v == null) ? null : v;
+        let color = "FF1E293B";
+        if (t.colored && v != null && isFinite(v)) {
+          color = v >= 0.9 ? "FF008000" : "FFFF0000";
+        }
+        cell.style = {
+          numFmt: t.pct ? pctFmt : numFmt,
+          font: { bold: isGT || t.emphasis, size: 10, color: { argb: color } },
+          fill: { type: "pattern", pattern: "solid",
+                  fgColor: { argb: isGT ? `FF${GOLD}` : t.emphasis ? `FF${TOTAL_FILL}` : baseBg } },
+          alignment: { horizontal: "right", vertical: "middle" },
+          border: bdr,
+        };
+      });
+    });
 
+    // Column widths
     ws.getColumn(1).width = 18;
-    for (let i = 2; i <= 1 + data.months.length; i++) ws.getColumn(i).width = 11;
-    const tailStart = 2 + data.months.length;
-    ws.getColumn(tailStart).width = 14;       // Target
+    for (let i = 2; i <= 1 + monthKeys.length; i++) ws.getColumn(i).width = 11;
+    const tailStart = 2 + monthKeys.length;
+    ws.getColumn(tailStart).width     = 13;   // Target
     ws.getColumn(tailStart + 1).width = 11;   // Contrib %
-    ws.getColumn(tailStart + 2).width = 14;   // MTD
+    ws.getColumn(tailStart + 2).width = 13;   // MTD
     ws.getColumn(tailStart + 3).width = 11;   // Ach %
-    ws.getColumn(tailStart + 4).width = 14;   // Daily Ach %
+    ws.getColumn(tailStart + 4).width = 13;   // Daily Ach %
 
     const buf = await wb.xlsx.writeBuffer();
     const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `Channel_Achievement_${data.product_label}_${sheetName.replace(/\s+/g, "_")}_${selectedMonth}.xlsx`;
+    a.download = `Channel_Achievement_${data.product_label}_${brName}_${selectedMonth}.xlsx`.replace(/\s+/g, "_");
     a.click();
     URL.revokeObjectURL(url);
   };

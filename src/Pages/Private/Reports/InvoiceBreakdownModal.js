@@ -23,10 +23,22 @@ const StatChip = ({ label, value, accent }) => (
  *  - unitType: "ctn" | "pcs"
  */
 const InvoiceBreakdownModal = ({ state, onClose, unitType }) => {
-  const { open, loading, data, customerName, customerCode, year, month, isKa } = state;
+  const {
+    open, loading, data, customerName, customerCode, year, month, isKa,
+    channel, branchCode, productCode,
+  } = state;
 
   const period = month ? `${MONTHS[month]} ${year}` : `${year}`;
   const unitLabel = (unitType || "ctn").toUpperCase();
+
+  const openCustomerAnalysis = (row) => {
+    const params = new URLSearchParams();
+    params.set("customer_code", row.cust_cd);
+    if (branchCode && branchCode !== "ALL") params.set("branch_code", branchCode);
+    if (channel)     params.set("channel_code", channel);
+    if (productCode) params.set("product_code", productCode);
+    window.open(`/customer-analysis?${params.toString()}`, "_blank", "noopener");
+  };
 
   const itemColumns = [
     { title: "Item", dataIndex: "item_nm", key: "item_nm",
@@ -58,11 +70,24 @@ const InvoiceBreakdownModal = ({ state, onClose, unitType }) => {
       ) },
     { title: "Customer", dataIndex: "cust_nm", key: "cust_nm",
       render: (v, r) => (
-        <div>
-          <div style={{ fontSize: 12 }}>{v}</div>
+        <div
+          className="report-clickable-name"
+          onClick={() => openCustomerAnalysis(r)}
+          title="Open Customer Analysis in new tab"
+        >
+          <div style={{ fontSize: 12, fontWeight: 500 }}>{v}</div>
           <div style={{ fontSize: 10, color: "#94A3B8" }}>{r.cust_cd}</div>
         </div>
       ) },
+    { title: "Salesman", dataIndex: "salesman_nm", key: "salesman_nm", width: 180,
+      render: (v, r) => v
+        ? (
+          <div>
+            <div style={{ fontSize: 12 }}>{v}</div>
+            <div style={{ fontSize: 10, color: "#94A3B8" }}>{r.salesman_cd}</div>
+          </div>
+        )
+        : <span style={{ color: "#CBD5E1" }}>-</span> },
     { title: `Paid (${unitLabel})`, dataIndex: "paid_total", align: "right", width: 120,
       render: (v) => <b>{fmtNum(v)}</b> },
     { title: `Free (${unitLabel})`, dataIndex: "free_total", align: "right", width: 120,
