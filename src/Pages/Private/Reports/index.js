@@ -1,10 +1,11 @@
 import { lazy, Suspense, useState } from "react";
 import { Tabs, Skeleton } from "antd";
-import { CalendarOutlined, AimOutlined, TrophyOutlined } from "@ant-design/icons";
+import { CalendarOutlined, AimOutlined, TrophyOutlined, RiseOutlined } from "@ant-design/icons";
 
 const DailySalesByBranch  = lazy(() => import("../DailySalesByBranch"));
 const DailySTT            = lazy(() => import("../DailySTT"));
 const SalesmanAchievement = lazy(() => import("./SalesmanAchievement"));
+const ChannelCustomerYoY  = lazy(() => import("./ChannelCustomerYoY"));
 
 const TabLoader = () => (
   <div style={{ padding: "24px 0" }}>
@@ -49,6 +50,19 @@ const TABS = [
     children: (
       <Suspense fallback={<TabLoader />}>
         <SalesmanAchievement />
+      </Suspense>
+    ),
+  },
+  {
+    key:      "customer-yoy",
+    label:    (
+      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <RiseOutlined /> Customer YoY
+      </span>
+    ),
+    children: (
+      <Suspense fallback={<TabLoader />}>
+        <ChannelCustomerYoY />
       </Suspense>
     ),
   },

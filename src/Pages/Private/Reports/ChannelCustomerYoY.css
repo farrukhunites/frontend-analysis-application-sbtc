@@ -1,0 +1,23 @@
+.yoy-grand-total-row td {
+  background: #FEF3C7 !important;
+  font-weight: 700 !important;
+}
+
+.yoy-year-toggle {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+  margin-left: 6px;
+  user-select: none;
+}
+.yoy-year-toggle:hover {
+  background: rgba(255, 255, 255, 0.35);
+}

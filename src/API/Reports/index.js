@@ -16,6 +16,21 @@ export const getSalesmanAchievement = ({ month, unitType, valueType, branchCodes
     .then((r) => r.data)
     .catch((err) => ({ error: err.response?.data || err.message }));
 
+export const getChannelCustomerYoY = ({ channel, branchCode, productCodes, unitType, valueType }) =>
+  axios
+    .get(`${process.env.REACT_APP_BACKEND_URL}reports/channel-customer-yoy/`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+      params: {
+        channel,
+        branch_code:   branchCode,
+        product_codes: productCodes,
+        unit_type:     unitType,
+        value_type:    valueType,
+      },
+    })
+    .then((r) => r.data)
+    .catch((err) => ({ error: err.response?.data || err.message }));
+
 export const getSalesmanCustomerBreakdown = ({ salesmanCd, month, productCodes, unitType, valueType, branchCodes }) =>
   axios
     .get(`${process.env.REACT_APP_BACKEND_URL}reports/salesman-customer-breakdown/`, {

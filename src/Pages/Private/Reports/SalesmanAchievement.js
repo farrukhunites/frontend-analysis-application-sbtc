@@ -1,13 +1,47 @@
 import { useContext, useEffect, useMemo, useState, useCallback } from "react";
-import { Table, Select, Skeleton, message, Button, Divider, Modal, Spin, Tag } from "antd";
-import { DownloadOutlined } from "@ant-design/icons";
+import { Table, Select, Skeleton, message, Button, Divider, Modal, Spin, Tag, Input, Space } from "antd";
+import { DownloadOutlined, SearchOutlined } from "@ant-design/icons";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
 import { UnitValueContext } from "../../../Contexts/UnitValueContext";
 import { getAllBranches } from "../../../API/Branches";
 import { getAllProducts } from "../../../API/Products";
 import { getSalesmanAchievement, getSalesmanCustomerBreakdown } from "../../../API/Reports";
+import "./reports.css";
 
 const slug = (name) => name.replace(/\s+/g, "_").toLowerCase();
+
+const openCustomerAnalysis = ({ customerCode, branchCode, channel, productCode }) => {
+  const params = new URLSearchParams({
+    customer_code: customerCode,
+    branch_code:   branchCode || "",
+    channel_code:  channel || "",
+    ...(productCode && { product_code: productCode }),
+  });
+  window.open(`/customer-analysis?${params.toString()}`, "_blank");
+};
+
+// Column search-by-name props (keeps grand-total row pinned regardless of filter)
+const nameSearchProps = (getName) => ({
+  filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+    <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()}>
+      <Input
+        autoFocus
+        placeholder="Search name"
+        value={selectedKeys[0]}
+        onChange={(e) => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+        onPressEnter={() => confirm()}
+        style={{ marginBottom: 8, display: "block", width: 200 }}
+      />
+      <Space>
+        <Button type="primary" size="small" icon={<SearchOutlined />} onClick={() => confirm()}>Search</Button>
+        <Button size="small" onClick={() => { clearFilters && clearFilters(); confirm(); }}>Reset</Button>
+      </Space>
+    </div>
+  ),
+  filterIcon: (filtered) => <SearchOutlined style={{ color: filtered ? "var(--color-accent)" : undefined }} />,
+  onFilter: (value, record) =>
+    record.isGrandTotal || (getName(record) || "").toString().toLowerCase().includes(value.toLowerCase()),
+});
 
 const fmtNum = (v) =>
   v === 0 || v == null ? "-" : Number(v).toLocaleString("en-US", { maximumFractionDigits: 0 });
@@ -43,9 +77,18 @@ const SalesmanAchievement = () => {
       setSelectedBranches(list.map((b) => b.code));
     });
     getAllProducts().then((res) => {
-      const list = (res?.results || []).filter((p) => !["9999901","9999902"].includes(p.code));
+      let list = res?.results || [];
+      // Add the virtual Indomie aggregate codes (same as the navbar) when Indomie products exist
+      const hasIndomie = list.some((p) => p?.name?.toLowerCase().includes("indomie"));
+      if (hasIndomie) {
+        [
+          { code: "9999901", name: "INDOMIE PILLOW (All)" },
+          { code: "9999902", name: "INDOMIE CUP (All)" },
+        ].forEach((sp) => { if (!list.some((p) => p.code === sp.code)) list = [...list, sp]; });
+      }
       setProducts(list);
-      setSelectedProducts(list.map((p) => p.code));
+      // Default-select real products only — the virtual codes just expand to these
+      setSelectedProducts(list.filter((p) => !["9999901", "9999902"].includes(p.code)).map((p) => p.code));
     });
   }, []);
 
@@ -84,6 +127,8 @@ const SalesmanAchievement = () => {
       open: true, loading: true,
       title: `${row.salesman_name} — ${productName || "All Products"}`,
       subtitle: row.branch,
+      // single product → carry its code for the customer-analysis link; "All" → leave blank
+      productCode: productName ? (productNameToCode[productName] || "") : "",
       data: [], total: 0,
     });
 
@@ -125,7 +170,7 @@ const SalesmanAchievement = () => {
           dataIndex: `${slug(p)}_actual`,
           align:     "right",
           width:     90,
-          render:    (v, r) => v ? (
+          render:    (v, r) => (v && !r.isGrandTotal) ? (
             <b onClick={() => openBreakdown(r, p)} style={{ cursor: "pointer", color: "var(--color-accent)" }}>{fmtNum(v)}</b>
           ) : <b>{fmtNum(v)}</b>,
         },
@@ -145,13 +190,17 @@ const SalesmanAchievement = () => {
         title:     "#",
         width:     44,
         align:     "center",
-        render:    (_, __, i) => <span style={{ color: "#64748B", fontSize: 11 }}>{i + 1}</span>,
+        fixed:     "left",
+        render:    (_, r, i) => r.isGrandTotal ? "" : <span style={{ color: "#64748B", fontSize: 11 }}>{i + 1}</span>,
       },
       {
         title:     "Salesman",
         fixed:     "left",
         width:     200,
-        render:    (_, r) => (
+        ...nameSearchProps((r) => r.salesman_name),
+        render:    (_, r) => r.isGrandTotal ? (
+          <b>GRAND TOTAL</b>
+        ) : (
           <div>
             <div style={{ fontWeight: 600, fontSize: 12 }}>{r.salesman_name}</div>
             <div style={{ fontSize: 11, color: "#64748B" }}>{r.salesman_code}</div>
@@ -164,8 +213,8 @@ const SalesmanAchievement = () => {
         fixed:     "left",
         width:     110,
         filters:   [...new Set(reportData.results.map((r) => r.branch))].map((b) => ({ text: b, value: b })),
-        onFilter:  (v, r) => r.branch === v,
-        render:    (v) => <span style={{ fontSize: 12 }}>{v}</span>,
+        onFilter:  (v, r) => r.isGrandTotal || r.branch === v,
+        render:    (v, r) => r.isGrandTotal ? "" : <span style={{ fontSize: 12 }}>{v}</span>,
       },
       ...productCols,
       {
@@ -186,7 +235,7 @@ const SalesmanAchievement = () => {
             align:     "right",
             width:     100,
             sorter:    (a, b) => (a.total_actual || 0) - (b.total_actual || 0),
-            render:    (v, r) => v ? (
+            render:    (v, r) => (v && !r.isGrandTotal) ? (
               <b onClick={() => openBreakdown(r, null)} style={{ cursor: "pointer", color: "var(--color-accent)" }}>{fmtNum(v)}</b>
             ) : <b style={{ color: "var(--color-primary)" }}>{fmtNum(v)}</b>,
           },
@@ -203,6 +252,27 @@ const SalesmanAchievement = () => {
       },
     ];
   }, [reportData, openBreakdown]);
+
+  // Rows + appended GRAND TOTAL row (scrolls within the body, unlike a sticky summary)
+  const dataSource = useMemo(() => {
+    const { products: prods, results } = reportData;
+    if (!results?.length) return [];
+    const rows = results.map((r, i) => ({ ...r, key: i }));
+
+    const sum = (field) => results.reduce((acc, r) => acc + (r[field] || 0), 0);
+    const grand = { key: "grand-total", isGrandTotal: true };
+    prods.forEach((p) => {
+      const s = slug(p);
+      grand[`${s}_target`]   = sum(`${s}_target`);
+      grand[`${s}_actual`]   = sum(`${s}_actual`);
+      grand[`${s}_variance`] = sum(`${s}_variance`);
+    });
+    grand.total_target   = sum("total_target");
+    grand.total_actual   = sum("total_actual");
+    grand.total_variance = sum("total_variance");
+
+    return [...rows, grand];
+  }, [reportData]);
 
   const exportToExcel = async () => {
     const { products, results } = reportData;
@@ -460,37 +530,12 @@ const SalesmanAchievement = () => {
         <Table
           bordered
           size="small"
-          dataSource={reportData.results.map((r, i) => ({ ...r, key: i }))}
+          dataSource={dataSource}
           columns={columns}
           pagination={{ pageSize: 25, showSizeChanger: false, size: "small" }}
-          scroll={{ x: "max-content" }}
+          scroll={{ x: "max-content", y: "55vh" }}
           locale={{ emptyText: "Select a month with available targets to view the report" }}
-          summary={() => {
-            const { products: prods, results } = reportData;
-            if (!results.length) return null;
-            const sum = (field) => results.reduce((acc, r) => acc + (r[field] || 0), 0);
-            return (
-              <Table.Summary fixed>
-                <Table.Summary.Row style={{ background: "#FEF3C7", fontWeight: 700 }}>
-                  <Table.Summary.Cell index={0} />
-                  <Table.Summary.Cell index={1}><b>GRAND TOTAL</b></Table.Summary.Cell>
-                  <Table.Summary.Cell index={2} />
-                  {prods.flatMap((p, pi) => {
-                    const s = slug(p);
-                    const t = sum(`${s}_target`), a = sum(`${s}_actual`), v = a - t;
-                    return [
-                      <Table.Summary.Cell key={`${pi}t`} align="right"><b style={{ color: "#64748B" }}>{fmtNum(t)}</b></Table.Summary.Cell>,
-                      <Table.Summary.Cell key={`${pi}a`} align="right"><b>{fmtNum(a)}</b></Table.Summary.Cell>,
-                      <Table.Summary.Cell key={`${pi}v`} align="center"><VarCell v={Math.round(v)} /></Table.Summary.Cell>,
-                    ];
-                  })}
-                  <Table.Summary.Cell align="right"><b style={{ color: "#64748B" }}>{fmtNum(sum("total_target"))}</b></Table.Summary.Cell>
-                  <Table.Summary.Cell align="right"><b style={{ color: "var(--color-primary)" }}>{fmtNum(sum("total_actual"))}</b></Table.Summary.Cell>
-                  <Table.Summary.Cell align="center"><VarCell v={Math.round(sum("total_variance"))} /></Table.Summary.Cell>
-                </Table.Summary.Row>
-              </Table.Summary>
-            );
-          }}
+          rowClassName={(r) => (r.isGrandTotal ? "report-grand-total-row" : "")}
         />
       )}
 
@@ -539,9 +584,17 @@ const SalesmanAchievement = () => {
                 key: "customer_name",
                 ellipsis: true,
                 render: (v, r) => (
-                  <div>
-                    <div style={{ fontWeight: 500, fontSize: 12 }}>{v}</div>
-                    <div style={{ fontSize: 11, color: "var(--color-text-secondary)" }}>{r.customer_code}</div>
+                  <div
+                    className="report-clickable-name"
+                    onClick={() => openCustomerAnalysis({
+                      customerCode: r.customer_code,
+                      branchCode:   r.branch_code,
+                      channel:      r.channel,
+                      productCode:  breakdown.productCode,
+                    })}
+                  >
+                    <div style={{ fontSize: 12 }}>{v}</div>
+                    <div style={{ fontSize: 11, color: "var(--color-text-secondary)", fontWeight: 400 }}>{r.customer_code}</div>
                   </div>
                 ),
               },

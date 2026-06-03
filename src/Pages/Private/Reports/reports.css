@@ -1,0 +1,13 @@
+.report-grand-total-row td {
+  background: #FEF3C7 !important;
+  font-weight: 700 !important;
+}
+
+.report-clickable-name {
+  color: var(--color-accent);
+  cursor: pointer;
+  font-weight: 600;
+}
+.report-clickable-name:hover {
+  text-decoration: underline;
+}
