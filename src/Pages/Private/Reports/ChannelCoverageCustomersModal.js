@@ -23,10 +23,13 @@ const StatChip = ({ label, value, accent }) => (
  *  - selectedProductCode (string | null) — passed to drill links
  */
 const ChannelCoverageCustomersModal = ({ state, onClose, unitType, valueType, selectedProductCode }) => {
-  const { open, loading, data, branchName, channel, hasProductFilter, productName } = state;
+  const { open, loading, data, branchName, channel, hasProductFilter, productName, mode } = state;
+  const isRemaining = mode === "remaining";
 
   const unitLabel = (unitType || "ctn").toUpperCase();
   const valueLabel = (valueType || "net").toUpperCase();
+
+  const showYtd = hasProductFilter && !isRemaining;
 
   const columns = [
     {
@@ -73,7 +76,7 @@ const ChannelCoverageCustomersModal = ({ state, onClose, unitType, valueType, se
         </div>
       ) : <span style={{ color: "#CBD5E1" }}>-</span>,
     },
-    {
+    showYtd && {
       title: `YTD ${valueLabel} (${unitLabel})`,
       dataIndex: "ytd_value",
       align: "right",
@@ -82,12 +85,18 @@ const ChannelCoverageCustomersModal = ({ state, onClose, unitType, valueType, se
       sorter: (a, b) => (a.ytd_value || 0) - (b.ytd_value || 0),
       render: (v) => <b style={{ color: "var(--color-accent)" }}>{fmtNum(v)}</b>,
     },
-  ];
+  ].filter(Boolean);
+
+  const productLabel = isRemaining
+    ? `Without ${productName || "selected product"}`
+    : hasProductFilter
+    ? (productName || "Selected product")
+    : "All products";
 
   const scopeLabel = [
     branchName,
     channel || "All channels",
-    hasProductFilter ? (productName || "Selected product") : "All products",
+    productLabel,
   ].filter(Boolean).join(" · ");
 
   return (
@@ -98,7 +107,9 @@ const ChannelCoverageCustomersModal = ({ state, onClose, unitType, valueType, se
       width={900}
       title={
         <div>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>Coverage drill-down</div>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>
+            {isRemaining ? "Remaining customers" : "Coverage drill-down"}
+          </div>
           <div style={{ fontSize: 12, color: "#64748B", fontWeight: 400 }}>{scopeLabel}</div>
         </div>
       }
@@ -112,11 +123,13 @@ const ChannelCoverageCustomersModal = ({ state, onClose, unitType, valueType, se
         <>
           <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
             <StatChip label="Customers" value={fmtNum(data.customer_count)} />
-            <StatChip
-              label={`Total YTD ${valueLabel} (${unitLabel})`}
-              value={fmtNum(data.total_value)}
-              accent="#3B82F6"
-            />
+            {showYtd && (
+              <StatChip
+                label={`Total YTD ${valueLabel} (${unitLabel})`}
+                value={fmtNum(data.total_value)}
+                accent="#3B82F6"
+              />
+            )}
           </div>
           <Table
             size="small"

@@ -74,7 +74,7 @@ const ChannelCoverage = () => {
     return map;
   }, [branches]);
 
-  const openDrill = ({ row, channel, useProductFilter }) => {
+  const openDrill = ({ row, channel, useProductFilter, mode }) => {
     if (row.isGrandTotal) return;
     const branchCode = branchCodeByName[row.branch_name];
     if (!branchCode) return;
@@ -87,6 +87,7 @@ const ChannelCoverage = () => {
       channel: channel || null,
       hasProductFilter: useProductFilter && productCodes.length > 0,
       productName: selectedProduct?.name || null,
+      mode: mode || "all",
     });
     getChannelCoverageCustomers({
       month: selectedMonth,
@@ -95,6 +96,7 @@ const ChannelCoverage = () => {
       productCodes: drillProducts,
       unitType,
       valueType,
+      mode,
     }).then((res) => {
       if (res?.error) {
         message.error("Failed to load customers");
@@ -139,7 +141,7 @@ const ChannelCoverage = () => {
 
     const channelCols = channels.map((ch) => {
       const s = slug(ch);
-      const drillCell = ({ v, row, useProductFilter, accent, bold }) => {
+      const drillCell = ({ v, row, useProductFilter, mode, accent, bold }) => {
         if (!v || row.isGrandTotal) {
           const Tag = bold ? "b" : "span";
           return <Tag style={{ color: accent || "#1E293B" }}>{fmtNum(v)}</Tag>;
@@ -149,8 +151,8 @@ const ChannelCoverage = () => {
           <Tag
             className="report-clickable-name"
             style={{ color: accent || "#1E293B", display: "inline-block" }}
-            onClick={() => openDrill({ row, channel: ch, useProductFilter })}
-            title="Open coverage drill-down"
+            onClick={() => openDrill({ row, channel: ch, useProductFilter, mode })}
+            title={mode === "remaining" ? "Open remaining-customer list" : "Open coverage drill-down"}
           >
             {fmtNum(v)}
           </Tag>
@@ -173,6 +175,14 @@ const ChannelCoverage = () => {
               width: 90,
               sorter: pinGrandTotal((a, b) => (a[`${s}_selected`] || 0) - (b[`${s}_selected`] || 0)),
               render: (v, r) => drillCell({ v, row: r, useProductFilter: true, accent: "var(--color-accent)", bold: true }),
+            },
+            {
+              title: "Remaining",
+              dataIndex: `${s}_remaining`,
+              align: "right",
+              width: 95,
+              sorter: pinGrandTotal((a, b) => (a[`${s}_remaining`] || 0) - (b[`${s}_remaining`] || 0)),
+              render: (v, r) => drillCell({ v, row: r, useProductFilter: true, mode: "remaining", accent: "#B91C1C", bold: true }),
             },
             {
               title: "(%)",
@@ -201,7 +211,7 @@ const ChannelCoverage = () => {
       };
     });
 
-    const totalDrillCell = ({ v, row, useProductFilter, accent, bold }) => {
+    const totalDrillCell = ({ v, row, useProductFilter, mode, accent, bold }) => {
       if (!v || row.isGrandTotal) {
         const Tag = bold ? "b" : "span";
         return <Tag style={{ color: accent || "#1E293B" }}>{fmtNum(v)}</Tag>;
@@ -211,8 +221,8 @@ const ChannelCoverage = () => {
         <Tag
           className="report-clickable-name"
           style={{ color: accent || "#1E293B", display: "inline-block" }}
-          onClick={() => openDrill({ row, channel: null, useProductFilter })}
-          title="Open coverage drill-down (all channels)"
+          onClick={() => openDrill({ row, channel: null, useProductFilter, mode })}
+          title={mode === "remaining" ? "Open remaining-customer list (all channels)" : "Open coverage drill-down (all channels)"}
         >
           {fmtNum(v)}
         </Tag>
@@ -236,6 +246,14 @@ const ChannelCoverage = () => {
             width: 110,
             sorter: pinGrandTotal((a, b) => (a.total_selected || 0) - (b.total_selected || 0)),
             render: (v, r) => totalDrillCell({ v, row: r, useProductFilter: true, accent: "var(--color-primary)", bold: true }),
+          },
+          {
+            title: "Remaining",
+            dataIndex: "total_remaining",
+            align: "right",
+            width: 110,
+            sorter: pinGrandTotal((a, b) => (a.total_remaining || 0) - (b.total_remaining || 0)),
+            render: (v, r) => totalDrillCell({ v, row: r, useProductFilter: true, mode: "remaining", accent: "#B91C1C", bold: true }),
           },
           {
             title: "(%)",
@@ -302,10 +320,12 @@ const ChannelCoverage = () => {
       grand[`${s}_all`] = a;
       grand[`${s}_selected`] = sel;
       grand[`${s}_pct`] = pct(sel, a);
+      if (hasFilter) grand[`${s}_remaining`] = Math.max(0, a - sel);
     });
     grand.total_all = sum("total_all");
     grand.total_selected = sum("total_selected");
     grand.total_pct = pct(grand.total_selected, grand.total_all);
+    if (hasFilter) grand.total_remaining = Math.max(0, grand.total_all - grand.total_selected);
 
     return [...rows, grand];
   }, [reportData]);
@@ -338,7 +358,7 @@ const ChannelCoverage = () => {
 
     const numFmt = '_(* #,##0_);[Red]_(* (#,##0);_(* "-"_);_(@_)';
     const pctFmt = '0.0"%"';
-    const subHeaders = hasFilter ? ["All", "Selected", "(%)"] : ["Customers"];
+    const subHeaders = hasFilter ? ["All", "Selected", "Remaining", "(%)"] : ["Customers"];
     const stride = subHeaders.length;
 
     // Row 1: channel group headers
@@ -423,6 +443,7 @@ const ChannelCoverage = () => {
         if (hasFilter) {
           const a = row[`${s}_all`];
           const sel = row[`${s}_selected`];
+          const rem = row[`${s}_remaining`];
           const p = row[`${s}_pct`];
           dr.getCell(c).value = a || null;
           dr.getCell(c).style = {
@@ -440,13 +461,19 @@ const ChannelCoverage = () => {
             alignment: { horizontal: "right", vertical: "middle" },
             border: bdr,
           };
-          dr.getCell(c + 2).value = a ? p / 100 : null;
+          dr.getCell(c + 2).value = rem || null;
           dr.getCell(c + 2).style = {
+            numFmt,
+            font: { size: 10, bold: true, color: { argb: "FFB91C1C" } },
+            fill: { type: "pattern", pattern: "solid", fgColor: { argb: bg } },
+            alignment: { horizontal: "right", vertical: "middle" },
+            border: bdr,
+          };
+          dr.getCell(c + 3).value = a ? p : null;
+          dr.getCell(c + 3).style = {
             ...pctStyle(p, a),
             numFmt: a ? '0.0"%"' : '"-"',
           };
-          // ExcelJS percent format: use raw number p with custom 0.0"%" — set raw value
-          dr.getCell(c + 2).value = a ? p : null;
         } else {
           dr.getCell(c).value = row[`${s}_all`] || null;
           dr.getCell(c).style = {
@@ -463,6 +490,7 @@ const ChannelCoverage = () => {
       if (hasFilter) {
         const a = row.total_all;
         const sel = row.total_selected;
+        const rem = row.total_remaining;
         const p = row.total_pct;
         dr.getCell(c).value = a || null;
         dr.getCell(c).style = {
@@ -480,8 +508,16 @@ const ChannelCoverage = () => {
           alignment: { horizontal: "right", vertical: "middle" },
           border: bdr,
         };
-        dr.getCell(c + 2).value = a ? p : null;
-        dr.getCell(c + 2).style = pctStyle(p, a);
+        dr.getCell(c + 2).value = rem || null;
+        dr.getCell(c + 2).style = {
+          numFmt,
+          font: { size: 10, bold: true, color: { argb: "FFB91C1C" } },
+          fill: { type: "pattern", pattern: "solid", fgColor: { argb: bg } },
+          alignment: { horizontal: "right", vertical: "middle" },
+          border: bdr,
+        };
+        dr.getCell(c + 3).value = a ? p : null;
+        dr.getCell(c + 3).style = pctStyle(p, a);
       } else {
         dr.getCell(c).value = row.total_all || null;
         dr.getCell(c).style = {
@@ -520,14 +556,20 @@ const ChannelCoverage = () => {
       if (hasFilter) {
         const a = sumField(`${s}_all`);
         const sel = sumField(`${s}_selected`);
+        const rem = Math.max(0, a - sel);
         const p = pctOf(sel, a);
         const good = p >= 80;
         gtr.getCell(gc).value = a || null;
         gtr.getCell(gc).style = gtStyle({ numFmt, alignment: { horizontal: "right", vertical: "middle" } });
         gtr.getCell(gc + 1).value = sel || null;
         gtr.getCell(gc + 1).style = gtStyle({ numFmt, alignment: { horizontal: "right", vertical: "middle" } });
-        gtr.getCell(gc + 2).value = a ? p : null;
-        gtr.getCell(gc + 2).style = {
+        gtr.getCell(gc + 2).value = rem || null;
+        gtr.getCell(gc + 2).style = gtStyle({
+          numFmt, alignment: { horizontal: "right", vertical: "middle" },
+          font: { bold: true, size: 10, color: { argb: "FFB91C1C" } },
+        });
+        gtr.getCell(gc + 3).value = a ? p : null;
+        gtr.getCell(gc + 3).style = {
           numFmt: a ? pctFmt : '"-"',
           font: { bold: true, size: 10, color: { argb: a ? (good ? PCT_GOOD_TXT : PCT_BAD_TXT) : "FF64748B" } },
           fill: { type: "pattern", pattern: "solid", fgColor: { argb: a ? `FF${good ? PCT_GOOD : PCT_BAD}` : GT_BG } },
@@ -543,6 +585,7 @@ const ChannelCoverage = () => {
     if (hasFilter) {
       const a = sumField("total_all");
       const sel = sumField("total_selected");
+      const rem = Math.max(0, a - sel);
       const p = pctOf(sel, a);
       const good = p >= 80;
       gtr.getCell(gc).value = a || null;
@@ -555,8 +598,13 @@ const ChannelCoverage = () => {
         numFmt, alignment: { horizontal: "right", vertical: "middle" },
         font: { bold: true, size: 10, color: { argb: "FF002060" } },
       });
-      gtr.getCell(gc + 2).value = a ? p : null;
-      gtr.getCell(gc + 2).style = {
+      gtr.getCell(gc + 2).value = rem || null;
+      gtr.getCell(gc + 2).style = gtStyle({
+        numFmt, alignment: { horizontal: "right", vertical: "middle" },
+        font: { bold: true, size: 10, color: { argb: "FFB91C1C" } },
+      });
+      gtr.getCell(gc + 3).value = a ? p : null;
+      gtr.getCell(gc + 3).style = {
         numFmt: a ? pctFmt : '"-"',
         font: { bold: true, size: 10, color: { argb: a ? (good ? PCT_GOOD_TXT : PCT_BAD_TXT) : "FF64748B" } },
         fill: { type: "pattern", pattern: "solid", fgColor: { argb: a ? `FF${good ? PCT_GOOD : PCT_BAD}` : GT_BG } },

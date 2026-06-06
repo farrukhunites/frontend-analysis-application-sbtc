@@ -85,7 +85,7 @@ export const getChannelCustomerMonthBreakdown = ({
     .then((r) => r.data)
     .catch((err) => ({ error: err.response?.data || err.message }));
 
-export const getChannelCoverageCustomers = ({ month, branchCode, channel, productCodes, unitType, valueType }) =>
+export const getChannelCoverageCustomers = ({ month, branchCode, channel, productCodes, unitType, valueType, mode }) =>
   axios
     .get(`${process.env.REACT_APP_BACKEND_URL}reports/channel-coverage-customers/`, {
       headers: { Authorization: `Bearer ${getToken()}` },
@@ -96,6 +96,7 @@ export const getChannelCoverageCustomers = ({ month, branchCode, channel, produc
         unit_type:         unitType,
         value_type:        valueType,
         "product_codes[]": productCodes?.length ? productCodes : undefined,
+        mode:              mode || undefined,
       },
     })
     .then((r) => r.data)
