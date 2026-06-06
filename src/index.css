@@ -27,3 +27,11 @@ body {
 .ant-table-cell {
   padding: 5px !important;
 }
+
+/* Keep the column-header background unchanged when a column is sorted
+   (default Ant Design tints the sorted/hovered header). */
+.ant-table-thead > tr > th.ant-table-column-sort,
+.ant-table-thead > tr > th.ant-table-column-has-sorters:hover,
+.ant-table-thead > tr > th.ant-table-column-has-sorters.ant-table-column-sort:hover {
+  background: var(--color-primary) !important;
+}

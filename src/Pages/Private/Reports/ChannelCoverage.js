@@ -1,11 +1,23 @@
 import { useContext, useEffect, useMemo, useState } from "react";
-import { Table, Select, Skeleton, message, Button, Divider, Input, Space } from "antd";
+import {
+  Table,
+  Select,
+  Skeleton,
+  message,
+  Button,
+  Divider,
+  Input,
+  Space,
+} from "antd";
 import { DownloadOutlined, SearchOutlined } from "@ant-design/icons";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
 import { UnitValueContext } from "../../../Contexts/UnitValueContext";
 import { ProductContext } from "../../../Contexts/ProductContext";
 import { getAllBranches } from "../../../API/Branches";
-import { getChannelCoverage, getChannelCoverageCustomers } from "../../../API/Reports";
+import {
+  getChannelCoverage,
+  getChannelCoverageCustomers,
+} from "../../../API/Reports";
 import { pinGrandTotal } from "./reportUtils";
 import ChannelCoverageCustomersModal from "./ChannelCoverageCustomersModal";
 import "./reports.css";
@@ -13,40 +25,82 @@ import "./reports.css";
 const slug = (name) => name.replace(/\s+/g, "_").toLowerCase();
 
 const fmtNum = (v) =>
-  v === 0 || v == null ? "-" : Number(v).toLocaleString("en-US", { maximumFractionDigits: 0 });
+  v === 0 || v == null
+    ? "-"
+    : Number(v).toLocaleString("en-US", { maximumFractionDigits: 0 });
 
 const PctCell = ({ v, allCount }) => {
-  if (allCount == null || allCount === 0) return <span style={{ color: "#64748B" }}>-</span>;
+  if (allCount == null || allCount === 0)
+    return <span style={{ color: "#64748B" }}>-</span>;
   const good = v >= 80;
   const color = good ? "#15803D" : "#B91C1C";
   const bg = good ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.10)";
   return (
-    <span style={{ color, background: bg, padding: "2px 6px", borderRadius: 4, fontWeight: 600, fontSize: 12 }}>
+    <span
+      style={{
+        color,
+        background: bg,
+        padding: "2px 6px",
+        borderRadius: 4,
+        fontWeight: 600,
+        fontSize: 12,
+      }}
+    >
       {Number(v).toFixed(1)}%
     </span>
   );
 };
 
 const nameSearchProps = (getName) => ({
-  filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+  filterDropdown: ({
+    setSelectedKeys,
+    selectedKeys,
+    confirm,
+    clearFilters,
+  }) => (
     <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()}>
       <Input
         autoFocus
         placeholder="Search branch"
         value={selectedKeys[0]}
-        onChange={(e) => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+        onChange={(e) =>
+          setSelectedKeys(e.target.value ? [e.target.value] : [])
+        }
         onPressEnter={() => confirm()}
         style={{ marginBottom: 8, display: "block", width: 200 }}
       />
       <Space>
-        <Button type="primary" size="small" icon={<SearchOutlined />} onClick={() => confirm()}>Search</Button>
-        <Button size="small" onClick={() => { clearFilters && clearFilters(); confirm(); }}>Reset</Button>
+        <Button
+          type="primary"
+          size="small"
+          icon={<SearchOutlined />}
+          onClick={() => confirm()}
+        >
+          Search
+        </Button>
+        <Button
+          size="small"
+          onClick={() => {
+            clearFilters && clearFilters();
+            confirm();
+          }}
+        >
+          Reset
+        </Button>
       </Space>
     </div>
   ),
-  filterIcon: (filtered) => <SearchOutlined style={{ color: filtered ? "var(--color-accent)" : undefined }} />,
+  filterIcon: (filtered) => (
+    <SearchOutlined
+      style={{ color: filtered ? "var(--color-accent)" : undefined }}
+    />
+  ),
   onFilter: (value, record) =>
-    record.isGrandTotal || (getName(record) || "").toString().toLowerCase().includes(value.toLowerCase()),
+    record.isGrandTotal ||
+    (getName(record) || "")
+      .toString()
+      .toLowerCase()
+      .includes(value.toLowerCase()),
 });
 
 const ChannelCoverage = () => {
@@ -56,21 +110,34 @@ const ChannelCoverage = () => {
 
   const navbarProductCode = selectedProduct?.code;
   const productCodes = useMemo(
-    () => (navbarProductCode && navbarProductCode !== "all" ? [navbarProductCode] : []),
+    () =>
+      navbarProductCode && navbarProductCode !== "all"
+        ? [navbarProductCode]
+        : [],
     [navbarProductCode],
   );
 
   const [branches, setBranches] = useState([]);
   const [selectedBranches, setSelectedBranches] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [reportData, setReportData] = useState({ channels: [], results: [], has_product_filter: false });
-  const [drillState, setDrillState] = useState({ open: false, loading: false, data: null });
+  const [reportData, setReportData] = useState({
+    channels: [],
+    results: [],
+    has_product_filter: false,
+  });
+  const [drillState, setDrillState] = useState({
+    open: false,
+    loading: false,
+    data: null,
+  });
 
   // branch name shown in the table is short (e.g. "DUBAI") but the API needs
   // the branch code — derive the code from the full branch_name on the row.
   const branchCodeByName = useMemo(() => {
     const map = {};
-    branches.forEach((b) => { map[b.name] = b.code; });
+    branches.forEach((b) => {
+      map[b.name] = b.code;
+    });
     return map;
   }, [branches]);
 
@@ -107,7 +174,8 @@ const ChannelCoverage = () => {
     });
   };
 
-  const closeDrill = () => setDrillState({ open: false, loading: false, data: null });
+  const closeDrill = () =>
+    setDrillState({ open: false, loading: false, data: null });
 
   useEffect(() => {
     getAllBranches().then((res) => {
@@ -151,8 +219,14 @@ const ChannelCoverage = () => {
           <Tag
             className="report-clickable-name"
             style={{ color: accent || "#1E293B", display: "inline-block" }}
-            onClick={() => openDrill({ row, channel: ch, useProductFilter, mode })}
-            title={mode === "remaining" ? "Open remaining-customer list" : "Open coverage drill-down"}
+            onClick={() =>
+              openDrill({ row, channel: ch, useProductFilter, mode })
+            }
+            title={
+              mode === "remaining"
+                ? "Open remaining-customer list"
+                : "Open coverage drill-down"
+            }
           >
             {fmtNum(v)}
           </Tag>
@@ -162,34 +236,62 @@ const ChannelCoverage = () => {
       const children = hasFilter
         ? [
             {
-              title: "All",
+              title: "All SBTC",
               dataIndex: `${s}_all`,
               align: "right",
               width: 80,
-              render: (v, r) => drillCell({ v, row: r, useProductFilter: false, accent: "#64748B" }),
+              render: (v, r) =>
+                drillCell({
+                  v,
+                  row: r,
+                  useProductFilter: false,
+                  accent: "#64748B",
+                }),
             },
             {
               title: "Selected",
               dataIndex: `${s}_selected`,
               align: "right",
               width: 90,
-              sorter: pinGrandTotal((a, b) => (a[`${s}_selected`] || 0) - (b[`${s}_selected`] || 0)),
-              render: (v, r) => drillCell({ v, row: r, useProductFilter: true, accent: "var(--color-accent)", bold: true }),
+              sorter: pinGrandTotal(
+                (a, b) => (a[`${s}_selected`] || 0) - (b[`${s}_selected`] || 0),
+              ),
+              render: (v, r) =>
+                drillCell({
+                  v,
+                  row: r,
+                  useProductFilter: true,
+                  accent: "var(--color-accent)",
+                  bold: true,
+                }),
             },
             {
               title: "Remaining",
               dataIndex: `${s}_remaining`,
               align: "right",
               width: 95,
-              sorter: pinGrandTotal((a, b) => (a[`${s}_remaining`] || 0) - (b[`${s}_remaining`] || 0)),
-              render: (v, r) => drillCell({ v, row: r, useProductFilter: true, mode: "remaining", accent: "#B91C1C", bold: true }),
+              sorter: pinGrandTotal(
+                (a, b) =>
+                  (a[`${s}_remaining`] || 0) - (b[`${s}_remaining`] || 0),
+              ),
+              render: (v, r) =>
+                drillCell({
+                  v,
+                  row: r,
+                  useProductFilter: true,
+                  mode: "remaining",
+                  accent: "#B91C1C",
+                  bold: true,
+                }),
             },
             {
               title: "(%)",
               dataIndex: `${s}_pct`,
               align: "center",
               width: 80,
-              sorter: pinGrandTotal((a, b) => (a[`${s}_pct`] || 0) - (b[`${s}_pct`] || 0)),
+              sorter: pinGrandTotal(
+                (a, b) => (a[`${s}_pct`] || 0) - (b[`${s}_pct`] || 0),
+              ),
               render: (v, r) => <PctCell v={v} allCount={r[`${s}_all`]} />,
             },
           ]
@@ -199,8 +301,17 @@ const ChannelCoverage = () => {
               dataIndex: `${s}_all`,
               align: "right",
               width: 100,
-              sorter: pinGrandTotal((a, b) => (a[`${s}_all`] || 0) - (b[`${s}_all`] || 0)),
-              render: (v, r) => drillCell({ v, row: r, useProductFilter: false, accent: "var(--color-accent)", bold: true }),
+              sorter: pinGrandTotal(
+                (a, b) => (a[`${s}_all`] || 0) - (b[`${s}_all`] || 0),
+              ),
+              render: (v, r) =>
+                drillCell({
+                  v,
+                  row: r,
+                  useProductFilter: false,
+                  accent: "var(--color-accent)",
+                  bold: true,
+                }),
             },
           ];
 
@@ -211,7 +322,14 @@ const ChannelCoverage = () => {
       };
     });
 
-    const totalDrillCell = ({ v, row, useProductFilter, mode, accent, bold }) => {
+    const totalDrillCell = ({
+      v,
+      row,
+      useProductFilter,
+      mode,
+      accent,
+      bold,
+    }) => {
       if (!v || row.isGrandTotal) {
         const Tag = bold ? "b" : "span";
         return <Tag style={{ color: accent || "#1E293B" }}>{fmtNum(v)}</Tag>;
@@ -221,8 +339,14 @@ const ChannelCoverage = () => {
         <Tag
           className="report-clickable-name"
           style={{ color: accent || "#1E293B", display: "inline-block" }}
-          onClick={() => openDrill({ row, channel: null, useProductFilter, mode })}
-          title={mode === "remaining" ? "Open remaining-customer list (all channels)" : "Open coverage drill-down (all channels)"}
+          onClick={() =>
+            openDrill({ row, channel: null, useProductFilter, mode })
+          }
+          title={
+            mode === "remaining"
+              ? "Open remaining-customer list (all channels)"
+              : "Open coverage drill-down (all channels)"
+          }
         >
           {fmtNum(v)}
         </Tag>
@@ -236,24 +360,51 @@ const ChannelCoverage = () => {
             dataIndex: "total_all",
             align: "right",
             width: 100,
-            sorter: pinGrandTotal((a, b) => (a.total_all || 0) - (b.total_all || 0)),
-            render: (v, r) => totalDrillCell({ v, row: r, useProductFilter: false, accent: "#64748B" }),
+            sorter: pinGrandTotal(
+              (a, b) => (a.total_all || 0) - (b.total_all || 0),
+            ),
+            render: (v, r) =>
+              totalDrillCell({
+                v,
+                row: r,
+                useProductFilter: false,
+                accent: "#64748B",
+              }),
           },
           {
             title: "Selected",
             dataIndex: "total_selected",
             align: "right",
             width: 110,
-            sorter: pinGrandTotal((a, b) => (a.total_selected || 0) - (b.total_selected || 0)),
-            render: (v, r) => totalDrillCell({ v, row: r, useProductFilter: true, accent: "var(--color-primary)", bold: true }),
+            sorter: pinGrandTotal(
+              (a, b) => (a.total_selected || 0) - (b.total_selected || 0),
+            ),
+            render: (v, r) =>
+              totalDrillCell({
+                v,
+                row: r,
+                useProductFilter: true,
+                accent: "var(--color-primary)",
+                bold: true,
+              }),
           },
           {
             title: "Remaining",
             dataIndex: "total_remaining",
             align: "right",
             width: 110,
-            sorter: pinGrandTotal((a, b) => (a.total_remaining || 0) - (b.total_remaining || 0)),
-            render: (v, r) => totalDrillCell({ v, row: r, useProductFilter: true, mode: "remaining", accent: "#B91C1C", bold: true }),
+            sorter: pinGrandTotal(
+              (a, b) => (a.total_remaining || 0) - (b.total_remaining || 0),
+            ),
+            render: (v, r) =>
+              totalDrillCell({
+                v,
+                row: r,
+                useProductFilter: true,
+                mode: "remaining",
+                accent: "#B91C1C",
+                bold: true,
+              }),
           },
           {
             title: "(%)",
@@ -261,7 +412,9 @@ const ChannelCoverage = () => {
             align: "center",
             width: 100,
             defaultSortOrder: "ascend",
-            sorter: pinGrandTotal((a, b) => (a.total_pct || 0) - (b.total_pct || 0)),
+            sorter: pinGrandTotal(
+              (a, b) => (a.total_pct || 0) - (b.total_pct || 0),
+            ),
             render: (v, r) => <PctCell v={v} allCount={r.total_all} />,
           },
         ]
@@ -272,8 +425,17 @@ const ChannelCoverage = () => {
             align: "right",
             width: 110,
             defaultSortOrder: "descend",
-            sorter: pinGrandTotal((a, b) => (a.total_all || 0) - (b.total_all || 0)),
-            render: (v, r) => totalDrillCell({ v, row: r, useProductFilter: false, accent: "var(--color-primary)", bold: true }),
+            sorter: pinGrandTotal(
+              (a, b) => (a.total_all || 0) - (b.total_all || 0),
+            ),
+            render: (v, r) =>
+              totalDrillCell({
+                v,
+                row: r,
+                useProductFilter: false,
+                accent: "var(--color-primary)",
+                bold: true,
+              }),
           },
         ];
 
@@ -283,18 +445,24 @@ const ChannelCoverage = () => {
         width: 44,
         align: "center",
         fixed: "left",
-        render: (_, r, i) => r.isGrandTotal ? "" : <span style={{ color: "#64748B", fontSize: 11 }}>{i + 1}</span>,
+        render: (_, r, i) =>
+          r.isGrandTotal ? (
+            ""
+          ) : (
+            <span style={{ color: "#64748B", fontSize: 11 }}>{i + 1}</span>
+          ),
       },
       {
         title: "Branch",
         fixed: "left",
         width: 160,
         ...nameSearchProps((r) => r.branch),
-        render: (_, r) => r.isGrandTotal ? (
-          <b>GRAND TOTAL</b>
-        ) : (
-          <span style={{ fontWeight: 600, fontSize: 12 }}>{r.branch}</span>
-        ),
+        render: (_, r) =>
+          r.isGrandTotal ? (
+            <b>GRAND TOTAL</b>
+          ) : (
+            <span style={{ fontWeight: 600, fontSize: 12 }}>{r.branch}</span>
+          ),
       },
       ...channelCols,
       {
@@ -303,7 +471,16 @@ const ChannelCoverage = () => {
         children: totalChildren,
       },
     ];
-  }, [reportData, hasFilter, branchCodeByName, productCodes, selectedMonth, unitType, valueType, selectedProduct]);
+  }, [
+    reportData,
+    hasFilter,
+    branchCodeByName,
+    productCodes,
+    selectedMonth,
+    unitType,
+    valueType,
+    selectedProduct,
+  ]);
 
   const dataSource = useMemo(() => {
     const { channels, results } = reportData;
@@ -325,14 +502,21 @@ const ChannelCoverage = () => {
     grand.total_all = sum("total_all");
     grand.total_selected = sum("total_selected");
     grand.total_pct = pct(grand.total_selected, grand.total_all);
-    if (hasFilter) grand.total_remaining = Math.max(0, grand.total_all - grand.total_selected);
+    if (hasFilter)
+      grand.total_remaining = Math.max(
+        0,
+        grand.total_all - grand.total_selected,
+      );
 
     return [...rows, grand];
   }, [reportData]);
 
   const exportToExcel = async () => {
     const { channels, results } = reportData;
-    if (!results.length) { message.warning("No data to export"); return; }
+    if (!results.length) {
+      message.warning("No data to export");
+      return;
+    }
 
     const ExcelJS = (await import("exceljs")).default;
     const wb = new ExcelJS.Workbook();
@@ -341,10 +525,14 @@ const ChannelCoverage = () => {
       views: [{ state: "frozen", xSplit: 2, ySplit: 2 }],
     });
 
-    const NAV = "002060";  const NAV2 = "1E3A5F";
-    const LGRAY = "F1F5F9"; const AGOLD = "FEF3C7";
-    const PCT_GOOD = "D1FAE5"; const PCT_BAD = "FEE2E2";
-    const PCT_GOOD_TXT = "FF15803D"; const PCT_BAD_TXT = "FFB91C1C";
+    const NAV = "002060";
+    const NAV2 = "1E3A5F";
+    const LGRAY = "F1F5F9";
+    const AGOLD = "FEF3C7";
+    const PCT_GOOD = "D1FAE5";
+    const PCT_BAD = "FEE2E2";
+    const PCT_GOOD_TXT = "FF15803D";
+    const PCT_BAD_TXT = "FFB91C1C";
     const WHITE = "FFFFFFFF";
     const thin = (a = "FFE2E8F0") => ({ style: "thin", color: { argb: a } });
     const bdr = { top: thin(), bottom: thin(), left: thin(), right: thin() };
@@ -358,15 +546,20 @@ const ChannelCoverage = () => {
 
     const numFmt = '_(* #,##0_);[Red]_(* (#,##0);_(* "-"_);_(@_)';
     const pctFmt = '0.0"%"';
-    const subHeaders = hasFilter ? ["All", "Selected", "Remaining", "(%)"] : ["Customers"];
+    const subHeaders = hasFilter
+      ? ["All", "Selected", "Remaining", "(%)"]
+      : ["Customers"];
     const stride = subHeaders.length;
 
     // Row 1: channel group headers
-    const r1 = ws.getRow(1); r1.height = 22;
+    const r1 = ws.getRow(1);
+    r1.height = 22;
     ws.mergeCells(1, 1, 2, 1);
     ws.mergeCells(1, 2, 2, 2);
-    r1.getCell(1).value = "#";  r1.getCell(1).style = hdr(NAV);
-    r1.getCell(2).value = "Branch"; r1.getCell(2).style = hdr(NAV);
+    r1.getCell(1).value = "#";
+    r1.getCell(1).style = hdr(NAV);
+    r1.getCell(2).value = "Branch";
+    r1.getCell(2).style = hdr(NAV);
 
     let col = 3;
     channels.forEach((ch) => {
@@ -380,7 +573,8 @@ const ChannelCoverage = () => {
     if (stride > 1) ws.mergeCells(1, col, 1, col + stride - 1);
 
     // Row 2: sub-headers
-    const r2 = ws.getRow(2); r2.height = 18;
+    const r2 = ws.getRow(2);
+    r2.height = 18;
     col = 3;
     channels.forEach(() => {
       subHeaders.forEach((lbl, i) => {
@@ -401,7 +595,8 @@ const ChannelCoverage = () => {
     }
 
     results.forEach((row, idx) => {
-      const dr = ws.addRow({}); dr.height = 17;
+      const dr = ws.addRow({});
+      dr.height = 17;
       const isEven = idx % 2 === 0;
       const bg = isEven ? WHITE : `FF${LGRAY}`;
 
@@ -413,7 +608,10 @@ const ChannelCoverage = () => {
       });
 
       dr.getCell(1).value = idx + 1;
-      dr.getCell(1).style = cellStyle({ alignment: { horizontal: "center", vertical: "middle" }, numFmt });
+      dr.getCell(1).style = cellStyle({
+        alignment: { horizontal: "center", vertical: "middle" },
+        numFmt,
+      });
       dr.getCell(2).value = row.branch;
       dr.getCell(2).style = cellStyle({ font: { size: 10, bold: true } });
 
@@ -430,8 +628,16 @@ const ChannelCoverage = () => {
         const good = val >= 80;
         return {
           numFmt: pctFmt,
-          font: { size: 10, bold: true, color: { argb: good ? PCT_GOOD_TXT : PCT_BAD_TXT } },
-          fill: { type: "pattern", pattern: "solid", fgColor: { argb: `FF${good ? PCT_GOOD : PCT_BAD}` } },
+          font: {
+            size: 10,
+            bold: true,
+            color: { argb: good ? PCT_GOOD_TXT : PCT_BAD_TXT },
+          },
+          fill: {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: `FF${good ? PCT_GOOD : PCT_BAD}` },
+          },
           alignment: { horizontal: "center", vertical: "middle" },
           border: bdr,
         };
@@ -533,7 +739,8 @@ const ChannelCoverage = () => {
     // Grand total row
     const sumField = (f) => results.reduce((acc, r) => acc + (r[f] || 0), 0);
     const GT_BG = `FF${AGOLD}`;
-    const gtr = ws.addRow({}); gtr.height = 18;
+    const gtr = ws.addRow({});
+    gtr.height = 18;
 
     const gtStyle = (extra = {}) => ({
       fill: { type: "pattern", pattern: "solid", fgColor: { argb: GT_BG } },
@@ -560,25 +767,45 @@ const ChannelCoverage = () => {
         const p = pctOf(sel, a);
         const good = p >= 80;
         gtr.getCell(gc).value = a || null;
-        gtr.getCell(gc).style = gtStyle({ numFmt, alignment: { horizontal: "right", vertical: "middle" } });
+        gtr.getCell(gc).style = gtStyle({
+          numFmt,
+          alignment: { horizontal: "right", vertical: "middle" },
+        });
         gtr.getCell(gc + 1).value = sel || null;
-        gtr.getCell(gc + 1).style = gtStyle({ numFmt, alignment: { horizontal: "right", vertical: "middle" } });
+        gtr.getCell(gc + 1).style = gtStyle({
+          numFmt,
+          alignment: { horizontal: "right", vertical: "middle" },
+        });
         gtr.getCell(gc + 2).value = rem || null;
         gtr.getCell(gc + 2).style = gtStyle({
-          numFmt, alignment: { horizontal: "right", vertical: "middle" },
+          numFmt,
+          alignment: { horizontal: "right", vertical: "middle" },
           font: { bold: true, size: 10, color: { argb: "FFB91C1C" } },
         });
         gtr.getCell(gc + 3).value = a ? p : null;
         gtr.getCell(gc + 3).style = {
           numFmt: a ? pctFmt : '"-"',
-          font: { bold: true, size: 10, color: { argb: a ? (good ? PCT_GOOD_TXT : PCT_BAD_TXT) : "FF64748B" } },
-          fill: { type: "pattern", pattern: "solid", fgColor: { argb: a ? `FF${good ? PCT_GOOD : PCT_BAD}` : GT_BG } },
+          font: {
+            bold: true,
+            size: 10,
+            color: {
+              argb: a ? (good ? PCT_GOOD_TXT : PCT_BAD_TXT) : "FF64748B",
+            },
+          },
+          fill: {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: a ? `FF${good ? PCT_GOOD : PCT_BAD}` : GT_BG },
+          },
           alignment: { horizontal: "center", vertical: "middle" },
           border: bdr,
         };
       } else {
         gtr.getCell(gc).value = sumField(`${s}_all`) || null;
-        gtr.getCell(gc).style = gtStyle({ numFmt, alignment: { horizontal: "right", vertical: "middle" } });
+        gtr.getCell(gc).style = gtStyle({
+          numFmt,
+          alignment: { horizontal: "right", vertical: "middle" },
+        });
       }
       gc += stride;
     });
@@ -590,37 +817,51 @@ const ChannelCoverage = () => {
       const good = p >= 80;
       gtr.getCell(gc).value = a || null;
       gtr.getCell(gc).style = gtStyle({
-        numFmt, alignment: { horizontal: "right", vertical: "middle" },
+        numFmt,
+        alignment: { horizontal: "right", vertical: "middle" },
         font: { bold: true, size: 10, color: { argb: "FF002060" } },
       });
       gtr.getCell(gc + 1).value = sel || null;
       gtr.getCell(gc + 1).style = gtStyle({
-        numFmt, alignment: { horizontal: "right", vertical: "middle" },
+        numFmt,
+        alignment: { horizontal: "right", vertical: "middle" },
         font: { bold: true, size: 10, color: { argb: "FF002060" } },
       });
       gtr.getCell(gc + 2).value = rem || null;
       gtr.getCell(gc + 2).style = gtStyle({
-        numFmt, alignment: { horizontal: "right", vertical: "middle" },
+        numFmt,
+        alignment: { horizontal: "right", vertical: "middle" },
         font: { bold: true, size: 10, color: { argb: "FFB91C1C" } },
       });
       gtr.getCell(gc + 3).value = a ? p : null;
       gtr.getCell(gc + 3).style = {
         numFmt: a ? pctFmt : '"-"',
-        font: { bold: true, size: 10, color: { argb: a ? (good ? PCT_GOOD_TXT : PCT_BAD_TXT) : "FF64748B" } },
-        fill: { type: "pattern", pattern: "solid", fgColor: { argb: a ? `FF${good ? PCT_GOOD : PCT_BAD}` : GT_BG } },
+        font: {
+          bold: true,
+          size: 10,
+          color: { argb: a ? (good ? PCT_GOOD_TXT : PCT_BAD_TXT) : "FF64748B" },
+        },
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: a ? `FF${good ? PCT_GOOD : PCT_BAD}` : GT_BG },
+        },
         alignment: { horizontal: "center", vertical: "middle" },
         border: bdr,
       };
     } else {
       gtr.getCell(gc).value = sumField("total_all") || null;
       gtr.getCell(gc).style = gtStyle({
-        numFmt, alignment: { horizontal: "right", vertical: "middle" },
+        numFmt,
+        alignment: { horizontal: "right", vertical: "middle" },
         font: { bold: true, size: 10, color: { argb: "FF002060" } },
       });
     }
 
     const buf = await wb.xlsx.writeBuffer();
-    const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const blob = new Blob([buf], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -631,8 +872,25 @@ const ChannelCoverage = () => {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-        <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500, whiteSpace: "nowrap" }}>Branch:</span>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          marginBottom: 16,
+          flexWrap: "wrap",
+        }}
+      >
+        <span
+          style={{
+            color: "#64748B",
+            fontSize: 13,
+            fontWeight: 500,
+            whiteSpace: "nowrap",
+          }}
+        >
+          Branch:
+        </span>
         <Select
           mode="multiple"
           showSearch
@@ -646,9 +904,25 @@ const ChannelCoverage = () => {
           dropdownRender={(menu) => (
             <>
               <div style={{ padding: "4px 8px", display: "flex", gap: 8 }}>
-                <Button size="small" type="link" style={{ padding: 0 }} onClick={() => setSelectedBranches(branches.map((b) => b.code))}>Select All</Button>
+                <Button
+                  size="small"
+                  type="link"
+                  style={{ padding: 0 }}
+                  onClick={() =>
+                    setSelectedBranches(branches.map((b) => b.code))
+                  }
+                >
+                  Select All
+                </Button>
                 <Divider type="vertical" />
-                <Button size="small" type="link" style={{ padding: 0 }} onClick={() => setSelectedBranches([])}>Unselect All</Button>
+                <Button
+                  size="small"
+                  type="link"
+                  style={{ padding: 0 }}
+                  onClick={() => setSelectedBranches([])}
+                >
+                  Unselect All
+                </Button>
               </div>
               <Divider style={{ margin: "4px 0" }} />
               {menu}
@@ -676,7 +950,9 @@ const ChannelCoverage = () => {
           columns={columns}
           pagination={{ pageSize: 25, showSizeChanger: false, size: "small" }}
           scroll={{ x: "max-content", y: "55vh" }}
-          locale={{ emptyText: "Select a month and branches to view the report" }}
+          locale={{
+            emptyText: "Select a month and branches to view the report",
+          }}
           rowClassName={(r) => (r.isGrandTotal ? "report-grand-total-row" : "")}
         />
       )}
