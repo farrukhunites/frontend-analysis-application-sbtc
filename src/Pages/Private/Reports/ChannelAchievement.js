@@ -45,6 +45,7 @@ const ChannelAchievement = () => {
 
   const [branches, setBranches]         = useState([]);
   const [branchCode, setBranchCode]     = useState("ALL");
+  const [lookbackMonths, setLookbackMonths] = useState(12);
   const [loading, setLoading]           = useState(false);
   const [data, setData]                 = useState(null);
 
@@ -75,12 +76,13 @@ const ChannelAchievement = () => {
       month: selectedMonth,
       unitType,
       valueType,
+      lookbackMonths,
     }).then((res) => {
       if (res?.error) { message.error("Failed to load report"); setData(null); }
       else setData(res);
       setLoading(false);
     });
-  }, [selectedProduct, branchCode, selectedMonth, unitType, valueType]);
+  }, [selectedProduct, branchCode, selectedMonth, unitType, valueType, lookbackMonths]);
 
   // ── Drill-down handlers ─────────────────────────────────────────────────
   const openCustomerBreakdown = ({ row, monthNum }) => {
@@ -212,10 +214,17 @@ const ChannelAchievement = () => {
         onHeaderCell: () => ({ style: { background: "#243f6a" } }),
       },
       {
-        title: "Contrib %",
+        title: (
+          <span>
+            Contrib %
+            <span style={{ fontSize: 9, marginLeft: 4, color: "#94A3B8", fontStyle: "italic" }}>
+              ({data.lookback_months || 12}mo)
+            </span>
+          </span>
+        ),
         dataIndex: "contribution",
         align: "right",
-        width: 90,
+        width: 100,
         sorter: pinGrandTotal((a, b) => (a.contribution || 0) - (b.contribution || 0)),
         render: (v) => <span style={{ color: "#64748B", fontSize: 12 }}>{fmtPct(v)}</span>,
       },
@@ -435,6 +444,21 @@ const ChannelAchievement = () => {
           options={[
             { value: "ALL", label: "All Kingdom" },
             ...branches.map((b) => ({ value: b.code, label: b.name })),
+          ]}
+        />
+
+        <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500, marginLeft: 8 }}>
+          Contrib. lookback:
+        </span>
+        <Select
+          style={{ width: 130 }}
+          value={lookbackMonths}
+          onChange={setLookbackMonths}
+          options={[
+            { value: 3,  label: "Last 3 months"  },
+            { value: 6,  label: "Last 6 months"  },
+            { value: 9,  label: "Last 9 months"  },
+            { value: 12, label: "Last 12 months" },
           ]}
         />
 

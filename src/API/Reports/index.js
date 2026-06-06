@@ -52,16 +52,17 @@ export const getCustomerInvoiceBreakdown = ({
     .then((r) => r.data)
     .catch((err) => ({ error: err.response?.data || err.message }));
 
-export const getChannelAchievement = ({ productCodes, branchCode, month, unitType, valueType }) =>
+export const getChannelAchievement = ({ productCodes, branchCode, month, unitType, valueType, lookbackMonths }) =>
   axios
     .get(`${process.env.REACT_APP_BACKEND_URL}reports/channel-achievement/`, {
       headers: { Authorization: `Bearer ${getToken()}` },
       params: {
-        product_codes: productCodes,
-        branch_code:   branchCode,
+        product_codes:   productCodes,
+        branch_code:     branchCode,
         month,
-        unit_type:     unitType,
-        value_type:    valueType,
+        unit_type:       unitType,
+        value_type:      valueType,
+        lookback_months: lookbackMonths,
       },
     })
     .then((r) => r.data)
