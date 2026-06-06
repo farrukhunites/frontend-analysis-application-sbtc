@@ -13,6 +13,7 @@ import {
   getCustomerInvoiceBreakdown,
 } from "../../../API/Reports";
 import InvoiceBreakdownModal from "./InvoiceBreakdownModal";
+import { pinGrandTotal } from "./reportUtils";
 import "./reports.css";
 
 const MONTHS = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -206,7 +207,7 @@ const ChannelAchievement = () => {
         dataIndex: "month_target",
         align: "right",
         width: 110,
-        sorter: (a, b) => (a.month_target || 0) - (b.month_target || 0),
+        sorter: pinGrandTotal((a, b) => (a.month_target || 0) - (b.month_target || 0)),
         render: (v) => <span style={{ color: "#64748B" }}>{fmtNum(v)}</span>,
         onHeaderCell: () => ({ style: { background: "#243f6a" } }),
       },
@@ -215,7 +216,7 @@ const ChannelAchievement = () => {
         dataIndex: "contribution",
         align: "right",
         width: 90,
-        sorter: (a, b) => (a.contribution || 0) - (b.contribution || 0),
+        sorter: pinGrandTotal((a, b) => (a.contribution || 0) - (b.contribution || 0)),
         render: (v) => <span style={{ color: "#64748B", fontSize: 12 }}>{fmtPct(v)}</span>,
       },
       {
@@ -224,7 +225,7 @@ const ChannelAchievement = () => {
         align: "right",
         width: 110,
         defaultSortOrder: "descend",
-        sorter: (a, b) => (a.mtd_sales || 0) - (b.mtd_sales || 0),
+        sorter: pinGrandTotal((a, b) => (a.mtd_sales || 0) - (b.mtd_sales || 0)),
         render: (v, r) => {
           if (v == null || v === 0 || r.isTotal) {
             return <b style={{ color: "var(--color-primary)" }}>{fmtNum(v)}</b>;
@@ -247,7 +248,7 @@ const ChannelAchievement = () => {
         dataIndex: "achievement_pct",
         align: "right",
         width: 90,
-        sorter: (a, b) => (a.achievement_pct || 0) - (b.achievement_pct || 0),
+        sorter: pinGrandTotal((a, b) => (a.achievement_pct || 0) - (b.achievement_pct || 0)),
         render: (v) => (
           <b style={{ color: pctColor(v) }}>{fmtPct(v)}</b>
         ),
@@ -266,7 +267,7 @@ const ChannelAchievement = () => {
         dataIndex: "daily_ach_pct",
         align: "right",
         width: 130,
-        sorter: (a, b) => (a.daily_ach_pct || 0) - (b.daily_ach_pct || 0),
+        sorter: pinGrandTotal((a, b) => (a.daily_ach_pct || 0) - (b.daily_ach_pct || 0)),
         render: (v) => (
           <b style={{
             color: pctColor(v),

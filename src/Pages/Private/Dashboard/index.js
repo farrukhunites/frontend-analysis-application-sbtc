@@ -51,6 +51,7 @@ const Dashboard = () => {
   const [dailySalesLabels, setDailySalesLabels] = useState([]);
 
   const [customerByChannelData, setCustomerByChannelData] = useState({});
+  const [customerByChannelDataAll, setCustomerByChannelDataAll] = useState(null);
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -116,41 +117,36 @@ const Dashboard = () => {
 
   // --- Customer By Channel Data Processor Effect ---
   useEffect(() => {
-    if (dashboardData.customer_count_channel_branch_wise?.data) {
-      const { data: rawData, channels: allChannels } =
-        dashboardData.customer_count_channel_branch_wise;
-
-      const processedData = {};
-      const allTotals = allChannels.reduce((acc, channel) => {
-        acc[channel] = 0;
-        return acc;
-      }, {});
-
+    const pivot = (rawData, allChannels) => {
+      const processed = {};
+      const totals = allChannels.reduce((acc, c) => ({ ...acc, [c]: 0 }), {});
       rawData.forEach((item) => {
-        const branchName = item.Branch?.replace("SBTC ", "") || "Unknown"; // Safely access and replace
-        const branchDataArray = allChannels.map(
-          (channel) => item[channel] || 0
-        );
-        processedData[branchName] = branchDataArray;
-
-        allChannels.forEach((channel) => {
-          allTotals[channel] += item[channel] || 0;
+        const branchName = item.Branch?.replace("SBTC ", "") || "Unknown";
+        processed[branchName] = allChannels.map((c) => item[c] || 0);
+        allChannels.forEach((c) => {
+          totals[c] += item[c] || 0;
         });
       });
+      processed["all"] = allChannels.map((c) => totals[c]);
+      return processed;
+    };
 
-      processedData["all"] = allChannels.map((channel) => allTotals[channel]);
+    const block = dashboardData.customer_count_channel_branch_wise;
+    if (block?.data) {
+      const channels = block.channels || [];
+      const selectedPivot = pivot(block.data, channels);
+      setCustomerByChannelData(selectedPivot);
+      setCustomerByChannelDataAll(
+        block.data_all_products ? pivot(block.data_all_products, channels) : null
+      );
 
-      // FIX: setCustomerByChannelData is now defined
-      setCustomerByChannelData(processedData);
-
-      // Safety check: ensure selectedBranch is valid or default to 'all'
-      if (!Object.keys(processedData).includes(selectedBranch)) {
+      if (!Object.keys(selectedPivot).includes(selectedBranch)) {
         setSelectedBranch("all");
       }
     } else {
-      // FIX: setCustomerByChannelData is now defined
       setCustomerByChannelData({});
-      setSelectedBranch("all"); // Reset if source data is missing
+      setCustomerByChannelDataAll(null);
+      setSelectedBranch("all");
     }
   }, [dashboardData, selectedBranch]);
 
@@ -220,23 +216,14 @@ const Dashboard = () => {
 
   // --- Helper function to derive dynamic options (use in JSX) ---
   const getBranchOptions = () => {
-    // Ensure customerByChannelData is not empty before deriving keys
-    // FIX: customerByChannelData is now defined
     const branchKeys = Object.keys(customerByChannelData || {});
-
-    // If no keys are present, return a default 'All Branches' option
     if (branchKeys.length === 0) {
       return [{ label: "All Branches (Loading)", value: "all" }];
     }
-
-    // Create the options array
-    return branchKeys.map((key) => {
-      let label = key;
-      if (key === "all") {
-        label = "All Branches";
-      }
-      return { label: label, value: key };
-    });
+    return branchKeys.map((key) => ({
+      label: key === "all" ? "All Branches" : key,
+      value: key,
+    }));
   };
 
   // State Rendering when API is being hit or hasn't hit yet
@@ -488,28 +475,46 @@ const Dashboard = () => {
             <div className="graph">
               <BarChart
                 graphTitle="Number of Customers by Channel (YTD)"
-                // Safely access channel labels
                 labels={
                   dashboardData.customer_count_channel_branch_wise?.channels ||
                   []
                 }
-                colourTheme={[CHART_COLORS[0]]}
-                units={["Customers"]}
-                series={[
-                  {
-                    name: "Customers",
-                    // data is pulled from the processed state based on the selectedBranch
-                    // FIX: customerByChannelData is now defined
-                    data: customerByChannelData[selectedBranch] || [],
-                  },
-                ]}
+                colourTheme={
+                  customerByChannelDataAll
+                    ? [CHART_COLORS[0], CHART_COLORS[3]]
+                    : [CHART_COLORS[0]]
+                }
+                units={
+                  customerByChannelDataAll
+                    ? ["Customers", "Customers"]
+                    : ["Customers"]
+                }
+                series={
+                  customerByChannelDataAll
+                    ? [
+                        {
+                          name: "All Products",
+                          data:
+                            customerByChannelDataAll[selectedBranch] || [],
+                        },
+                        {
+                          name: selectedProduct?.name || "Selected Product",
+                          data: customerByChannelData[selectedBranch] || [],
+                        },
+                      ]
+                    : [
+                        {
+                          name: "Customers",
+                          data: customerByChannelData[selectedBranch] || [],
+                        },
+                      ]
+                }
                 addOnComponent={
                   <Select
                     value={selectedBranch}
                     placeholder="Select Branch"
                     style={{ width: 200, marginBottom: 10 }}
                     onChange={handleBranchChange}
-                    // Options are dynamically generated from the processed data keys
                     options={getBranchOptions()}
                   />
                 }

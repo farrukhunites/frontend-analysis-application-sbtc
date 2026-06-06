@@ -7,6 +7,7 @@ import { getAllBranches } from "../../../API/Branches";
 import { getAllChannels } from "../../../API/Channels";
 import { getChannelCustomerYoY, getCustomerInvoiceBreakdown } from "../../../API/Reports";
 import InvoiceBreakdownModal from "./InvoiceBreakdownModal";
+import { pinGrandTotal } from "./reportUtils";
 import "./ChannelCustomerYoY.css";
 import "./reports.css";
 
@@ -247,7 +248,7 @@ const ChannelCustomerYoY = () => {
             dataIndex: `y_${year}`,
             align: "right",
             width: 96,
-            sorter: (a, b) => (a[`y_${year}`] || 0) - (b[`y_${year}`] || 0),
+            sorter: pinGrandTotal((a, b) => (a[`y_${year}`] || 0) - (b[`y_${year}`] || 0)),
             render: (v, r) => {
               if (v == null || v === 0 || r.isGrandTotal || !breakdownClickable) {
                 return <b style={{ color: "var(--color-primary)" }}>{fmtNum(v)}</b>;
@@ -276,7 +277,7 @@ const ChannelCustomerYoY = () => {
         dataIndex: `gp_${g.prev}_${g.curr}`,
         align: "center",
         width: 92,
-        sorter: (a, b) => (a[`gp_${g.prev}_${g.curr}`] || 0) - (b[`gp_${g.prev}_${g.curr}`] || 0),
+        sorter: pinGrandTotal((a, b) => (a[`gp_${g.prev}_${g.curr}`] || 0) - (b[`gp_${g.prev}_${g.curr}`] || 0)),
         render: (pct, r) => <GrowthCell pct={pct} value={r[`gv_${g.prev}_${g.curr}`]} />,
       });
     });

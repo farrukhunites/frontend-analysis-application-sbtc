@@ -6,6 +6,7 @@ import { UnitValueContext } from "../../../Contexts/UnitValueContext";
 import { getAllBranches } from "../../../API/Branches";
 import { getAllProducts } from "../../../API/Products";
 import { getSalesmanAchievement, getSalesmanCustomerBreakdown } from "../../../API/Reports";
+import { pinGrandTotal } from "./reportUtils";
 import "./reports.css";
 
 const slug = (name) => name.replace(/\s+/g, "_").toLowerCase();
@@ -188,7 +189,7 @@ const SalesmanAchievement = () => {
           dataIndex: `${slug(p)}_variance`,
           align:     "center",
           width:     90,
-          sorter:    (a, b) => (a[`${slug(p)}_variance`] || 0) - (b[`${slug(p)}_variance`] || 0),
+          sorter:    pinGrandTotal((a, b) => (a[`${slug(p)}_variance`] || 0) - (b[`${slug(p)}_variance`] || 0)),
           render:    (v) => <VarCell v={v} />,
         },
       ],
@@ -243,7 +244,7 @@ const SalesmanAchievement = () => {
             dataIndex: "total_target",
             align:     "right",
             width:     100,
-            sorter:    (a, b) => (a.total_target || 0) - (b.total_target || 0),
+            sorter:    pinGrandTotal((a, b) => (a.total_target || 0) - (b.total_target || 0)),
             render:    (v) => <span style={{ color: "#64748B" }}>{fmtNum(v)}</span>,
           },
           {
@@ -251,7 +252,7 @@ const SalesmanAchievement = () => {
             dataIndex: "total_actual",
             align:     "right",
             width:     100,
-            sorter:    (a, b) => (a.total_actual || 0) - (b.total_actual || 0),
+            sorter:    pinGrandTotal((a, b) => (a.total_actual || 0) - (b.total_actual || 0)),
             render:    (v, r) => (v && !r.isGrandTotal) ? (
               <b onClick={() => openBreakdown(r, null)} style={{ cursor: "pointer", color: "var(--color-accent)" }}>{fmtNum(v)}</b>
             ) : <b style={{ color: "var(--color-primary)" }}>{fmtNum(v)}</b>,
@@ -262,7 +263,7 @@ const SalesmanAchievement = () => {
             align:     "center",
             width:     100,
             defaultSortOrder: "ascend",
-            sorter:    (a, b) => (a.total_variance || 0) - (b.total_variance || 0),
+            sorter:    pinGrandTotal((a, b) => (a.total_variance || 0) - (b.total_variance || 0)),
             render:    (v) => <VarCell v={v} />,
           },
         ],

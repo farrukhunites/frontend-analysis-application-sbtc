@@ -85,6 +85,37 @@ export const getChannelCustomerMonthBreakdown = ({
     .then((r) => r.data)
     .catch((err) => ({ error: err.response?.data || err.message }));
 
+export const getChannelCoverageCustomers = ({ month, branchCode, channel, productCodes, unitType, valueType }) =>
+  axios
+    .get(`${process.env.REACT_APP_BACKEND_URL}reports/channel-coverage-customers/`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+      params: {
+        month,
+        branch_code:       branchCode,
+        channel:           channel || undefined,
+        unit_type:         unitType,
+        value_type:        valueType,
+        "product_codes[]": productCodes?.length ? productCodes : undefined,
+      },
+    })
+    .then((r) => r.data)
+    .catch((err) => ({ error: err.response?.data || err.message }));
+
+export const getChannelCoverage = ({ month, unitType, valueType, branchCodes, productCodes }) =>
+  axios
+    .get(`${process.env.REACT_APP_BACKEND_URL}reports/channel-coverage/`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+      params: {
+        month,
+        unit_type:        unitType,
+        value_type:       valueType,
+        "branch_codes[]":  branchCodes,
+        "product_codes[]": productCodes?.length ? productCodes : undefined,
+      },
+    })
+    .then((r) => r.data)
+    .catch((err) => ({ error: err.response?.data || err.message }));
+
 export const getSalesmanCustomerBreakdown = ({ salesmanCd, month, productCodes, unitType, valueType, branchCodes }) =>
   axios
     .get(`${process.env.REACT_APP_BACKEND_URL}reports/salesman-customer-breakdown/`, {

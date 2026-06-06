@@ -1,40 +1,33 @@
 import axios from "axios";
 import { getToken } from "../../Utils/UpdateUserState";
 
-// Function to fetch dashboard snapshot based on required parameters
+// Calls the live DashboardCreationAPIView (aggregate-backed, real-time).
+// The `analysis_type` arg is kept for call-site compatibility but unused.
 const getDashboardData = async (
-  analysis_type,
+  _analysis_type,
   month,
   product_code,
   unit_type,
   value_type
 ) => {
-  const API_URL = `${process.env.REACT_APP_BACKEND_URL}snapshots/`;
+  const API_URL = `${process.env.REACT_APP_BACKEND_URL}dashboard/`;
 
-  // Validate that all required params are provided
-  if (!analysis_type || !month || !product_code || !unit_type || !value_type) {
+  if (!month || !product_code || !unit_type || !value_type) {
     return {
       success: false,
       error:
-        "Missing one or more required parameters: analysis_type, month, product_code, unit_type, value_type",
+        "Missing one or more required parameters: month, product_code, unit_type, value_type",
     };
   }
 
   try {
     const response = await axios.get(API_URL, {
-      headers: {
-        Authorization: `Bearer ${getToken()}`,
-      },
-      params: {
-        analysis_type,
-        month,
-        product_code,
-        unit_type,
-        value_type,
-      },
+      headers: { Authorization: `Bearer ${getToken()}` },
+      params: { month, product_code, unit_type, value_type },
     });
-
-    return response?.data;
+    // Component reads `res.result`; live view returns the dict directly,
+    // so wrap it to keep the existing call site unchanged.
+    return { result: response?.data };
   } catch (error) {
     console.error("Error fetching dashboard data:", error);
     return {
