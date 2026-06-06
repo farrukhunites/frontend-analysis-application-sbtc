@@ -12,6 +12,7 @@ const Reports            = lazy(() => import("../Pages/Private/Reports"));
 const PotentialCustomers = lazy(() => import("../Pages/Private/PotentialCustomers"));
 const MOR                = lazy(() => import("../Pages/Private/MOR"));
 const Settings           = lazy(() => import("../Pages/Private/Settings"));
+const UserActivity       = lazy(() => import("../Pages/Private/UserActivity"));
 
 const PageLoader = () => (
   <div style={{ padding: 24 }}>
@@ -34,6 +35,7 @@ const UserRoutes = () => (
       <Route path="potential-customers" element={<PotentialCustomers />} />
       <Route path="mor"                 element={<MOR />} />
       <Route path="settings"            element={<Settings />} />
+      <Route path="user-activity"       element={<UserActivity />} />
       <Route path="*"                   element={<Navigate to="/" />} />
     </Routes>
   </Suspense>

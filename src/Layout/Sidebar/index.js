@@ -8,6 +8,7 @@ import {
   LogoutOutlined,
   CalendarOutlined,
   FileTextOutlined,
+  SafetyOutlined,
 } from "@ant-design/icons";
 import { Layout, Tooltip } from "antd";
 import "./style.css";
@@ -70,11 +71,16 @@ const NavItem = ({ item, isActive, collapsed, onClick }) => {
 };
 
 const Sidebar = ({ collapsed }) => {
-  const { setUserData, setUserToken } = useContext(UserContext);
+  const { userData, setUserData, setUserToken } = useContext(UserContext);
   const navigate = useNavigate();
   const location = useLocation();
 
-  const allItems = [...menuItems, ...bottomItems];
+  const visibleMenuItems = userData?.role === "admin"
+    ? [
+        ...menuItems,
+        { key: "10", icon: <SafetyOutlined />, label: "User Activity", path: "/user-activity" },
+      ]
+    : menuItems;
   const activePath = location.pathname;
 
   const onLogout = () => {
@@ -110,7 +116,7 @@ const Sidebar = ({ collapsed }) => {
 
       {/* Main nav */}
       <nav className="sidebar__nav">
-        {menuItems.map((item) => (
+        {visibleMenuItems.map((item) => (
           <NavItem
             key={item.key}
             item={item}
