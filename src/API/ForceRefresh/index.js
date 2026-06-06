@@ -4,13 +4,25 @@ import { getToken } from "../../Utils/UpdateUserState";
  * Streams the force-refresh pipeline via SSE over fetch (supports JWT headers).
  * @param {(log: {level: string, message: string}) => void} onLog - called for each log line
  * @param {(status: string) => void} onDone - called once when the stream ends
+ * @param {{ scope?: "month" | "year", month?: string, year?: string }} [scope] - optional scope params
  * @returns {AbortController} — call .abort() to cancel the stream
  */
-export const streamForceRefresh = (onLog, onDone) => {
+export const streamForceRefresh = (onLog, onDone, scope) => {
   const controller = new AbortController();
   const token = getToken();
 
-  fetch(`${process.env.REACT_APP_BACKEND_URL}force-refresh/`, {
+  const qs = new URLSearchParams();
+  if (scope?.scope === "month" && scope.month) {
+    qs.set("scope", "month");
+    qs.set("month", scope.month);
+  } else if (scope?.scope === "year" && scope.year) {
+    qs.set("scope", "year");
+    qs.set("year", scope.year);
+  }
+  const query = qs.toString();
+  const url = `${process.env.REACT_APP_BACKEND_URL}force-refresh/${query ? `?${query}` : ""}`;
+
+  fetch(url, {
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: "text/event-stream",

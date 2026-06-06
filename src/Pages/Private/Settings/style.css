@@ -191,6 +191,42 @@
   color: #f59e0b;
 }
 
+.refresh-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.refresh-control-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.refresh-control-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  min-width: 60px;
+}
+
+.refresh-estimate {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.refresh-estimate b {
+  color: #f59e0b;
+}
+
 /* Terminal-style log console */
 .refresh-console {
   background: #0f1117;

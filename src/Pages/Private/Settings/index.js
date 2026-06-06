@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
-import { Form, Input, Button, message, Divider, Skeleton } from "antd";
+import { Form, Input, Button, message, Divider, Skeleton, Radio, DatePicker } from "antd";
+import dayjs from "dayjs";
 import {
   LockOutlined,
   UserOutlined,
@@ -7,6 +8,7 @@ import {
   BankOutlined,
   AppstoreOutlined,
   SyncOutlined,
+  ClockCircleOutlined,
 } from "@ant-design/icons";
 import { changePassword } from "../../../API/Auth";
 import { getAllBranches } from "../../../API/Branches";
@@ -25,8 +27,16 @@ const Settings = () => {
   const [refreshLogs, setRefreshLogs] = useState([]);
   const [refreshStatus, setRefreshStatus] = useState(null); // null | "completed" | "failed" | "skipped" | "error"
   const [refreshDuration, setRefreshDuration] = useState(null);
+  const [refreshScope, setRefreshScope] = useState("month");
+  const [refreshMonth, setRefreshMonth] = useState(() => dayjs());
+  const [refreshYear, setRefreshYear] = useState(() => dayjs());
   const logEndRef = useRef(null);
   const abortRef = useRef(null);
+
+  const ESTIMATES = {
+    month: "~5–10 min",
+    year: "~30–60 min",
+  };
 
   const [branchNames, setBranchNames] = useState([]);
   const [productNames, setProductNames] = useState([]);
@@ -97,6 +107,11 @@ const Settings = () => {
   }, [refreshLogs]);
 
   const handleForceRefresh = () => {
+    const scopeArg =
+      refreshScope === "year"
+        ? { scope: "year", year: refreshYear.format("YYYY") }
+        : { scope: "month", month: refreshMonth.format("YYYYMM") };
+
     setRefreshRunning(true);
     setRefreshLogs([]);
     setRefreshStatus(null);
@@ -108,9 +123,15 @@ const Settings = () => {
         setRefreshStatus(status);
         setRefreshDuration(duration);
         setRefreshRunning(false);
-      }
+      },
+      scopeArg,
     );
   };
+
+  const refreshTargetLabel =
+    refreshScope === "year"
+      ? `year ${refreshYear.format("YYYY")}`
+      : refreshMonth.format("MMMM YYYY");
 
   const onFinish = async (values) => {
     setLoading(true);
@@ -274,18 +295,71 @@ const Settings = () => {
             </div>
             <div>
               <div className="section-title">Force Refresh</div>
-              <div className="section-desc">Manually run the full daily data pipeline (admin only)</div>
+              <div className="section-desc">Manually rebuild aggregates for a specific month or year (admin only)</div>
             </div>
+          </div>
+
+          <Divider style={{ margin: "16px 0" }} />
+
+          <div className="refresh-controls">
+            <div className="refresh-control-row">
+              <span className="refresh-control-label">Scope</span>
+              <Radio.Group
+                value={refreshScope}
+                onChange={(e) => setRefreshScope(e.target.value)}
+                disabled={refreshRunning}
+                optionType="button"
+                buttonStyle="solid"
+                options={[
+                  { label: "Month", value: "month" },
+                  { label: "Year",  value: "year"  },
+                ]}
+              />
+            </div>
+
+            <div className="refresh-control-row">
+              <span className="refresh-control-label">
+                {refreshScope === "year" ? "Year" : "Month"}
+              </span>
+              {refreshScope === "year" ? (
+                <DatePicker
+                  picker="year"
+                  value={refreshYear}
+                  onChange={(d) => d && setRefreshYear(d)}
+                  disabled={refreshRunning}
+                  allowClear={false}
+                  style={{ width: 160 }}
+                />
+              ) : (
+                <DatePicker
+                  picker="month"
+                  value={refreshMonth}
+                  onChange={(d) => d && setRefreshMonth(d)}
+                  disabled={refreshRunning}
+                  allowClear={false}
+                  format="MMM YYYY"
+                  style={{ width: 160 }}
+                />
+              )}
+            </div>
+
+            <div className="refresh-control-row refresh-estimate">
+              <ClockCircleOutlined />
+              <span>
+                Estimated time: <b>{ESTIMATES[refreshScope]}</b> — rebuilding {refreshTargetLabel}
+              </span>
+            </div>
+
             <Button
               type="primary"
               danger={refreshStatus === "failed" || refreshStatus === "error"}
               loading={refreshRunning}
               disabled={refreshRunning}
               onClick={handleForceRefresh}
-              style={{ marginLeft: "auto" }}
               icon={<SyncOutlined />}
+              size="large"
             >
-              {refreshRunning ? "Running..." : "Run Refresh"}
+              {refreshRunning ? "Running..." : `Run Refresh (${refreshTargetLabel})`}
             </Button>
           </div>
 
