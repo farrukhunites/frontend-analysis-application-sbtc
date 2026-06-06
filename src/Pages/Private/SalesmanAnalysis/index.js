@@ -14,7 +14,7 @@ import {
   ApartmentOutlined,
   RiseOutlined,
 } from "@ant-design/icons";
-import { message, Select, Skeleton, Table, Tag, Empty } from "antd";
+import { message, Modal, Select, Skeleton, Table, Tag, Empty } from "antd";
 import "./style.css";
 import { useContext, useEffect, useRef, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
@@ -50,6 +50,8 @@ const SalesmanAnalysis = () => {
   const [selectedSalesman, setSelectedSalesman] = useState(null);
   const [loading, setLoading]                 = useState(false);
   const [data, setData]                       = useState(null);
+  const [rankModal, setRankModal]             = useState({ open: false, scope: null });
+  const [activeCustModal, setActiveCustModal] = useState(false);
 
   const [searchParams] = useSearchParams();
   const locationState  = useLocation().state;
@@ -318,7 +320,11 @@ const SalesmanAnalysis = () => {
             </div>
           </div>
 
-          <div className="sa-rank-card">
+          <div
+            className={`sa-rank-card ${(data.active_customers_list?.length || data.inactive_customers_list?.length) ? "sa-rank-card--clickable" : ""}`}
+            onClick={() => (data.active_customers_list?.length || data.inactive_customers_list?.length) && setActiveCustModal(true)}
+            title={(data.active_customers_list?.length || data.inactive_customers_list?.length) ? "Click to see active and inactive customers" : ""}
+          >
             <div className="sa-rank-icon sa-rank-icon--channel"><TeamOutlined /></div>
             <div className="sa-rank-body">
               <div className="sa-rank-label">Active Customers (MTD)</div>
@@ -345,7 +351,11 @@ const SalesmanAnalysis = () => {
       {/* ── Ranking + cadence row ─────────────────────────────────── */}
       {data && (
         <div className="sa-section-row">
-          <div className="sa-rank-card">
+          <div
+            className={`sa-rank-card ${ranking.branch_list?.length ? "sa-rank-card--clickable" : ""}`}
+            onClick={() => ranking.branch_list?.length && setRankModal({ open: true, scope: "branch" })}
+            title={ranking.branch_list?.length ? "Click to see the full branch ranking" : ""}
+          >
             <div className="sa-rank-icon"><TrophyOutlined /></div>
             <div className="sa-rank-body">
               <div className="sa-rank-label">Branch Rank (YTD)</div>
@@ -358,7 +368,11 @@ const SalesmanAnalysis = () => {
             </div>
           </div>
 
-          <div className="sa-rank-card">
+          <div
+            className={`sa-rank-card ${ranking.kingdom_list?.length ? "sa-rank-card--clickable" : ""}`}
+            onClick={() => ranking.kingdom_list?.length && setRankModal({ open: true, scope: "kingdom" })}
+            title={ranking.kingdom_list?.length ? "Click to see the full kingdom ranking" : ""}
+          >
             <div className="sa-rank-icon sa-rank-icon--channel"><RiseOutlined /></div>
             <div className="sa-rank-body">
               <div className="sa-rank-label">Kingdom Rank (YTD)</div>
@@ -549,7 +563,194 @@ const SalesmanAnalysis = () => {
           />
         </div>
       )}
+
+      {/* ── Ranking list modal ───────────────────────────────────── */}
+      <SalesmanRankingModal
+        state={rankModal}
+        onClose={() => setRankModal({ open: false, scope: null })}
+        ranking={ranking}
+        selectedCode={selectedSalesman?.code}
+        unitType={unitType}
+      />
+
+      {/* ── Active vs Inactive customers modal ─────────────────── */}
+      <ActiveCustomersModal
+        open={activeCustModal}
+        onClose={() => setActiveCustModal(false)}
+        data={data}
+        unitType={unitType}
+        onPickCustomer={openCustomerInNewTab}
+      />
     </div>
+  );
+};
+
+const ActiveCustomersModal = ({ open, onClose, data, unitType, onPickCustomer }) => {
+  const unitLabel = (unitType || "ctn").toUpperCase();
+  const active = data?.active_customers_list || [];
+  const inactive = data?.inactive_customers_list || [];
+
+  const nameCol = {
+    title: "Customer", dataIndex: "customer_name",
+    render: (v, r) => (
+      <div
+        className="report-clickable-name"
+        title="Open Customer Analysis in new tab"
+        onClick={() => onPickCustomer(r)}
+      >
+        <div style={{ fontWeight: 600, fontSize: 12 }}>{v}</div>
+        <div style={{ fontSize: 11, color: "#64748B" }}>{r.customer_code}</div>
+      </div>
+    ),
+  };
+  const channelCol = {
+    title: "Channel", dataIndex: "channel", width: 100,
+    render: (v) => v ? <Tag color="blue">{v}</Tag> : <span style={{ color: "#CBD5E1" }}>-</span>,
+  };
+  const lastInvCol = {
+    title: "Last Invoice", dataIndex: "last_invoice", width: 130,
+    render: (v) => v ? <span style={{ fontSize: 12 }}>{v}</span> : <span style={{ color: "#94A3B8" }}>-</span>,
+  };
+
+  const activeCols = [
+    nameCol, channelCol, lastInvCol,
+    { title: `MTD Sales (${unitLabel})`, dataIndex: "sales_mtd", align: "right", width: 140,
+      defaultSortOrder: "descend",
+      sorter: (a, b) => (a.sales_mtd || 0) - (b.sales_mtd || 0),
+      render: (v) => <b style={{ color: "#10B981" }}>{fmtNum(v)}</b> },
+  ];
+  const inactiveCols = [
+    nameCol, channelCol, lastInvCol,
+    { title: `YTD Sales (${unitLabel})`, dataIndex: "sales_ytd", align: "right", width: 140,
+      defaultSortOrder: "descend",
+      sorter: (a, b) => (a.sales_ytd || 0) - (b.sales_ytd || 0),
+      render: (v) => <b style={{ color: "#F59E0B" }}>{fmtNum(v)}</b> },
+  ];
+
+  return (
+    <Modal
+      open={open}
+      onCancel={onClose}
+      footer={null}
+      width={920}
+      title={
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>
+            Active vs Inactive Customers — {data?.month_yyyymm || ""}
+          </div>
+          <div style={{ fontSize: 12, color: "#64748B", fontWeight: 400 }}>
+            Active = bought this month · Inactive = bought YTD but dropped off this month
+          </div>
+        </div>
+      }
+      destroyOnClose
+    >
+      <div style={{ marginBottom: 24 }}>
+        <div className="sa-section-title" style={{ marginBottom: 8 }}>
+          Active ({active.length})
+          <span style={{ fontSize: 12, color: "#94A3B8", marginLeft: 8, fontWeight: 400 }}>
+            customers with sales in {data?.month_yyyymm || "the selected month"}
+          </span>
+        </div>
+        {active.length === 0 ? (
+          <Empty description="No active customers this month" />
+        ) : (
+          <Table
+            size="small"
+            bordered
+            rowKey={(r) => `a-${r.customer_code}`}
+            columns={activeCols}
+            dataSource={active}
+            pagination={{ pageSize: 10, size: "small", showSizeChanger: false }}
+            scroll={{ y: 320 }}
+          />
+        )}
+      </div>
+
+      <div>
+        <div className="sa-section-title" style={{ marginBottom: 8 }}>
+          Inactive ({inactive.length})
+          <span style={{ fontSize: 12, color: "#94A3B8", marginLeft: 8, fontWeight: 400 }}>
+            bought YTD but not this month
+          </span>
+        </div>
+        {inactive.length === 0 ? (
+          <Empty description="No inactive customers — everyone YTD also bought this month" />
+        ) : (
+          <Table
+            size="small"
+            bordered
+            rowKey={(r) => `i-${r.customer_code}`}
+            columns={inactiveCols}
+            dataSource={inactive}
+            pagination={{ pageSize: 10, size: "small", showSizeChanger: false }}
+            scroll={{ y: 320 }}
+          />
+        )}
+      </div>
+    </Modal>
+  );
+};
+
+const SalesmanRankingModal = ({ state, onClose, ranking, selectedCode, unitType }) => {
+  const isBranch = state.scope === "branch";
+  const rows = isBranch ? ranking?.branch_list : ranking?.kingdom_list;
+  const title = isBranch ? "Branch Ranking (YTD)" : "Kingdom Ranking (YTD)";
+  const myRank = isBranch ? ranking?.rank_in_branch : ranking?.rank_in_kingdom;
+  const myTotal = isBranch ? ranking?.total_in_branch : ranking?.total_in_kingdom;
+
+  const columns = [
+    { title: "#", dataIndex: "rank", width: 70, align: "center",
+      render: (v, r) => (
+        <span style={{ fontWeight: r.salesman_code === selectedCode ? 700 : 400 }}>
+          {v <= 3 ? <TrophyOutlined style={{ color: v === 1 ? "#F59E0B" : v === 2 ? "#94A3B8" : "#B45309", marginRight: 4 }} /> : null}
+          {v}
+        </span>
+      ) },
+    { title: "Salesman", dataIndex: "salesman_name",
+      render: (v, r) => (
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 12 }}>{v || "—"}</div>
+          <div style={{ fontSize: 11, color: "#64748B" }}>{r.salesman_code}</div>
+        </div>
+      ) },
+    ...(!isBranch ? [{
+      title: "Branch", dataIndex: "branch_name", width: 160,
+      render: (v) => v ? <Tag color="blue">{v}</Tag> : <span style={{ color: "#CBD5E1" }}>-</span>,
+    }] : []),
+    { title: `YTD (${(unitType || "ctn").toUpperCase()})`, dataIndex: "ytd_total", align: "right", width: 150,
+      render: (v) => <b>{fmtNum(v)}</b> },
+  ];
+
+  return (
+    <Modal
+      open={state.open}
+      onCancel={onClose}
+      footer={null}
+      width={isBranch ? 720 : 820}
+      title={
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>{title}</div>
+          {myRank && (
+            <div style={{ fontSize: 12, color: "#64748B", fontWeight: 400 }}>
+              Selected salesman is ranked <b>#{myRank}</b> of {myTotal}
+            </div>
+          )}
+        </div>
+      }
+      destroyOnClose
+    >
+      <Table
+        size="small"
+        bordered
+        rowKey={(r) => r.salesman_code}
+        columns={columns}
+        dataSource={rows || []}
+        pagination={{ pageSize: 20, size: "small", showSizeChanger: false }}
+        rowClassName={(r) => r.salesman_code === selectedCode ? "ranking-row-selected" : ""}
+        scroll={{ y: "55vh" }}
+      />
+    </Modal>
   );
 };
 

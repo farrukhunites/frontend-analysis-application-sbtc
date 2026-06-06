@@ -8,6 +8,7 @@ import { SearchOutlined } from "@ant-design/icons";
 import Highlighter from "react-highlight-words";
 import { saveAs } from "file-saver";
 import { useNavigate } from "react-router-dom";
+import { openSalesmanAnalysis } from "../Reports/reportUtils";
 
 const branchOptions = [
   "SBTC JEDDAH",
@@ -227,10 +228,36 @@ const PotentialCustomers = () => {
         </span>
       ),
     },
-    Object.assign(
-      { title: "Salesman", dataIndex: "salesman_name", key: "salesman_name" },
-      getColumnSearchProps("salesman_name"),
-    ),
+    {
+      ...getColumnSearchProps("salesman_name"),
+      title: "Salesman",
+      dataIndex: "salesman_name",
+      key: "salesman_name",
+      render: (text, record) => {
+        const content = searchedColumn === "salesman_name" ? (
+          <Highlighter
+            highlightStyle={{ backgroundColor: "#ffc069", padding: 0 }}
+            searchWords={[searchText]}
+            autoEscape
+            textToHighlight={text ? text.toString() : ""}
+          />
+        ) : text;
+        if (!record.salesman_code) return content;
+        return (
+          <span
+            style={{ color: "var(--color-accent)", cursor: "pointer", fontWeight: 500 }}
+            onClick={() => openSalesmanAnalysis({
+              salesmanCode: record.salesman_code,
+              branchCode:   record.branch_code,
+              productCode:  selectedProduct?.code,
+            })}
+            title="Open Salesman Analysis in new tab"
+          >
+            {content}
+          </span>
+        );
+      },
+    },
     {
       title: "Salesman Num",
       dataIndex: "salesman_mobile",

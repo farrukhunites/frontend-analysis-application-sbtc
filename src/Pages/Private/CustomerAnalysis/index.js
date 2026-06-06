@@ -11,7 +11,7 @@ import {
   FileTextOutlined,
   SwapOutlined,
 } from "@ant-design/icons";
-import { Collapse, message, Select, Skeleton, Table, Tag } from "antd";
+import { Collapse, message, Modal, Select, Skeleton, Table, Tag } from "antd";
 import "./style.css";
 import { useContext, useEffect, useRef, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
@@ -45,6 +45,7 @@ const CustomerAnalysis = () => {
   const [customerData, setCustomerData] = useState(null);
   const [branches, setBranches] = useState([]);
   const [channels, setChannels] = useState([]);
+  const [rankModal, setRankModal] = useState({ open: false, scope: null });
 
   const [searchParams] = useSearchParams();
   const locationState = useLocation().state;
@@ -281,8 +282,12 @@ const CustomerAnalysis = () => {
     { title: "Sales YTD",            value: customer.ytdSales.toLocaleString() + " " + unitType,    icon: <LineChartOutlined /> },
     { title: "Sales MTD",            value: customer.mtdSales.toLocaleString() + " " + unitType,    icon: <CalendarOutlined /> },
     { title: "Dry Months",           value: customer.dryMonths,                                     icon: <StopOutlined /> },
-    { title: "Salesman (Last Sale)",  value: salesmanCell(customer.salesman, customer.salesmanCd),          icon: <UserOutlined /> },
-    { title: "Assigned Salesman",    value: salesmanCell(customer.assignedSalesman, customer.assignedSalesmanCd), icon: <UserOutlined /> },
+    { title: "Salesman (Last Sale)",  value: salesmanCell(customer.salesman, customer.salesmanCd),          icon: <UserOutlined />,
+      onClick: customer.salesmanCd ? () => openSalesmanAnalysis(customer.salesmanCd) : undefined,
+      tooltip: customer.salesmanCd ? "Open Salesman Analysis in new tab" : undefined },
+    { title: "Assigned Salesman",    value: salesmanCell(customer.assignedSalesman, customer.assignedSalesmanCd), icon: <UserOutlined />,
+      onClick: customer.assignedSalesmanCd ? () => openSalesmanAnalysis(customer.assignedSalesmanCd) : undefined,
+      tooltip: customer.assignedSalesmanCd ? "Open Salesman Analysis in new tab" : undefined },
     { title: "Contribution",         value: customer.contribution ? customer.contribution + " %" : "-", icon: <LineChartOutlined /> },
     {
       title: "Payment Pending",
@@ -407,7 +412,12 @@ const CustomerAnalysis = () => {
               </div>
             ))
           : tabs.map((tab, index) => (
-              <div key={index} className="tab-card">
+              <div
+                key={index}
+                className={`tab-card ${tab.onClick ? "tab-card--clickable" : ""}`}
+                onClick={tab.onClick}
+                title={tab.tooltip}
+              >
                 <div className="tab-header">
                   <div className="tab-icon">{tab.icon}</div>
                   <div className="tab-title">{tab.title}</div>
@@ -420,7 +430,11 @@ const CustomerAnalysis = () => {
       {/* ── Ranking cards ─────────────────────────────────────────────── */}
       {customerData && (
         <div className="ca-section-row">
-          <div className="ca-rank-card">
+          <div
+            className={`ca-rank-card ${ranking.branch_list?.length ? "ca-rank-card--clickable" : ""}`}
+            onClick={() => ranking.branch_list?.length && setRankModal({ open: true, scope: "branch" })}
+            title={ranking.branch_list?.length ? "Click to see the full branch ranking" : ""}
+          >
             <div className="ca-rank-icon"><TrophyOutlined /></div>
             <div className="ca-rank-body">
               <div className="ca-rank-label">Branch Rank (YTD)</div>
@@ -432,7 +446,11 @@ const CustomerAnalysis = () => {
             </div>
           </div>
 
-          <div className="ca-rank-card">
+          <div
+            className={`ca-rank-card ${ranking.channel_list?.length ? "ca-rank-card--clickable" : ""}`}
+            onClick={() => ranking.channel_list?.length && setRankModal({ open: true, scope: "channel" })}
+            title={ranking.channel_list?.length ? "Click to see the full channel ranking" : ""}
+          >
             <div className="ca-rank-icon ca-rank-icon--channel"><SlidersOutlined /></div>
             <div className="ca-rank-body">
               <div className="ca-rank-label">Channel Rank (YTD)</div>
@@ -448,13 +466,28 @@ const CustomerAnalysis = () => {
           <div className="ca-rank-card">
             <div className="ca-rank-icon ca-rank-icon--cadence"><ClockCircleOutlined /></div>
             <div className="ca-rank-body">
-              <div className="ca-rank-label">Last Order</div>
+              <div className="ca-rank-label">Last Order ({selectedProduct?.name || "Product"})</div>
               <div className="ca-rank-value">
                 <span className="ca-rank-num" style={{ fontSize: 16 }}>
                   {cadence.last_order_date || "—"}
                 </span>
                 {cadence.days_since_last_order != null && (
                   <span className="ca-rank-total">{cadence.days_since_last_order}d ago</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="ca-rank-card">
+            <div className="ca-rank-icon ca-rank-icon--cadence"><ClockCircleOutlined /></div>
+            <div className="ca-rank-body">
+              <div className="ca-rank-label">Last Order (Any Product)</div>
+              <div className="ca-rank-value">
+                <span className="ca-rank-num" style={{ fontSize: 16 }}>
+                  {cadence.last_order_date_any_product || "—"}
+                </span>
+                {cadence.days_since_last_order_any_product != null && (
+                  <span className="ca-rank-total">{cadence.days_since_last_order_any_product}d ago</span>
                 )}
               </div>
             </div>
@@ -643,7 +676,76 @@ const CustomerAnalysis = () => {
           pagination={{ pageSize: 100 }}
         />
       </div>
+
+      {/* ── Ranking list modal ────────────────────────────────────────── */}
+      <CustomerRankingModal
+        state={rankModal}
+        onClose={() => setRankModal({ open: false, scope: null })}
+        ranking={ranking}
+        selectedCode={customer.code}
+        unitType={unitType}
+      />
     </div>
+  );
+};
+
+const CustomerRankingModal = ({ state, onClose, ranking, selectedCode, unitType }) => {
+  const isBranch = state.scope === "branch";
+  const rows = isBranch ? ranking?.branch_list : ranking?.channel_list;
+  const title = isBranch ? "Branch Ranking (YTD)" : "Channel Ranking (YTD)";
+  const myRank = isBranch ? ranking?.rank_in_branch : ranking?.rank_in_channel;
+  const myTotal = isBranch ? ranking?.total_in_branch : ranking?.total_in_channel;
+
+  const columns = [
+    { title: "#", dataIndex: "rank", width: 70, align: "center",
+      render: (v, r) => (
+        <span style={{ fontWeight: r.customer_code === selectedCode ? 700 : 400 }}>
+          {v <= 3 ? <TrophyOutlined style={{ color: v === 1 ? "#F59E0B" : v === 2 ? "#94A3B8" : "#B45309", marginRight: 4 }} /> : null}
+          {v}
+        </span>
+      ) },
+    { title: "Customer", dataIndex: "customer_name",
+      render: (v, r) => (
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 12 }}>{v || "—"}</div>
+          <div style={{ fontSize: 11, color: "#64748B" }}>{r.customer_code}</div>
+        </div>
+      ) },
+    { title: "Channel", dataIndex: "channel", width: 110,
+      render: (v) => v ? <Tag color="blue">{v}</Tag> : <span style={{ color: "#CBD5E1" }}>-</span> },
+    { title: `YTD (${(unitType || "ctn").toUpperCase()})`, dataIndex: "ytd_total", align: "right", width: 150,
+      render: (v) => <b>{Number(v || 0).toLocaleString()}</b> },
+  ];
+
+  return (
+    <Modal
+      open={state.open}
+      onCancel={onClose}
+      footer={null}
+      width={760}
+      title={
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>{title}</div>
+          {myRank && (
+            <div style={{ fontSize: 12, color: "#64748B", fontWeight: 400 }}>
+              Selected customer is ranked <b>#{myRank}</b> of {myTotal}
+            </div>
+          )}
+        </div>
+      }
+      destroyOnClose
+    >
+      <Table
+        size="small"
+        bordered
+        rowKey={(r) => r.customer_code}
+        columns={columns}
+        dataSource={rows || []}
+        pagination={{ pageSize: 20, size: "small", showSizeChanger: false }}
+        rowClassName={(r) => r.customer_code === selectedCode ? "ranking-row-selected" : ""}
+        scroll={{ y: "55vh" }}
+      />
+    </Modal>
   );
 };
 

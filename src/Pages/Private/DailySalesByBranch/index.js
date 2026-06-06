@@ -6,6 +6,7 @@ import { useDateFilter } from "../../../Contexts/DateFilterContext";
 import { UnitValueContext } from "../../../Contexts/UnitValueContext";
 import { getAllProducts } from "../../../API/Products";
 import { getDailyBranchSales, getDailyCustomerBreakdown } from "../../../API/Daily STT Report";
+import { openSalesmanAnalysis } from "../Reports/reportUtils";
 import "./style.css";
 
 const { Option } = Select;
@@ -627,10 +628,23 @@ const DailySalesByBranch = () => {
                 dataIndex: "salesman",
                 key: "salesman",
                 ellipsis: true,
-                render: (v, r) => (
+                render: (v, r) => (r.salesman_code && r.salesman_code !== "-") ? (
+                  <div
+                    onClick={() => openSalesmanAnalysis({
+                      salesmanCode: r.salesman_code,
+                      branchCode:   drillModal.branchCode,
+                      productCode:  selectedProduct?.code,
+                    })}
+                    style={{ cursor: "pointer" }}
+                    title="Open Salesman Analysis in new tab"
+                  >
+                    <div style={{ fontWeight: 500, fontSize: 12, color: "var(--color-accent)" }}>{v}</div>
+                    <div style={{ fontSize: 11, color: "var(--color-text-secondary)" }}>{r.salesman_code}</div>
+                  </div>
+                ) : (
                   <div>
                     <div style={{ fontWeight: 500, fontSize: 12 }}>{v}</div>
-                    <div style={{ fontSize: 11, color: "var(--color-text-secondary)" }}>{r.salesman_code}</div>
+                    <div style={{ fontSize: 11, color: "var(--color-text-secondary)" }}>—</div>
                   </div>
                 ),
               },

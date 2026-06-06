@@ -1,29 +1,45 @@
 .customer-analysis .top-tabs-container {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: stretch;
-  gap: 16px;
+  gap: 12px;
   margin: 16px 0 20px 0;
   flex-wrap: wrap;
 }
 
 .customer-analysis .tab-card {
-  flex: 1;
+  flex: 0 1 auto;
+  width: fit-content;
   background: var(--color-bg-card);
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(30, 58, 95, 0.06), 0 4px 12px rgba(30, 58, 95, 0.04);
-  padding: 20px 22px;
+  padding: 14px 18px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   transition: box-shadow 0.2s ease, transform 0.2s ease;
-  min-width: 200px;
+  min-width: 180px;
+  max-width: 320px;
   border: 1px solid var(--color-border);
 }
 
 .customer-analysis .tab-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(30, 58, 95, 0.12);
+}
+
+.customer-analysis .tab-card--clickable {
+  cursor: pointer;
+}
+
+.customer-analysis .tab-card--clickable:hover {
+  border-color: var(--color-accent);
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2);
+}
+
+.customer-analysis .tab-card--clickable:hover .tab-icon {
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--color-accent);
 }
 
 .customer-analysis .tab-header {
@@ -54,11 +70,12 @@
 }
 
 .customer-analysis .tab-value {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--color-text-primary);
   margin: 4px 0 0 0;
   word-break: break-word;
+  line-height: 1.3;
 }
 
 .customer-analysis .row {
@@ -81,12 +98,14 @@
 }
 
 .ca-rank-card {
-  flex: 1;
-  min-width: 160px;
+  flex: 0 1 auto;
+  width: fit-content;
+  min-width: 180px;
+  max-width: 280px;
   background: var(--color-bg-card);
   border: 1px solid var(--color-border);
   border-radius: 12px;
-  padding: 16px 18px;
+  padding: 14px 16px;
   display: flex;
   align-items: flex-start;
   gap: 12px;
@@ -97,6 +116,24 @@
 .ca-rank-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 18px rgba(30, 58, 95, 0.1);
+}
+
+.ca-rank-card--clickable {
+  cursor: pointer;
+}
+
+.ca-rank-card--clickable:hover {
+  border-color: var(--color-accent);
+  box-shadow: 0 6px 18px rgba(59, 130, 246, 0.18);
+}
+
+.ranking-row-selected > td {
+  background: rgba(59, 130, 246, 0.12) !important;
+  font-weight: 600;
+}
+
+.ranking-row-selected:hover > td {
+  background: rgba(59, 130, 246, 0.18) !important;
 }
 
 .ca-rank-icon {
@@ -141,6 +178,8 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ca-rank-value {
