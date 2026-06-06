@@ -119,6 +119,7 @@ const ChannelCoverage = () => {
 
   const [branches, setBranches] = useState([]);
   const [selectedBranches, setSelectedBranches] = useState([]);
+  const [selectedChannels, setSelectedChannels] = useState([]);
   const [loading, setLoading] = useState(false);
   const [reportData, setReportData] = useState({
     channels: [],
@@ -201,10 +202,30 @@ const ChannelCoverage = () => {
     });
   }, [selectedMonth, unitType, valueType, selectedBranches, productCodes]);
 
+  // Seed the channel selector once per dataset: all channels EXCEPT the
+  // default-hidden set (BRN, CSM, CFC). Keep the user's choice on subsequent
+  // loads if every selected channel still exists in the new response.
+  useEffect(() => {
+    const apiChannels = reportData.channels || [];
+    if (!apiChannels.length) return;
+    const HIDDEN_BY_DEFAULT = new Set(["BRN", "CSM", "CFC"]);
+    setSelectedChannels((prev) => {
+      const stillValid = prev.length && prev.every((c) => apiChannels.includes(c));
+      if (stillValid) return prev;
+      return apiChannels.filter((c) => !HIDDEN_BY_DEFAULT.has(c.toUpperCase()));
+    });
+  }, [reportData.channels]);
+
   const hasFilter = reportData.has_product_filter;
 
+  const visibleChannels = useMemo(() => {
+    const apiChannels = reportData.channels || [];
+    const picked = new Set(selectedChannels);
+    return apiChannels.filter((c) => picked.has(c));
+  }, [reportData.channels, selectedChannels]);
+
   const columns = useMemo(() => {
-    const { channels } = reportData;
+    const channels = visibleChannels;
     if (!channels?.length) return [];
 
     const channelCols = channels.map((ch) => {
@@ -472,7 +493,7 @@ const ChannelCoverage = () => {
       },
     ];
   }, [
-    reportData,
+    visibleChannels,
     hasFilter,
     branchCodeByName,
     productCodes,
@@ -483,12 +504,32 @@ const ChannelCoverage = () => {
   ]);
 
   const dataSource = useMemo(() => {
-    const { channels, results } = reportData;
+    const { results } = reportData;
+    const channels = visibleChannels;
     if (!results?.length) return [];
-    const rows = results.map((r, i) => ({ ...r, key: i }));
-
-    const sum = (field) => results.reduce((acc, r) => acc + (r[field] || 0), 0);
     const pct = (s, a) => (a ? Math.round((s / a) * 1000) / 10 : 0);
+
+    // Each row's `total_*` from the backend covers ALL channels. Re-derive
+    // them from the currently-visible channels so excluding (e.g.) BRN
+    // actually drops it out of the TOTAL column too.
+    const rows = results.map((r, i) => {
+      let a = 0, sel = 0;
+      channels.forEach((ch) => {
+        const s = slug(ch);
+        a   += r[`${s}_all`]      || 0;
+        sel += r[`${s}_selected`] || 0;
+      });
+      return {
+        ...r,
+        key: i,
+        total_all:       a,
+        total_selected:  sel,
+        total_pct:       pct(sel, a),
+        ...(hasFilter ? { total_remaining: Math.max(0, a - sel) } : null),
+      };
+    });
+
+    const sum = (field) => rows.reduce((acc, r) => acc + (r[field] || 0), 0);
     const grand = { key: "grand-total", isGrandTotal: true, branch: "" };
     channels.forEach((ch) => {
       const s = slug(ch);
@@ -509,11 +550,14 @@ const ChannelCoverage = () => {
       );
 
     return [...rows, grand];
-  }, [reportData]);
+  }, [reportData, visibleChannels, hasFilter]);
 
   const exportToExcel = async () => {
-    const { channels, results } = reportData;
-    if (!results.length) {
+    const channels = visibleChannels;
+    // Pull the data rows out of the rendered dataSource — they already carry
+    // per-row totals recomputed against the visible-channel subset.
+    const results = dataSource.filter((r) => !r.isGrandTotal);
+    if (!results.length || !channels.length) {
       message.warning("No data to export");
       return;
     }
@@ -920,6 +964,56 @@ const ChannelCoverage = () => {
                   type="link"
                   style={{ padding: 0 }}
                   onClick={() => setSelectedBranches([])}
+                >
+                  Unselect All
+                </Button>
+              </div>
+              <Divider style={{ margin: "4px 0" }} />
+              {menu}
+            </>
+          )}
+        />
+
+        <span
+          style={{
+            color: "#64748B",
+            fontSize: 13,
+            fontWeight: 500,
+            whiteSpace: "nowrap",
+          }}
+        >
+          Channel:
+        </span>
+        <Select
+          mode="multiple"
+          showSearch
+          optionFilterProp="label"
+          style={{ flex: 1, minWidth: 200 }}
+          placeholder="All channels"
+          value={selectedChannels}
+          onChange={setSelectedChannels}
+          maxTagCount="responsive"
+          disabled={!reportData.channels?.length}
+          options={(reportData.channels || []).map((c) => ({ value: c, label: c }))}
+          dropdownRender={(menu) => (
+            <>
+              <div style={{ padding: "4px 8px", display: "flex", gap: 8 }}>
+                <Button
+                  size="small"
+                  type="link"
+                  style={{ padding: 0 }}
+                  onClick={() =>
+                    setSelectedChannels(reportData.channels || [])
+                  }
+                >
+                  Select All
+                </Button>
+                <Divider type="vertical" />
+                <Button
+                  size="small"
+                  type="link"
+                  style={{ padding: 0 }}
+                  onClick={() => setSelectedChannels([])}
                 >
                   Unselect All
                 </Button>
