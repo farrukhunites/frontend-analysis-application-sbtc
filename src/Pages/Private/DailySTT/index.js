@@ -408,7 +408,7 @@ const DailySTT = () => {
 
     const ExcelJS = (await import("exceljs")).default;
     const wb  = new ExcelJS.Workbook();
-    wb.creator = "SBTC Sales Analysis";
+    wb.creator = "Wazalytics";
     const ws = wb.addWorksheet("Monthly Sales", { views: [{ state: "frozen", xSplit: 1, ySplit: 1 }] });
 
     const NAV   = "1E3A5F";  const NAVY2 = "243F6A";

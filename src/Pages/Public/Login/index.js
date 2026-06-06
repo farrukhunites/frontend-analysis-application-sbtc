@@ -76,7 +76,7 @@ const Login = () => {
       <div className="login-card">
         <div className="logo">
           {logoIcon}
-          <div className="logo-text">SBTC</div>
+          <div className="logo-text">Wazalytics</div>
           <div className="logo-subtitle">Sales Analysis Platform</div>
         </div>
         <div className="title">

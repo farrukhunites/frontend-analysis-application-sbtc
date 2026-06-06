@@ -297,7 +297,7 @@ const SalesmanAchievement = () => {
 
     const ExcelJS  = (await import("exceljs")).default;
     const wb       = new ExcelJS.Workbook();
-    wb.creator     = "SBTC Sales Analysis";
+    wb.creator     = "Wazalytics";
     const ws       = wb.addWorksheet("Salesman Achievement", {
       views: [{ state: "frozen", xSplit: 3, ySplit: 2 }],
     });

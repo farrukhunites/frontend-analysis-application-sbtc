@@ -98,7 +98,7 @@ const Sidebar = ({ collapsed }) => {
           <div className="logo-full">
             {logoIcon}
             <div className="logo-text-block">
-              <span className="logo-text">SBTC</span>
+              <span className="logo-text">Wazalytics</span>
               <span className="logo-subtext">Sales Analysis</span>
             </div>
           </div>

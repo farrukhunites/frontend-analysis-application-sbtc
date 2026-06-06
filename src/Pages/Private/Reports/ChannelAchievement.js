@@ -294,7 +294,7 @@ const ChannelAchievement = () => {
     if (!data || !data.rows?.length) { message.warning("No data to export"); return; }
     const ExcelJS = (await import("exceljs")).default;
     const wb = new ExcelJS.Workbook();
-    wb.creator = "SBTC Sales Analysis";
+    wb.creator = "Wazalytics";
     const brName = branchCode === "ALL"
       ? "All Kingdom"
       : (branches.find((b) => b.code === branchCode)?.name || branchCode);

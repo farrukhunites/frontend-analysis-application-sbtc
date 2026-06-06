@@ -297,7 +297,7 @@ const ChannelCustomerYoY = () => {
 
     const ExcelJS = (await import("exceljs")).default;
     const wb = new ExcelJS.Workbook();
-    wb.creator = "SBTC Sales Analysis";
+    wb.creator = "Wazalytics";
     const ws = wb.addWorksheet("Customer YoY", { views: [{ state: "frozen", xSplit: 1, ySplit: 2 }] });
 
     const NAV = "1E3A5F";  const NAV2 = "243F6A";

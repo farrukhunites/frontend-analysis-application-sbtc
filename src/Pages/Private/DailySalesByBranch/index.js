@@ -309,7 +309,7 @@ const DailySalesByBranch = () => {
 
     const ExcelJS = (await import("exceljs")).default;
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = "SBTC Sales Analysis";
+    workbook.creator = "Wazalytics";
     const sheet = workbook.addWorksheet("Daily Sales", {
       views: [{ state: "frozen", xSplit: 1, ySplit: 1 }],
     });
