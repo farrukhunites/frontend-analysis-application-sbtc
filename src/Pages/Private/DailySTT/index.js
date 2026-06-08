@@ -1,6 +1,6 @@
 import { useContext, useEffect, useMemo, useState } from "react";
 import { Table, Select, message, DatePicker, Button, Space } from "antd";
-import { DownloadOutlined } from "@ant-design/icons";
+import { DownloadOutlined, PlusSquareOutlined, MinusSquareOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import "./style.css";
 import { getAllProducts } from "../../../API/Products";
@@ -42,6 +42,8 @@ const DailySTT = () => {
     selectedProduct ? [selectedProduct] : []
   );
   const [dailySTTReport, setDailySTTReport] = useState([]);
+  const [reportMonths, setReportMonths]     = useState([]); // YYYYMM ints from backend
+  const [expandedCols, setExpandedCols]     = useState(() => new Set()); // product codes (or "__total__") expanded
   const [msgApi, contextHolder] = message.useMessage();
   const { unitType, valueType } = useContext(UnitValueContext);
 
@@ -49,82 +51,118 @@ const DailySTT = () => {
   const [fromMonth, setFromMonth] = useState(selectedMonth || dayjs().format("YYYYMM"));
   const [toMonth,   setToMonth]   = useState(selectedMonth || dayjs().format("YYYYMM"));
 
-  const getProductColumns = (product) => {
-    const slug =
-      product?.name?.toLowerCase()?.replace(/\s+/g, "_") || "unknown";
-    return {
-      title: product?.name || "Unknown",
-      children: [
-        {
-          title: "Sales",
-          dataIndex: `${slug}_sales`,
-          render: (v) => v?.toLocaleString(),
-          sorter: (a, b) =>
-            (a[`${slug}_sales`] || 0) - (b[`${slug}_sales`] || 0),
-        },
-        {
-          title: "Target",
-          dataIndex: `${slug}_target`,
-          render: (v) => v?.toLocaleString(),
-          sorter: (a, b) =>
-            (a[`${slug}_target`] || 0) - (b[`${slug}_target`] || 0),
-        },
-        {
-          title: "Ach %",
-          render: (_, record) => {
-            const sales = record[`${slug}_sales`] || 0;
-            const target = record[`${slug}_target`] || 0;
-            const achievement = target ? (sales / target) * 100 : 0;
-            return (
-              <span style={{ color: achievement < 90 ? "red" : "green" }}>
-                {achievement.toFixed(1)}%
-              </span>
-            );
-          },
-          sorter: (a, b) => {
-            const aVal = a[`${slug}_target`]
-              ? (a[`${slug}_sales`] / a[`${slug}_target`]) * 100
-              : 0;
-            const bVal = b[`${slug}_target`]
-              ? (b[`${slug}_sales`] / b[`${slug}_target`]) * 100
-              : 0;
-            return aVal - bVal;
-          },
-        },
-        {
-          title: "Last Yr",
-          dataIndex: `${slug}_prev`,
-          render: (v) => v?.toLocaleString(),
-          sorter: (a, b) => (a[`${slug}_prev`] || 0) - (b[`${slug}_prev`] || 0),
-        },
-        {
-          title: "Growth %",
-          render: (_, record) => {
-            const g =
-              ((record[`${slug}_sales`] - record[`${slug}_prev`]) /
-                (record[`${slug}_prev`] || 1)) *
-              100;
-            return (
-              <span style={{ color: g < 0 ? "red" : "green" }}>
-                {g?.toFixed(1)}%
-              </span>
-            );
-          },
+  const isMultiMonth = reportMonths.length > 1;
 
-          sorter: (a, b) => {
-            const aVal =
-              ((a[`${slug}_sales`] - a[`${slug}_prev`]) /
-                (a[`${slug}_prev`] || 1)) *
-              100;
-            const bVal =
-              ((b[`${slug}_sales`] - b[`${slug}_prev`]) /
-                (b[`${slug}_prev`] || 1)) *
-              100;
-            return aVal - bVal;
-          },
-        },
-      ],
-    };
+  const ymLabel = (ym) => {
+    if (!ym) return "";
+    const s = String(ym);
+    return dayjs(s, "YYYYMM").format("MMM YYYY");
+  };
+
+  const toggleExpand = (key) => {
+    setExpandedCols((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const expandToggleEl = (key, label) => (
+    <span
+      onClick={(e) => { e.stopPropagation(); toggleExpand(key); }}
+      style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", userSelect: "none" }}
+      title={expandedCols.has(key) ? "Collapse months" : "Expand months"}
+    >
+      {expandedCols.has(key) ? <MinusSquareOutlined /> : <PlusSquareOutlined />}
+      <span>{label}</span>
+    </span>
+  );
+
+  const buildMetricCols = (prefix) => [
+    {
+      title: "Sales",
+      dataIndex: `${prefix}_sales`,
+      render: (v) => v?.toLocaleString(),
+      sorter: (a, b) => (a[`${prefix}_sales`] || 0) - (b[`${prefix}_sales`] || 0),
+    },
+    {
+      title: "Target",
+      dataIndex: `${prefix}_target`,
+      render: (v) => v?.toLocaleString(),
+      sorter: (a, b) => (a[`${prefix}_target`] || 0) - (b[`${prefix}_target`] || 0),
+    },
+    {
+      title: "Ach %",
+      render: (_, record) => {
+        const sales = record[`${prefix}_sales`] || 0;
+        const target = record[`${prefix}_target`] || 0;
+        const achievement = target ? (sales / target) * 100 : 0;
+        return (
+          <span style={{ color: achievement < 90 ? "red" : "green" }}>
+            {achievement.toFixed(1)}%
+          </span>
+        );
+      },
+      sorter: (a, b) => {
+        const aVal = a[`${prefix}_target`]
+          ? (a[`${prefix}_sales`] / a[`${prefix}_target`]) * 100
+          : 0;
+        const bVal = b[`${prefix}_target`]
+          ? (b[`${prefix}_sales`] / b[`${prefix}_target`]) * 100
+          : 0;
+        return aVal - bVal;
+      },
+    },
+    {
+      title: "Last Yr",
+      dataIndex: `${prefix}_prev`,
+      render: (v) => v?.toLocaleString(),
+      sorter: (a, b) => (a[`${prefix}_prev`] || 0) - (b[`${prefix}_prev`] || 0),
+    },
+    {
+      title: "Growth %",
+      render: (_, record) => {
+        const g =
+          ((record[`${prefix}_sales`] - record[`${prefix}_prev`]) /
+            (record[`${prefix}_prev`] || 1)) *
+          100;
+        return (
+          <span style={{ color: g < 0 ? "red" : "green" }}>
+            {g?.toFixed(1)}%
+          </span>
+        );
+      },
+      sorter: (a, b) => {
+        const aVal =
+          ((a[`${prefix}_sales`] - a[`${prefix}_prev`]) /
+            (a[`${prefix}_prev`] || 1)) *
+          100;
+        const bVal =
+          ((b[`${prefix}_sales`] - b[`${prefix}_prev`]) /
+            (b[`${prefix}_prev`] || 1)) *
+          100;
+        return aVal - bVal;
+      },
+    },
+  ];
+
+  const buildGroupColumn = (key, label, prefix) => {
+    // When in multi-month mode, render an expandable group; otherwise a flat group.
+    if (!isMultiMonth) {
+      return { title: label, children: buildMetricCols(prefix) };
+    }
+    const expanded = expandedCols.has(key);
+    const titleEl = expandToggleEl(key, label);
+    if (!expanded) {
+      return { title: titleEl, children: buildMetricCols(prefix) };
+    }
+    const monthGroups = reportMonths.map((ym) => ({
+      title: ymLabel(ym),
+      children: buildMetricCols(`${prefix}_${ym}`),
+    }));
+    monthGroups.push({ title: "Total", children: buildMetricCols(prefix) });
+    return { title: titleEl, children: monthGroups };
   };
 
   useEffect(() => {
@@ -196,11 +234,25 @@ const DailySTT = () => {
               prev_net_pcs: b.prev_net_sales_pcs || 0,
               prev_gross_ctn: b.prev_gross_sales_ctn || 0,
               prev_gross_pcs: b.prev_gross_sales_pcs || 0,
+              monthly: (b.monthly_breakdown || []).map((m) => ({
+                year_month:     m.year_month,
+                net_ctn:        m.net_sales_ctn   || 0,
+                net_pcs:        m.net_sales_pcs   || 0,
+                gross_ctn:      m.gross_sales_ctn || 0,
+                gross_pcs:      m.gross_sales_pcs || 0,
+                target_ctn:     m.target_ctn     || 0,
+                target_pcs:     m.target_pcs     || 0,
+                prev_net_ctn:   m.prev_net_sales_ctn   || 0,
+                prev_net_pcs:   m.prev_net_sales_pcs   || 0,
+                prev_gross_ctn: m.prev_gross_sales_ctn || 0,
+                prev_gross_pcs: m.prev_gross_sales_pcs || 0,
+              })),
             };
           });
         });
 
         setDailySTTReport(Object.values(branchMap));
+        setReportMonths(Array.isArray(res?.months) ? res.months : []);
       } catch (error) {
         msgApi.error("Error fetching daily STT report: " + error.message);
       }
@@ -211,63 +263,77 @@ const DailySTT = () => {
   }, [fromMonth, toMonth, selectedProducts, msgApi]);
 
   const columns = useMemo(() => {
-    const dynamicCols = selectedProducts?.map(getProductColumns) || [];
-    const totalCol = {
-      title: "TOTAL (Selected Products)",
-      children: [
-        {
-          title: "Sales",
-          dataIndex: "total_sales",
-          render: (v) => v?.toLocaleString(),
-        },
-        {
-          title: "Target",
-          dataIndex: "total_target",
-          render: (v) => v?.toLocaleString(),
-        },
-        {
-          title: "Ach %",
-          render: (_, record) => {
-            const achievement = record.total_target
-              ? (record.total_sales / record.total_target) * 100
-              : 0;
-            return (
-              <span style={{ color: achievement < 90 ? "red" : "green" }}>
-                {achievement.toFixed(1)}%
-              </span>
-            );
-          },
-        },
-        {
-          title: "Last Yr",
-          dataIndex: "total_prev",
-          render: (v) => v?.toLocaleString(),
-        },
-        {
-          title: "Growth %",
-          render: (_, record) => {
-            const growth =
-              ((record.total_sales - record.total_prev) /
-                (record.total_prev || 1)) *
-              100;
-            return (
-              <span style={{ color: growth < 0 ? "red" : "green" }}>
-                {growth.toFixed(1)}%
-              </span>
-            );
-          },
-        },
-      ],
-    };
+    const dynamicCols = (selectedProducts || []).map((p) => {
+      const slug = p?.name?.toLowerCase()?.replace(/\s+/g, "_") || "unknown";
+      return buildGroupColumn(p.code, p?.name || "Unknown", slug);
+    });
+    const totalCol = buildGroupColumn(
+      "__total__",
+      "TOTAL (Selected Products)",
+      "total"
+    );
     return [
       { title: "Branch", dataIndex: "branch", fixed: "left", width: 150 },
       ...dynamicCols,
       totalCol,
     ];
-  }, [selectedProducts]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProducts, expandedCols, reportMonths, isMultiMonth]);
 
   const processedData = useMemo(() => {
     if (!dailySTTReport?.length) return [];
+
+    const slugOf = (p) => p.name.toLowerCase().replace(/\s+/g, "_");
+    const salesKey  = `${valueType}_${unitType}`;        // e.g. net_ctn / gross_pcs
+    const targetKey = `target_${unitType}`;
+    const prevKey   = `prev_${valueType}_${unitType}`;
+
+    const aggregateInto = (target, branchList) => {
+      selectedProducts.forEach((p) => {
+        const slug = slugOf(p);
+        let s = 0, t = 0, pr = 0;
+        branchList.forEach((r) => {
+          const prod = r.products[slug];
+          if (!prod) return;
+          s  += prod[salesKey]  || 0;
+          t  += prod[targetKey] || 0;
+          pr += prod[prevKey]   || 0;
+        });
+        target[`${slug}_sales`]  = s;
+        target[`${slug}_target`] = t;
+        target[`${slug}_prev`]   = pr;
+
+        if (reportMonths.length > 1) {
+          reportMonths.forEach((ym) => {
+            let ms = 0, mt = 0, mp = 0;
+            branchList.forEach((r) => {
+              const prod = r.products[slug];
+              if (!prod?.monthly) return;
+              const m = prod.monthly.find((x) => x.year_month === ym);
+              if (!m) return;
+              ms += m[salesKey]  || 0;
+              mt += m[targetKey] || 0;
+              mp += m[prevKey]   || 0;
+            });
+            target[`${slug}_${ym}_sales`]  = ms;
+            target[`${slug}_${ym}_target`] = mt;
+            target[`${slug}_${ym}_prev`]   = mp;
+          });
+        }
+      });
+
+      target.total_sales  = selectedProducts.reduce((sum, p) => sum + (target[`${slugOf(p)}_sales`]  || 0), 0);
+      target.total_target = selectedProducts.reduce((sum, p) => sum + (target[`${slugOf(p)}_target`] || 0), 0);
+      target.total_prev   = selectedProducts.reduce((sum, p) => sum + (target[`${slugOf(p)}_prev`]   || 0), 0);
+
+      if (reportMonths.length > 1) {
+        reportMonths.forEach((ym) => {
+          target[`total_${ym}_sales`]  = selectedProducts.reduce((sum, p) => sum + (target[`${slugOf(p)}_${ym}_sales`]  || 0), 0);
+          target[`total_${ym}_target`] = selectedProducts.reduce((sum, p) => sum + (target[`${slugOf(p)}_${ym}_target`] || 0), 0);
+          target[`total_${ym}_prev`]   = selectedProducts.reduce((sum, p) => sum + (target[`${slugOf(p)}_${ym}_prev`]   || 0), 0);
+        });
+      }
+    };
 
     const regionGroups = {};
     dailySTTReport.forEach((branch) => {
@@ -280,128 +346,26 @@ const DailySTT = () => {
     const result = [];
 
     Object.entries(regionGroups).forEach(([region, rows]) => {
-      // Add branch rows
       rows.forEach((r) => {
         const row = { key: r.branch_code, branch: r.branch_name || "Unknown" };
-        selectedProducts.forEach((p) => {
-          const slug = p.name.toLowerCase().replace(/\s+/g, "_");
-          const prod = r.products[slug] || {};
-          row[`${slug}_sales`] = prod[`${valueType}_${unitType}`] || 0;
-          row[`${slug}_target`] = prod[`target_${unitType}`] || 0;
-          row[`${slug}_prev`] = prod[`prev_${valueType}_${unitType}`] || 0;
-        });
-
-        row.total_sales = selectedProducts.reduce(
-          (sum, p) =>
-            sum +
-            (row[`${p.name.toLowerCase().replace(/\s+/g, "_")}_sales`] || 0),
-          0
-        );
-        row.total_target = selectedProducts.reduce(
-          (sum, p) =>
-            sum +
-            (row[`${p.name.toLowerCase().replace(/\s+/g, "_")}_target`] || 0),
-          0
-        );
-        row.total_prev = selectedProducts.reduce(
-          (sum, p) =>
-            sum +
-            (row[`${p.name.toLowerCase().replace(/\s+/g, "_")}_prev`] || 0),
-          0
-        );
-
+        aggregateInto(row, [r]);
         result.push(row);
       });
 
-      // Subtotal per region
       const subtotal = {
         key: `${region}-subtotal`,
         branch: `SUB TOTAL (${region})`,
       };
-      selectedProducts.forEach((p) => {
-        const slug = p.name.toLowerCase().replace(/\s+/g, "_");
-        subtotal[`${slug}_sales`] = rows.reduce(
-          (sum, r) =>
-            sum + (r.products[slug]?.[`${valueType}_${unitType}`] || 0),
-          0
-        );
-        subtotal[`${slug}_target`] = rows.reduce(
-          (sum, r) => sum + (r.products[slug]?.[`target_${unitType}`] || 0),
-          0
-        );
-        subtotal[`${slug}_prev`] = rows.reduce(
-          (sum, r) =>
-            sum + (r.products[slug]?.[`prev_${valueType}_${unitType}`] || 0),
-          0
-        );
-      });
-
-      subtotal.total_sales = selectedProducts.reduce(
-        (sum, p) =>
-          sum +
-          (subtotal[`${p.name.toLowerCase().replace(/\s+/g, "_")}_sales`] || 0),
-        0
-      );
-      subtotal.total_target = selectedProducts.reduce(
-        (sum, p) =>
-          sum +
-          (subtotal[`${p.name.toLowerCase().replace(/\s+/g, "_")}_target`] ||
-            0),
-        0
-      );
-      subtotal.total_prev = selectedProducts.reduce(
-        (sum, p) =>
-          sum +
-          (subtotal[`${p.name.toLowerCase().replace(/\s+/g, "_")}_prev`] || 0),
-        0
-      );
-
+      aggregateInto(subtotal, rows);
       result.push(subtotal);
     });
 
-    // Grand total row
     const grandTotal = { key: "grand-total", branch: "GRAND TOTAL" };
-    selectedProducts.forEach((p) => {
-      const slug = p.name.toLowerCase().replace(/\s+/g, "_");
-      grandTotal[`${slug}_sales`] = dailySTTReport.reduce(
-        (sum, r) => sum + (r.products[slug]?.[`${valueType}_${unitType}`] || 0),
-        0
-      );
-      grandTotal[`${slug}_target`] = dailySTTReport.reduce(
-        (sum, r) => sum + (r.products[slug]?.[`target_${unitType}`] || 0),
-        0
-      );
-      grandTotal[`${slug}_prev`] = dailySTTReport.reduce(
-        (sum, r) =>
-          sum + (r.products[slug]?.[`prev_${valueType}_${unitType}`] || 0),
-        0
-      );
-    });
-
-    grandTotal.total_sales = selectedProducts.reduce(
-      (sum, p) =>
-        sum +
-        (grandTotal[`${p.name.toLowerCase().replace(/\s+/g, "_")}_sales`] || 0),
-      0
-    );
-    grandTotal.total_target = selectedProducts.reduce(
-      (sum, p) =>
-        sum +
-        (grandTotal[`${p.name.toLowerCase().replace(/\s+/g, "_")}_target`] ||
-          0),
-      0
-    );
-    grandTotal.total_prev = selectedProducts.reduce(
-      (sum, p) =>
-        sum +
-        (grandTotal[`${p.name.toLowerCase().replace(/\s+/g, "_")}_prev`] || 0),
-      0
-    );
-
+    aggregateInto(grandTotal, dailySTTReport);
     result.push(grandTotal);
 
     return result;
-  }, [dailySTTReport, selectedProducts, valueType, unitType]);
+  }, [dailySTTReport, selectedProducts, valueType, unitType, reportMonths]);
 
   const exportToExcel = async () => {
     if (!processedData.length) { message.warning("No data to export"); return; }
