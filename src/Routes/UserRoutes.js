@@ -3,7 +3,6 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { Skeleton } from "antd";
 
 // Lazy-load every page so each route is its own JS chunk
-const Dashboard          = lazy(() => import("../Pages/Private/Dashboard"));
 const BranchAnalysis     = lazy(() => import("../Pages/Private/BranchAnalysis"));
 const CustomerAnalysis   = lazy(() => import("../Pages/Private/CustomerAnalysis"));
 const SalesmanAnalysis   = lazy(() => import("../Pages/Private/SalesmanAnalysis"));
@@ -24,8 +23,8 @@ const PageLoader = () => (
 const UserRoutes = () => (
   <Suspense fallback={<PageLoader />}>
     <Routes>
-      <Route index element={<Dashboard />} />
-      <Route path="branch-analysis"     element={<BranchAnalysis />} />
+      <Route index element={<BranchAnalysis />} />
+      <Route path="branch-analysis"     element={<Navigate to="/" replace />} />
       <Route path="customer-analysis"   element={<CustomerAnalysis />} />
       <Route path="salesman-analysis"   element={<SalesmanAnalysis />} />
       <Route path="channel-analysis"    element={<ChannelAnalysis />} />

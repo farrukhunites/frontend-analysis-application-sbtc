@@ -1,7 +1,6 @@
 import {
   AimOutlined,
   SettingOutlined,
-  DashboardOutlined,
   UserOutlined,
   TeamOutlined,
   UsergroupAddOutlined,
@@ -21,8 +20,7 @@ import { UserContext } from "../../App";
 const { Sider } = Layout;
 
 const menuItems = [
-  { key: "1", icon: <DashboardOutlined />,      label: "Dashboard",           path: "/" },
-  { key: "2", icon: <ShopOutlined />,           label: "Branch Dashboard",    path: "/branch-analysis" },
+  { key: "2", icon: <ShopOutlined />,           label: "Dashboard",           path: "/" },
   { key: "3", icon: <UserOutlined />,           label: "Customer Analysis",   path: "/customer-analysis" },
   { key: "4", icon: <TeamOutlined />,           label: "Salesman Analysis",   path: "/salesman-analysis" },
   { key: "5", icon: <FileTextOutlined />,        label: "Reports",             path: "/reports" },
