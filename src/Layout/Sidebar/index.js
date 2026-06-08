@@ -9,6 +9,7 @@ import {
   CalendarOutlined,
   FileTextOutlined,
   SafetyOutlined,
+  ShopOutlined,
 } from "@ant-design/icons";
 import { Layout, Tooltip } from "antd";
 import "./style.css";
@@ -21,6 +22,7 @@ const { Sider } = Layout;
 
 const menuItems = [
   { key: "1", icon: <DashboardOutlined />,      label: "Dashboard",           path: "/" },
+  { key: "2", icon: <ShopOutlined />,           label: "Branch Dashboard",    path: "/branch-analysis" },
   { key: "3", icon: <UserOutlined />,           label: "Customer Analysis",   path: "/customer-analysis" },
   { key: "4", icon: <TeamOutlined />,           label: "Salesman Analysis",   path: "/salesman-analysis" },
   { key: "5", icon: <FileTextOutlined />,        label: "Reports",             path: "/reports" },

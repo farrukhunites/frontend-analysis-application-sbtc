@@ -36,7 +36,7 @@ const initialDashboardData = {
   },
 };
 
-const Dashboard = () => {
+const Dashboard = ({ branchCode = null }) => {
   const { selectedMonth } = useDateFilter();
   const { selectedProduct } = useContext(ProductContext);
   const { unitType, valueType } = useContext(UnitValueContext);
@@ -66,7 +66,8 @@ const Dashboard = () => {
           selectedMonth,
           productCode,
           unitType,
-          valueType
+          valueType,
+          branchCode
         );
         if (res?.result) {
           const newDashboardData = {
@@ -113,7 +114,7 @@ const Dashboard = () => {
       setLoading(false);
       setDashboardData(initialDashboardData);
     }
-  }, [selectedMonth, selectedProduct, unitType, valueType]); // Dependencies remain the same
+  }, [selectedMonth, selectedProduct, unitType, valueType, branchCode]); // Dependencies remain the same
 
   // --- Customer By Channel Data Processor Effect ---
   useEffect(() => {

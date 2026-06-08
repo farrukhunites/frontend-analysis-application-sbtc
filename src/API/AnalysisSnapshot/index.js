@@ -8,7 +8,8 @@ const getDashboardData = async (
   month,
   product_code,
   unit_type,
-  value_type
+  value_type,
+  branch_code = null
 ) => {
   const API_URL = `${process.env.REACT_APP_BACKEND_URL}dashboard/`;
 
@@ -21,9 +22,11 @@ const getDashboardData = async (
   }
 
   try {
+    const params = { month, product_code, unit_type, value_type };
+    if (branch_code) params.branch_code = branch_code;
     const response = await axios.get(API_URL, {
       headers: { Authorization: `Bearer ${getToken()}` },
-      params: { month, product_code, unit_type, value_type },
+      params,
     });
     // Component reads `res.result`; live view returns the dict directly,
     // so wrap it to keep the existing call site unchanged.
