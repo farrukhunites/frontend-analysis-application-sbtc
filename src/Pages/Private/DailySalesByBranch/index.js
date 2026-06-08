@@ -192,11 +192,11 @@ const DailySalesByBranch = () => {
               ? -1
               : (a.achievement || 0) - (b.achievement || 0),
         render: (v) =>
-          v === 0 ? (
+          !v ? (
             "-"
           ) : (
             <b style={{ color: v >= 100 ? "green" : "red" }}>
-              {v?.toFixed(2)}%
+              {v.toFixed(2)}%
             </b>
           ),
       },
@@ -212,11 +212,11 @@ const DailySalesByBranch = () => {
               ? -1
               : (a.dailyAch || 0) - (b.dailyAch || 0),
         render: (v) =>
-          v === 0 ? (
+          !v ? (
             "-"
           ) : (
             <b style={{ color: v >= 100 ? "green" : "red" }}>
-              {v?.toFixed(2)}%
+              {v.toFixed(2)}%
             </b>
           ),
       },
@@ -228,10 +228,15 @@ const DailySalesByBranch = () => {
         dataIndex: "branch",
         key: "branch",
         fixed: "left",
-        width: 130,
-        render: (v) => (
-          <b style={{ color: "#000000ff" }}>{v?.toLocaleString()}</b>
-        ),
+        width: 160,
+        render: (v, row) =>
+          row.isChannel ? (
+            <span style={{ color: "var(--color-text-secondary)", fontSize: 12 }}>
+              <Tag style={{ margin: 0, fontSize: 11 }}>{v}</Tag>
+            </span>
+          ) : (
+            <b style={{ color: "#000000ff" }}>{v?.toLocaleString()}</b>
+          ),
       },
       ...dayCols,
       ...numericCols,
@@ -267,7 +272,15 @@ const DailySalesByBranch = () => {
         100
       : 0;
 
-    return [...salesData.map((r, idx) => ({ key: idx, ...r })), totalRow];
+    const branchRows = salesData.map((r, idx) => ({
+      key: `b-${idx}`,
+      ...r,
+      children: (r.channels || []).length
+        ? r.channels.map((c, ci) => ({ key: `b-${idx}-c-${ci}`, ...c }))
+        : undefined,
+    }));
+
+    return [...branchRows, totalRow];
   }, [salesData, dayColumns]);
 
   const productTabs = productOptions.map((p) => ({
@@ -283,7 +296,11 @@ const DailySalesByBranch = () => {
     const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
     const productCodes = selectedProduct?.code || "";
 
-    setDrillModal({ open: true, loading: true, title: `${row.branch} — ${dayMeta.title} ${dayMeta.shortDay}`, data: [], total: 0, branchCode: row.branchCode });
+    const drillChannels = row.isChannel ? [row.channel] : selectedChannels;
+    const titlePrefix = row.isChannel
+      ? `${row.channel} (channel) — ${dayMeta.title} ${dayMeta.shortDay}`
+      : `${row.branch} — ${dayMeta.title} ${dayMeta.shortDay}`;
+    setDrillModal({ open: true, loading: true, title: titlePrefix, data: [], total: 0, branchCode: row.branchCode });
 
     const res = await getDailyCustomerBreakdown({
       branchCode:   row.branchCode,
@@ -291,7 +308,7 @@ const DailySalesByBranch = () => {
       productCodes,
       unitType,
       valueType,
-      channels:     selectedChannels,
+      channels:     drillChannels,
     });
 
     if (res?.error) {

@@ -52,6 +52,7 @@ const SalesmanAnalysis = () => {
   const [data, setData]                       = useState(null);
   const [rankModal, setRankModal]             = useState({ open: false, scope: null });
   const [activeCustModal, setActiveCustModal] = useState(false);
+  const [assignedCustModal, setAssignedCustModal] = useState(false);
 
   const [searchParams] = useSearchParams();
   const locationState  = useLocation().state;
@@ -144,7 +145,7 @@ const SalesmanAnalysis = () => {
     { title: "Channels",         value: data.channels?.length ? data.channels.join(", ") : "-",     icon: <ApartmentOutlined /> },
     { title: "Sales MTD",        value: `${fmtNum(data.sales_mtd)} ${unitType}`,                    icon: <CalendarOutlined /> },
     { title: "Sales YTD",        value: `${fmtNum(data.sales_ytd)} ${unitType}`,                    icon: <LineChartOutlined /> },
-    { title: "Total Sales",      value: `${fmtNum(data.total_sales_forever)} ${unitType}`,          icon: <DollarOutlined /> },
+    { title: "Total Sales (2023+)", value: `${fmtNum(data.total_sales_forever)} ${unitType}`,       icon: <DollarOutlined /> },
   ] : [];
 
   // Build customer-analysis link with full context
@@ -411,7 +412,11 @@ const SalesmanAnalysis = () => {
             </div>
           </div>
 
-          <div className="sa-rank-card">
+          <div
+            className={`sa-rank-card ${data.assigned_customers_list?.length ? "sa-rank-card--clickable" : ""}`}
+            onClick={() => data.assigned_customers_list?.length && setAssignedCustModal(true)}
+            title={data.assigned_customers_list?.length ? "Click to see the assigned customers list" : ""}
+          >
             <div className="sa-rank-icon sa-rank-icon--invoice"><TeamOutlined /></div>
             <div className="sa-rank-body">
               <div className="sa-rank-label">Assigned Customers</div>
@@ -581,7 +586,74 @@ const SalesmanAnalysis = () => {
         unitType={unitType}
         onPickCustomer={openCustomerInNewTab}
       />
+
+      {/* ── Assigned customers modal ───────────────────────────── */}
+      <AssignedCustomersModal
+        open={assignedCustModal}
+        onClose={() => setAssignedCustModal(false)}
+        data={data}
+        onPickCustomer={openCustomerInNewTab}
+      />
     </div>
+  );
+};
+
+const AssignedCustomersModal = ({ open, onClose, data, onPickCustomer }) => {
+  const list = data?.assigned_customers_list || [];
+
+  const columns = [
+    { title: "#", width: 50, align: "center",
+      render: (_, __, i) => <span style={{ color: "#94A3B8" }}>{i + 1}</span> },
+    { title: "Customer", dataIndex: "customer_name",
+      sorter: (a, b) => (a.customer_name || "").localeCompare(b.customer_name || ""),
+      render: (v, r) => (
+        <div
+          className="report-clickable-name"
+          title="Open Customer Analysis in new tab"
+          onClick={() => onPickCustomer(r)}
+        >
+          <div style={{ fontWeight: 600, fontSize: 12 }}>{v}</div>
+          <div style={{ fontSize: 11, color: "#64748B" }}>{r.customer_code}</div>
+        </div>
+      ) },
+    { title: "Channel", dataIndex: "channel", width: 100,
+      render: (v) => v ? <Tag color="blue">{v}</Tag> : <span style={{ color: "#CBD5E1" }}>-</span> },
+    { title: "Branch", dataIndex: "branch_name", width: 180,
+      render: (v) => v ? <span style={{ fontSize: 12 }}>{v}</span> : <span style={{ color: "#94A3B8" }}>-</span> },
+  ];
+
+  return (
+    <Modal
+      open={open}
+      onCancel={onClose}
+      footer={null}
+      width={760}
+      title={
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>
+            Assigned Customers — {data?.salesman_name || ""}
+          </div>
+          <div style={{ fontSize: 12, color: "#64748B", fontWeight: 400 }}>
+            {list.length} customer{list.length !== 1 ? "s" : ""} officially assigned to this salesman
+          </div>
+        </div>
+      }
+      destroyOnClose
+    >
+      {list.length === 0 ? (
+        <Empty description="No customers assigned to this salesman" />
+      ) : (
+        <Table
+          size="small"
+          bordered
+          rowKey={(r) => r.customer_code}
+          columns={columns}
+          dataSource={list}
+          pagination={{ pageSize: 15, size: "small", showSizeChanger: false }}
+          scroll={{ y: 420 }}
+        />
+      )}
+    </Modal>
   );
 };
 
