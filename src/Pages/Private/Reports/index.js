@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState } from "react";
 import { Tabs, Skeleton } from "antd";
-import { CalendarOutlined, AimOutlined, TrophyOutlined, RiseOutlined, AppstoreOutlined, TeamOutlined } from "@ant-design/icons";
+import { CalendarOutlined, AimOutlined, TrophyOutlined, RiseOutlined, AppstoreOutlined, TeamOutlined, DatabaseOutlined } from "@ant-design/icons";
 
 const DailySalesByBranch  = lazy(() => import("../DailySalesByBranch"));
 const DailySTT            = lazy(() => import("../DailySTT"));
@@ -8,6 +8,7 @@ const SalesmanAchievement = lazy(() => import("./SalesmanAchievement"));
 const ChannelCustomerYoY  = lazy(() => import("./ChannelCustomerYoY"));
 const ChannelAchievement  = lazy(() => import("./ChannelAchievement"));
 const ChannelCoverage     = lazy(() => import("./ChannelCoverage"));
+const RawData             = lazy(() => import("./RawData"));
 
 const TabLoader = () => (
   <div style={{ padding: "24px 0" }}>
@@ -91,6 +92,19 @@ const TABS = [
     children: (
       <Suspense fallback={<TabLoader />}>
         <ChannelCoverage />
+      </Suspense>
+    ),
+  },
+  {
+    key:      "raw-data",
+    label:    (
+      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <DatabaseOutlined /> Raw Data
+      </span>
+    ),
+    children: (
+      <Suspense fallback={<TabLoader />}>
+        <RawData />
       </Suspense>
     ),
   },

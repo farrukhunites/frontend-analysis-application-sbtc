@@ -118,6 +118,39 @@ export const getChannelCoverage = ({ month, unitType, valueType, branchCodes, pr
     .then((r) => r.data)
     .catch((err) => ({ error: err.response?.data || err.message }));
 
+export const exportRawSalesCsv = ({ startDate, endDate, branchCodes, productCodes, onDownloadProgress }) =>
+  axios
+    .get(`${process.env.REACT_APP_BACKEND_URL}reports/raw-sales/`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+      responseType: "blob",
+      onDownloadProgress,
+      params: {
+        start_date:        startDate,
+        end_date:          endDate,
+        export:            "csv",
+        "branch_codes[]":  branchCodes?.length ? branchCodes : undefined,
+        "product_codes[]": productCodes?.length ? productCodes : undefined,
+      },
+    })
+    .then((r) => ({ blob: r.data }))
+    .catch((err) => ({ error: err.response?.data || err.message }));
+
+export const getRawSales = ({ startDate, endDate, branchCodes, productCodes, page, pageSize }) =>
+  axios
+    .get(`${process.env.REACT_APP_BACKEND_URL}reports/raw-sales/`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+      params: {
+        start_date:        startDate,
+        end_date:          endDate,
+        page:              page || 1,
+        page_size:         pageSize || 100,
+        "branch_codes[]":  branchCodes?.length ? branchCodes : undefined,
+        "product_codes[]": productCodes?.length ? productCodes : undefined,
+      },
+    })
+    .then((r) => r.data)
+    .catch((err) => ({ error: err.response?.data || err.message }));
+
 export const getSalesmanCustomerBreakdown = ({ salesmanCd, month, productCodes, unitType, valueType, branchCodes }) =>
   axios
     .get(`${process.env.REACT_APP_BACKEND_URL}reports/salesman-customer-breakdown/`, {
