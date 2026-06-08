@@ -1,6 +1,6 @@
 import { useContext, useEffect, useMemo, useState } from "react";
 import {
-  Table, Input, Select, Skeleton, message, Tag, Empty, Card, Tooltip,
+  Table, Input, Select, Skeleton, message, Tag, Empty, Card, Tooltip, Modal, Button,
 } from "antd";
 import {
   UserOutlined, LoginOutlined, ApiOutlined, TeamOutlined, SearchOutlined,
@@ -80,6 +80,7 @@ const UserActivity = () => {
   const [pathFilter, setPathFilter] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
+  const [allUsersModalOpen, setAllUsersModalOpen] = useState(false);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -155,12 +156,17 @@ const UserActivity = () => {
 
           <div className="activity-charts-row">
             <Card
-              title={<span><UserOutlined /> Top 5 Users (7d)</span>}
+              title={<span><UserOutlined /> Top {Math.min(5, topUsers.length)} Users (7d)</span>}
               size="small"
               className="activity-chart-card"
+              extra={topUsers.length > 5 ? (
+                <Button type="link" size="small" onClick={() => setAllUsersModalOpen(true)}>
+                  View all ({topUsers.length})
+                </Button>
+              ) : null}
             >
               <TopBar
-                items={topUsers}
+                items={topUsers.slice(0, 5)}
                 getLabel={(u) => u.username || "anonymous"}
                 getCount={(u) => u.call_count}
               />
@@ -245,6 +251,51 @@ const UserActivity = () => {
               scroll={{ x: "max-content", y: "50vh" }}
             />
           </Card>
+
+          <Modal
+            open={allUsersModalOpen}
+            onCancel={() => setAllUsersModalOpen(false)}
+            footer={null}
+            width={620}
+            title={
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 600 }}>
+                  <UserOutlined /> All Active Users (7d)
+                </div>
+                <div style={{ fontSize: 12, color: "#64748B", fontWeight: 400 }}>
+                  {topUsers.length} user{topUsers.length !== 1 ? "s" : ""} ranked by API call count
+                </div>
+              </div>
+            }
+            destroyOnClose
+          >
+            <Table
+              size="small"
+              bordered
+              rowKey={(r) => r.username || "anonymous"}
+              dataSource={topUsers}
+              pagination={{ pageSize: 15, size: "small", showSizeChanger: false }}
+              scroll={{ y: 420 }}
+              columns={[
+                {
+                  title: "#", width: 50, align: "center",
+                  render: (_, __, i) => <span style={{ color: "#94A3B8" }}>{i + 1}</span>,
+                },
+                {
+                  title: "User", dataIndex: "username",
+                  render: (v) => v
+                    ? <span style={{ fontWeight: 600, fontSize: 12 }}>{v}</span>
+                    : <span style={{ color: "#CBD5E1" }}>anonymous</span>,
+                },
+                {
+                  title: "API Calls", dataIndex: "call_count", width: 140, align: "right",
+                  sorter: (a, b) => a.call_count - b.call_count,
+                  defaultSortOrder: "descend",
+                  render: (v) => <span style={{ fontWeight: 600 }}>{fmtNum(v)}</span>,
+                },
+              ]}
+            />
+          </Modal>
         </>
       )}
     </div>
