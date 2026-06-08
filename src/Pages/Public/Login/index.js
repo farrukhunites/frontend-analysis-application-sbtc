@@ -38,6 +38,8 @@ const Login = () => {
             employee_code: loginData?.data?.employee_code,
             allowed_branches: loginData?.data?.allowed_branches,
             allowed_products: loginData?.data?.allowed_products,
+            denied_pages:     loginData?.data?.denied_pages   || [],
+            denied_reports:   loginData?.data?.denied_reports || [],
           })
         )
       );

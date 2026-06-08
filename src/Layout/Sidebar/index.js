@@ -14,21 +14,22 @@ import { Layout, Tooltip } from "antd";
 import "./style.css";
 import { useNavigate, useLocation } from "react-router-dom";
 import { handleLogout } from "../../Utils/UpdateUserState";
+import { PAGE_KEYS, isPageBlocked } from "../../Utils/access";
 import { useContext } from "react";
 import { UserContext } from "../../App";
 
 const { Sider } = Layout;
 
 const menuItems = [
-  { key: "2", icon: <ShopOutlined />,           label: "Dashboard",           path: "/" },
-  { key: "3", icon: <UserOutlined />,           label: "Customer Analysis",   path: "/customer-analysis" },
-  { key: "4", icon: <TeamOutlined />,           label: "Salesman Analysis",   path: "/salesman-analysis" },
-  { key: "5", icon: <FileTextOutlined />,        label: "Reports",             path: "/reports" },
-  { key: "7", icon: <UsergroupAddOutlined />,   label: "Potential Customers", path: "/potential-customers" },
+  { key: "2", icon: <ShopOutlined />,           label: "Dashboard",           path: "/",                     pageKey: PAGE_KEYS.DASHBOARD },
+  { key: "3", icon: <UserOutlined />,           label: "Customer Analysis",   path: "/customer-analysis",    pageKey: PAGE_KEYS.CUSTOMER_ANALYSIS },
+  { key: "4", icon: <TeamOutlined />,           label: "Salesman Analysis",   path: "/salesman-analysis",    pageKey: PAGE_KEYS.SALESMAN_ANALYSIS },
+  { key: "5", icon: <FileTextOutlined />,       label: "Reports",             path: "/reports",              pageKey: PAGE_KEYS.REPORTS },
+  { key: "7", icon: <UsergroupAddOutlined />,   label: "Potential Customers", path: "/potential-customers",  pageKey: PAGE_KEYS.POTENTIAL_CUSTOMERS },
 ];
 
 const bottomItems = [
-  { key: "9", icon: <SettingOutlined />, label: "Settings", path: "/settings" },
+  { key: "9", icon: <SettingOutlined />, label: "Settings", path: "/settings", pageKey: PAGE_KEYS.SETTINGS },
 ];
 
 const logoIcon = (
@@ -75,12 +76,14 @@ const Sidebar = ({ collapsed }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const visibleMenuItems = userData?.role === "admin"
+  const fullMenu = userData?.role === "admin"
     ? [
         ...menuItems,
-        { key: "10", icon: <SafetyOutlined />, label: "User Activity", path: "/user-activity" },
+        { key: "10", icon: <SafetyOutlined />, label: "User Activity", path: "/user-activity", pageKey: PAGE_KEYS.USER_ACTIVITY },
       ]
     : menuItems;
+  const visibleMenuItems   = fullMenu.filter((item)    => !isPageBlocked(userData, item.pageKey));
+  const visibleBottomItems = bottomItems.filter((item) => !isPageBlocked(userData, item.pageKey));
   const activePath = location.pathname;
 
   const onLogout = () => {
@@ -130,7 +133,7 @@ const Sidebar = ({ collapsed }) => {
       {/* Bottom: settings + logout */}
       <div className="sidebar__bottom">
         <div className="sidebar__divider" />
-        {bottomItems.map((item) => (
+        {visibleBottomItems.map((item) => (
           <NavItem
             key={item.key}
             item={item}
