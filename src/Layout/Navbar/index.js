@@ -1,6 +1,7 @@
 import { Header } from "antd/es/layout/layout";
 import "./style.css";
-import { message, Radio, Select } from "antd";
+import { message, Radio, Select, Tooltip } from "antd";
+import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
 import DateFilter from "../../Components/DateFilter";
 import { useContext, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
@@ -12,7 +13,7 @@ const { Option } = Select;
 
 const PAGES_WITHOUT_DATE_FILTER = ["/customer-analysis", "/daily-stt"];
 
-const Navbar = ({ colorBgContainer }) => {
+const Navbar = ({ collapsed, setCollapsed }) => {
   const { pathname } = useLocation();
   const [productOptions, setProductOptions] = useState([]);
   const { selectedProduct, setSelectedProduct } = useContext(ProductContext);
@@ -82,8 +83,29 @@ const Navbar = ({ colorBgContainer }) => {
           height: 64,
         }}
       >
-        {/* Left side: product select */}
+        {/* Left side: collapse toggle + product select */}
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <Tooltip title={collapsed ? "Expand sidebar" : "Collapse sidebar"} placement="bottom">
+            <span
+              onClick={() => setCollapsed(!collapsed)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 36,
+                height: 36,
+                borderRadius: 8,
+                cursor: "pointer",
+                color: "#1E3A5F",
+                fontSize: 18,
+                transition: "background 0.2s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(59,130,246,0.08)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+            >
+              {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            </span>
+          </Tooltip>
           <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500 }}>Product:</span>
           <Select
             loading={loading}

@@ -17,7 +17,7 @@ const AppLayout = ({ userType, contents }) => {
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
-      <Sidebar collapsed={collapsed} onNavigate={navigate} />
+      {!collapsed && <Sidebar collapsed={false} onNavigate={navigate} />}
       <Layout>
         <Navbar
           collapsed={collapsed}
