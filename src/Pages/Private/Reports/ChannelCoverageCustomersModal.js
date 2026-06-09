@@ -1,5 +1,6 @@
-import { Modal, Skeleton, Empty, Table, Tag } from "antd";
-import { openCustomerAnalysis, openSalesmanAnalysis } from "./reportUtils";
+import { Modal, Skeleton, Empty, Table, Tag, Button } from "antd";
+import { DownloadOutlined } from "@ant-design/icons";
+import { openCustomerAnalysis, openSalesmanAnalysis, exportRowsToExcel } from "./reportUtils";
 import "./reports.css";
 
 const fmtNum = (v) =>
@@ -99,6 +100,31 @@ const ChannelCoverageCustomersModal = ({ state, onClose, unitType, valueType, se
     productLabel,
   ].filter(Boolean).join(" · ");
 
+  const handleExport = () => {
+    const cols = [
+      { header: "Customer Code", key: "customer_code", width: 16 },
+      { header: "Customer Name", key: "customer_name", width: 38 },
+      { header: "Channel",       key: "channel",       width: 12 },
+      { header: "Salesman Code", key: "salesman_cd",   width: 14 },
+      { header: "Salesman Name", key: "salesman_nm",   width: 26 },
+      ...(showYtd
+        ? [{
+            header: `YTD ${valueLabel} (${unitLabel})`,
+            key: "ytd_value", width: 22, type: "number",
+          }]
+        : []),
+    ];
+    const slug = (s) => (s || "").replace(/[^\w]+/g, "_").toLowerCase();
+    const tag = isRemaining ? "remaining" : "coverage";
+    exportRowsToExcel({
+      sheetName: isRemaining ? "Remaining Customers" : "Coverage Drill-down",
+      fileName:  `${tag}_${slug(branchName)}_${slug(channel) || "all"}`,
+      subtitle:  scopeLabel,
+      columns:   cols,
+      rows:      data?.customers || [],
+    });
+  };
+
   return (
     <Modal
       open={open}
@@ -121,7 +147,7 @@ const ChannelCoverageCustomersModal = ({ state, onClose, unitType, valueType, se
         <Empty description="No customers in this bucket" />
       ) : (
         <>
-          <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
             <StatChip label="Customers" value={fmtNum(data.customer_count)} />
             {showYtd && (
               <StatChip
@@ -130,6 +156,14 @@ const ChannelCoverageCustomersModal = ({ state, onClose, unitType, valueType, se
                 accent="#3B82F6"
               />
             )}
+            <Button
+              size="small"
+              icon={<DownloadOutlined />}
+              onClick={handleExport}
+              style={{ marginLeft: "auto" }}
+            >
+              Export to Excel
+            </Button>
           </div>
           <Table
             size="small"

@@ -1,4 +1,6 @@
-import { Modal, Skeleton, Empty, Table, Tag } from "antd";
+import { Modal, Skeleton, Empty, Table, Tag, Button } from "antd";
+import { DownloadOutlined } from "@ant-design/icons";
+import { exportRowsToExcel } from "./reportUtils";
 import "./reports.css";
 
 const MONTHS = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -111,6 +113,48 @@ const InvoiceBreakdownModal = ({ state, onClose, unitType }) => {
       render: (items) => items?.length || 0 },
   ];
 
+  const handleExport = () => {
+    // Flatten invoice -> item rows so each line item gets its own row.
+    const flat = [];
+    (data?.invoices || []).forEach((inv) => {
+      const items = inv.items?.length ? inv.items : [{}];
+      items.forEach((it) => {
+        flat.push({
+          inv_no:      inv.inv_no,
+          inv_dt:      inv.inv_dt,
+          cust_cd:     inv.cust_cd,
+          cust_nm:     inv.cust_nm,
+          salesman_cd: inv.salesman_cd,
+          salesman_nm: inv.salesman_nm,
+          item_cd:     it.item_cd || "",
+          item_nm:     it.item_nm || "",
+          paid_qty:    it.paid_qty || 0,
+          free_qty:    it.free_qty || 0,
+        });
+      });
+    });
+    const cols = [
+      { header: "Invoice #",      key: "inv_no",      width: 14 },
+      { header: "Invoice Date",   key: "inv_dt",      width: 14 },
+      { header: "Customer Code",  key: "cust_cd",     width: 14 },
+      { header: "Customer Name",  key: "cust_nm",     width: 32 },
+      { header: "Salesman Code",  key: "salesman_cd", width: 14 },
+      { header: "Salesman Name",  key: "salesman_nm", width: 22 },
+      { header: "Item Code",      key: "item_cd",     width: 14 },
+      { header: "Item Name",      key: "item_nm",     width: 32 },
+      { header: `Paid (${unitLabel})`, key: "paid_qty", width: 14, type: "number" },
+      { header: `Free (${unitLabel})`, key: "free_qty", width: 14, type: "number" },
+    ];
+    const slug = (s) => (s || "").replace(/[^\w]+/g, "_").toLowerCase();
+    exportRowsToExcel({
+      sheetName: "Invoice Breakdown",
+      fileName:  `invoices_${slug(customerCode)}_${month ? `${year}${String(month).padStart(2, "0")}` : year}`,
+      subtitle:  `${customerName} · ${customerCode} · ${period}`,
+      columns:   cols,
+      rows:      flat,
+    });
+  };
+
   return (
     <Modal
       open={open}
@@ -133,11 +177,19 @@ const InvoiceBreakdownModal = ({ state, onClose, unitType }) => {
         <Empty description="No invoices in this period" />
       ) : (
         <>
-          <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
             <StatChip label="Invoices" value={data.invoice_count} />
             <StatChip label={`Total Paid (${unitLabel})`} value={fmtNum(data.total_paid)} accent="#3B82F6" />
             <StatChip label={`Total Free (${unitLabel})`} value={fmtNum(data.total_free)} accent="#10B981" />
             {isKa && <Tag color="purple" style={{ alignSelf: "center" }}>KA group ({customerCode})</Tag>}
+            <Button
+              size="small"
+              icon={<DownloadOutlined />}
+              onClick={handleExport}
+              style={{ marginLeft: "auto" }}
+            >
+              Export to Excel
+            </Button>
           </div>
           <Table
             size="small"
