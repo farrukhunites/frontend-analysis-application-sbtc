@@ -94,13 +94,6 @@ const ChannelCustomerYoY = () => {
 
   const isKAChannel = (selectedChannel || "").toUpperCase() === "KA";
 
-  // "All Branches" is only valid for KA — fall back to first branch otherwise
-  useEffect(() => {
-    if (!isKAChannel && selectedBranch === "ALL" && branches.length) {
-      setSelectedBranch(branches[0].code);
-    }
-  }, [isKAChannel, selectedBranch, branches]);
-
   // Fetch report
   useEffect(() => {
     if (!selectedChannel || !selectedProduct?.code) return;
@@ -126,25 +119,30 @@ const ChannelCustomerYoY = () => {
     });
   };
 
-  // Cell click only works with a single branch (need branch_code on the backend)
-  const breakdownClickable = selectedBranch !== "ALL";
+  // Cell click needs a single branch. With "ALL" selected we fall back to the
+  // row's own branch_code (backend now returns per-branch rows for non-KA).
+  const rowBranchCode = (row) =>
+    selectedBranch !== "ALL" ? selectedBranch : row?.branch_code || null;
+  const canDrillRow = (row) => !!rowBranchCode(row);
 
   const openBreakdown = ({ row, year, month }) => {
-    if (!breakdownClickable || row.isGrandTotal) return;
+    if (row.isGrandTotal) return;
+    const branchCode = rowBranchCode(row);
+    if (!branchCode) return;
     setBreakdown({
       open: true, loading: true, data: null,
       customerCode: row.code,
       customerName: row.name,
       year, month, isKa: isKAChannel,
       channel:     selectedChannel,
-      branchCode:  selectedBranch,
+      branchCode,
       productCode: selectedProduct?.code,
     });
     getCustomerInvoiceBreakdown({
       customerCode: row.code,
       isKa:         isKAChannel,
       channel:      selectedChannel,
-      branchCode:   selectedBranch,
+      branchCode,
       productCodes: selectedProduct?.code,
       year,
       month,
@@ -167,7 +165,6 @@ const ChannelCustomerYoY = () => {
     const { years, months_by_year, growth_pairs } = data;
 
     const isKA = (selectedChannel || "").toUpperCase() === "KA";
-    const linkable = !isKA && selectedBranch !== "ALL";   // need a single customer + single branch
 
     const cols = [
       {
@@ -177,13 +174,15 @@ const ChannelCustomerYoY = () => {
         ...nameSearchProps((r) => r.name),
         render: (_, r) => {
           if (r.isGrandTotal) return <b>{r.name}</b>;
+          const branchForLink = rowBranchCode(r);
+          const linkable = !isKA && !!branchForLink;
           const nameEl = linkable ? (
             <div
               className="report-clickable-name"
               style={{ fontSize: 12 }}
               onClick={() => openCustomerAnalysis({
                 customerCode: r.code,
-                branchCode:   selectedBranch,
+                branchCode:   branchForLink,
                 channel:      selectedChannel,
                 productCode:  selectedProduct?.code,
               })}
@@ -201,6 +200,30 @@ const ChannelCustomerYoY = () => {
           );
         },
       },
+      {
+        title: "Branch",
+        dataIndex: "branch_name",
+        fixed: "left",
+        width: 130,
+        render: (v, r) => {
+          if (r.isGrandTotal) return null;
+          if (!v) return <span style={{ color: "#CBD5E1" }}>—</span>;
+          return (
+            <div style={{ fontSize: 12, color: "#1E293B" }}>
+              {v}
+              {r.branch_code && (
+                <div style={{ fontSize: 10, color: "#94A3B8" }}>{r.branch_code}</div>
+              )}
+            </div>
+          );
+        },
+        filters: Array.from(
+          new Set((data.rows || []).map((r) => r.branch_name).filter(Boolean))
+        )
+          .sort()
+          .map((n) => ({ text: n, value: n })),
+        onFilter: (value, record) => record.isGrandTotal || record.branch_name === value,
+      },
     ];
 
     years.forEach((year) => {
@@ -212,7 +235,7 @@ const ChannelCustomerYoY = () => {
             align: "right",
             width: 64,
             render: (v, r) => {
-              if (v == null || v === 0 || r.isGrandTotal || !breakdownClickable) {
+              if (v == null || v === 0 || r.isGrandTotal || !canDrillRow(r)) {
                 return <span style={{ fontSize: 12 }}>{fmtNum(v)}</span>;
               }
               return (
@@ -250,7 +273,7 @@ const ChannelCustomerYoY = () => {
             width: 96,
             sorter: pinGrandTotal((a, b) => (a[`y_${year}`] || 0) - (b[`y_${year}`] || 0)),
             render: (v, r) => {
-              if (v == null || v === 0 || r.isGrandTotal || !breakdownClickable) {
+              if (v == null || v === 0 || r.isGrandTotal || !canDrillRow(r)) {
                 return <b style={{ color: "var(--color-primary)" }}>{fmtNum(v)}</b>;
               }
               return (
@@ -283,7 +306,7 @@ const ChannelCustomerYoY = () => {
     });
 
     return cols;
-  }, [data, expandedYears, selectedChannel, selectedBranch, selectedProduct, breakdownClickable]);
+  }, [data, expandedYears, selectedChannel, selectedBranch, selectedProduct]);
 
   const dataSource = useMemo(() => {
     if (!data) return [];
@@ -299,7 +322,7 @@ const ChannelCustomerYoY = () => {
     const ExcelJS = (await import("exceljs")).default;
     const wb = new ExcelJS.Workbook();
     wb.creator = "Wazalytics";
-    const ws = wb.addWorksheet("Customer YoY", { views: [{ state: "frozen", xSplit: 1, ySplit: 2 }] });
+    const ws = wb.addWorksheet("Customer YoY", { views: [{ state: "frozen", xSplit: 2, ySplit: 2 }] });
 
     const NAV = "1E3A5F";  const NAV2 = "243F6A";
     const GOLD = "FEF3C7"; const TOTAL_FILL = "FFF3CD";
@@ -316,7 +339,10 @@ const ChannelCustomerYoY = () => {
     });
 
     // Build flat column plan
-    const plan = [{ key: "name", label: "Customer", sub: "", group: "" }];
+    const plan = [
+      { key: "name",        label: "Customer", sub: "", group: "" },
+      { key: "branch_name", label: "Branch",   sub: "", group: "" },
+    ];
     years.forEach((y) => {
       (months_by_year[String(y)] || []).forEach((m) => {
         plan.push({ key: `m_${y}_${String(m).padStart(2, "0")}`, label: String(y), sub: MONTHS[m], group: "year", isTotal: false });
@@ -334,9 +360,12 @@ const ChannelCustomerYoY = () => {
     r1.getCell(1).value = "Customer"; r1.getCell(1).style = hdr(NAV);
     r2.getCell(1).value = "";          r2.getCell(1).style = hdr(NAV);
     ws.mergeCells(1, 1, 2, 1);
+    r1.getCell(2).value = "Branch";   r1.getCell(2).style = hdr(NAV);
+    r2.getCell(2).value = "";          r2.getCell(2).style = hdr(NAV);
+    ws.mergeCells(1, 2, 2, 2);
 
     // Merge group headers across contiguous same-label columns
-    let c = 2;
+    let c = 3;
     while (c <= plan.length) {
       const p = plan[c - 1];
       let span = 1;
@@ -371,6 +400,15 @@ const ChannelCustomerYoY = () => {
           };
           return;
         }
+        if (p.key === "branch_name") {
+          cell.value = isGT ? "" : (row.branch_name || "");
+          cell.style = {
+            font: { size: 10, color: { argb: "FF1E293B" } },
+            fill: { type: "pattern", pattern: "solid", fgColor: { argb: baseBg } },
+            alignment: { vertical: "middle" }, border: bdr,
+          };
+          return;
+        }
         const val = row[p.key];
         if (p.isPct) {
           cell.value = (val == null) ? null : val;
@@ -399,7 +437,8 @@ const ChannelCustomerYoY = () => {
 
     // Column widths
     ws.getColumn(1).width = 34;
-    for (let i = 2; i <= plan.length; i++) {
+    ws.getColumn(2).width = 18;
+    for (let i = 3; i <= plan.length; i++) {
       ws.getColumn(i).width = plan[i - 1].group === "growth" ? 13 : plan[i - 1].isTotal ? 12 : 9;
     }
 
@@ -437,7 +476,7 @@ const ChannelCustomerYoY = () => {
           value={selectedBranch}
           onChange={setSelectedBranch}
           options={[
-            { value: "ALL", label: "All Branches", disabled: !isKAChannel },
+            { value: "ALL", label: "All Branches" },
             ...branches.map((b) => ({ value: b.code, label: b.name })),
           ]}
         />
