@@ -94,7 +94,7 @@ const TABS = [
     reportKey: REPORT_KEYS.CHANNEL_COVERAGE,
     label:     (
       <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <TeamOutlined /> Channel Coverage
+        <TeamOutlined /> Coverage Report
       </span>
     ),
     children:  (

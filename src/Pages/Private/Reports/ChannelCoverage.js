@@ -8,8 +8,11 @@ import {
   Divider,
   Input,
   Space,
+  DatePicker,
+  Segmented,
 } from "antd";
 import { DownloadOutlined, SearchOutlined } from "@ant-design/icons";
+import dayjs from "dayjs";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
 import { UnitValueContext } from "../../../Contexts/UnitValueContext";
 import { ProductContext } from "../../../Contexts/ProductContext";
@@ -120,6 +123,8 @@ const ChannelCoverage = () => {
   const [branches, setBranches] = useState([]);
   const [selectedBranches, setSelectedBranches] = useState([]);
   const [selectedChannels, setSelectedChannels] = useState([]);
+  const [datePreset, setDatePreset] = useState("YTD");
+  const [customRange, setCustomRange] = useState({ from: null, to: null });
   const [loading, setLoading] = useState(false);
   const [reportData, setReportData] = useState({
     channels: [],
@@ -142,6 +147,40 @@ const ChannelCoverage = () => {
     return map;
   }, [branches]);
 
+  // Resolve the active date range from preset + selectedMonth anchor.
+  // Anchor month is the "to" month for relative presets; YTD spans Jan(anchor) -> anchor.
+  const { fromMonth, toMonth } = useMemo(() => {
+    const fmt = (d) => d.format("YYYYMM");
+    const anchor = selectedMonth
+      ? dayjs(`${selectedMonth.slice(0, 4)}-${selectedMonth.slice(4)}-01`)
+      : dayjs();
+    if (datePreset === "Custom") {
+      if (customRange.from && customRange.to) {
+        const a = customRange.from.isAfter(customRange.to)
+          ? customRange.to
+          : customRange.from;
+        const b = customRange.from.isAfter(customRange.to)
+          ? customRange.from
+          : customRange.to;
+        return { fromMonth: fmt(a), toMonth: fmt(b) };
+      }
+      return { fromMonth: null, toMonth: null };
+    }
+    const monthsBack =
+      { "3M": 2, "6M": 5, "12M": 11 }[datePreset] ?? null;
+    if (monthsBack != null) {
+      return {
+        fromMonth: fmt(anchor.subtract(monthsBack, "month")),
+        toMonth:   fmt(anchor),
+      };
+    }
+    // YTD
+    return {
+      fromMonth: fmt(anchor.startOf("year")),
+      toMonth:   fmt(anchor),
+    };
+  }, [datePreset, customRange, selectedMonth]);
+
   const openDrill = ({ row, channel, useProductFilter, mode }) => {
     if (row.isGrandTotal) return;
     const branchCode = branchCodeByName[row.branch_name];
@@ -159,6 +198,8 @@ const ChannelCoverage = () => {
     });
     getChannelCoverageCustomers({
       month: selectedMonth,
+      fromMonth,
+      toMonth,
       branchCode,
       channel: channel || undefined,
       productCodes: drillProducts,
@@ -187,10 +228,11 @@ const ChannelCoverage = () => {
   }, []);
 
   useEffect(() => {
-    if (!selectedMonth || !selectedBranches.length) return;
+    if (!fromMonth || !toMonth || !selectedBranches.length) return;
     setLoading(true);
     getChannelCoverage({
-      month: selectedMonth,
+      fromMonth,
+      toMonth,
       unitType,
       valueType,
       branchCodes: selectedBranches,
@@ -200,7 +242,7 @@ const ChannelCoverage = () => {
       else setReportData(res);
       setLoading(false);
     });
-  }, [selectedMonth, unitType, valueType, selectedBranches, productCodes]);
+  }, [fromMonth, toMonth, unitType, valueType, selectedBranches, productCodes]);
 
   // Seed the channel selector once per dataset: all channels EXCEPT the
   // default-hidden set (BRN, CSM, CFC). Keep the user's choice on subsequent
@@ -497,7 +539,8 @@ const ChannelCoverage = () => {
     hasFilter,
     branchCodeByName,
     productCodes,
-    selectedMonth,
+    fromMonth,
+    toMonth,
     unitType,
     valueType,
     selectedProduct,
@@ -565,7 +608,7 @@ const ChannelCoverage = () => {
     const ExcelJS = (await import("exceljs")).default;
     const wb = new ExcelJS.Workbook();
     wb.creator = "Wazalytics";
-    const ws = wb.addWorksheet("Channel Coverage", {
+    const ws = wb.addWorksheet("Coverage Report", {
       views: [{ state: "frozen", xSplit: 2, ySplit: 2 }],
     });
 
@@ -909,7 +952,7 @@ const ChannelCoverage = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `Channel_Coverage_${selectedMonth}.xlsx`;
+    a.download = `Coverage_Report_${fromMonth}_${toMonth}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -925,6 +968,60 @@ const ChannelCoverage = () => {
           flexWrap: "wrap",
         }}
       >
+        <span
+          style={{
+            color: "#64748B",
+            fontSize: 13,
+            fontWeight: 500,
+            whiteSpace: "nowrap",
+          }}
+        >
+          Range:
+        </span>
+        <Segmented
+          value={datePreset}
+          onChange={setDatePreset}
+          options={[
+            { label: "YTD",    value: "YTD" },
+            { label: "3 M",    value: "3M" },
+            { label: "6 M",    value: "6M" },
+            { label: "12 M",   value: "12M" },
+            { label: "Custom", value: "Custom" },
+          ]}
+        />
+        {datePreset === "Custom" && (
+          <>
+            <DatePicker
+              picker="month"
+              placeholder="From month"
+              value={customRange.from}
+              onChange={(v) => setCustomRange((s) => ({ ...s, from: v }))}
+              format="MMM YYYY"
+              allowClear={false}
+              style={{ minWidth: 140 }}
+            />
+            <span style={{ color: "#64748B" }}>→</span>
+            <DatePicker
+              picker="month"
+              placeholder="To month"
+              value={customRange.to}
+              onChange={(v) => setCustomRange((s) => ({ ...s, to: v }))}
+              format="MMM YYYY"
+              allowClear={false}
+              style={{ minWidth: 140 }}
+            />
+          </>
+        )}
+        {fromMonth && toMonth && datePreset !== "Custom" && (
+          <span style={{ color: "#64748B", fontSize: 12 }}>
+            {dayjs(`${fromMonth.slice(0,4)}-${fromMonth.slice(4)}-01`).format("MMM YYYY")}
+            {" – "}
+            {dayjs(`${toMonth.slice(0,4)}-${toMonth.slice(4)}-01`).format("MMM YYYY")}
+          </span>
+        )}
+
+        <Divider type="vertical" style={{ height: 24 }} />
+
         <span
           style={{
             color: "#64748B",

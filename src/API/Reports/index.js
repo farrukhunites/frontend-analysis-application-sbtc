@@ -86,12 +86,14 @@ export const getChannelCustomerMonthBreakdown = ({
     .then((r) => r.data)
     .catch((err) => ({ error: err.response?.data || err.message }));
 
-export const getChannelCoverageCustomers = ({ month, branchCode, channel, productCodes, unitType, valueType, mode }) =>
+export const getChannelCoverageCustomers = ({ month, fromMonth, toMonth, branchCode, channel, productCodes, unitType, valueType, mode }) =>
   axios
     .get(`${process.env.REACT_APP_BACKEND_URL}reports/channel-coverage-customers/`, {
       headers: { Authorization: `Bearer ${getToken()}` },
       params: {
-        month,
+        month:       fromMonth && toMonth ? undefined : month,
+        from_month:  fromMonth || undefined,
+        to_month:    toMonth   || undefined,
         branch_code:       branchCode,
         channel:           channel || undefined,
         unit_type:         unitType,
@@ -103,12 +105,14 @@ export const getChannelCoverageCustomers = ({ month, branchCode, channel, produc
     .then((r) => r.data)
     .catch((err) => ({ error: err.response?.data || err.message }));
 
-export const getChannelCoverage = ({ month, unitType, valueType, branchCodes, productCodes }) =>
+export const getChannelCoverage = ({ month, fromMonth, toMonth, unitType, valueType, branchCodes, productCodes }) =>
   axios
     .get(`${process.env.REACT_APP_BACKEND_URL}reports/channel-coverage/`, {
       headers: { Authorization: `Bearer ${getToken()}` },
       params: {
-        month,
+        month:       fromMonth && toMonth ? undefined : month,
+        from_month:  fromMonth || undefined,
+        to_month:    toMonth   || undefined,
         unit_type:        unitType,
         value_type:       valueType,
         "branch_codes[]":  branchCodes,
