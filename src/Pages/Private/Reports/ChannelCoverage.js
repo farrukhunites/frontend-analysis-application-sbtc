@@ -108,7 +108,8 @@ const nameSearchProps = (getName) => ({
 
 const ChannelCoverage = () => {
   const { selectedMonth } = useDateFilter();
-  const { unitType, valueType } = useContext(UnitValueContext);
+  const { unitType, valueType, effectiveUnitType, mode } = useContext(UnitValueContext);
+  const isValueMode = mode === "val";
   const { selectedProduct } = useContext(ProductContext);
 
   const navbarProductCode = selectedProduct?.code;
@@ -186,12 +187,16 @@ const ChannelCoverage = () => {
     const branchCode = branchCodeByName[row.branch_name];
     if (!branchCode) return;
     const drillProducts = useProductFilter ? productCodes : [];
+    // When drilling on the TOTAL column, restrict the backend to the channels
+    // currently visible in the report so the modal matches the cell value.
+    const drillChannels = channel ? undefined : visibleChannels;
     setDrillState({
       open: true,
       loading: true,
       data: null,
       branchName: row.branch_name,
       channel: channel || null,
+      channels: drillChannels || null,
       hasProductFilter: useProductFilter && productCodes.length > 0,
       productName: selectedProduct?.name || null,
       mode: mode || "all",
@@ -202,8 +207,9 @@ const ChannelCoverage = () => {
       toMonth,
       branchCode,
       channel: channel || undefined,
+      channels: drillChannels,
       productCodes: drillProducts,
-      unitType,
+      unitType: effectiveUnitType,
       valueType,
       mode,
     }).then((res) => {
@@ -233,7 +239,7 @@ const ChannelCoverage = () => {
     getChannelCoverage({
       fromMonth,
       toMonth,
-      unitType,
+      unitType: effectiveUnitType,
       valueType,
       branchCodes: selectedBranches,
       productCodes,
@@ -242,7 +248,7 @@ const ChannelCoverage = () => {
       else setReportData(res);
       setLoading(false);
     });
-  }, [fromMonth, toMonth, unitType, valueType, selectedBranches, productCodes]);
+  }, [fromMonth, toMonth, effectiveUnitType, valueType, selectedBranches, productCodes]);
 
   // Seed the channel selector once per dataset: all channels EXCEPT the
   // default-hidden set (BRN, CSM, CFC). Keep the user's choice on subsequent
@@ -541,7 +547,7 @@ const ChannelCoverage = () => {
     productCodes,
     fromMonth,
     toMonth,
-    unitType,
+    effectiveUnitType,
     valueType,
     selectedProduct,
   ]);
@@ -1153,6 +1159,7 @@ const ChannelCoverage = () => {
         onClose={closeDrill}
         unitType={unitType}
         valueType={valueType}
+        isValueMode={isValueMode}
         selectedProductCode={productCodes[0] || null}
       />
     </div>

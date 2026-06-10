@@ -1,6 +1,7 @@
 import { Modal, Skeleton, Empty, Table, Tag, Button } from "antd";
 import { DownloadOutlined } from "@ant-design/icons";
 import { exportRowsToExcel } from "./reportUtils";
+import RiyalIcon from "../../../Utils/RiyalIcon";
 import "./reports.css";
 
 const MONTHS = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -24,7 +25,7 @@ const StatChip = ({ label, value, accent }) => (
  *  - onClose: () => void
  *  - unitType: "ctn" | "pcs"
  */
-const InvoiceBreakdownModal = ({ state, onClose, unitType }) => {
+const InvoiceBreakdownModal = ({ state, onClose, unitType, isValueMode = false }) => {
   const {
     open, loading, data, customerName, customerCode, year, month, isKa,
     channel, branchCode, productCode,
@@ -32,6 +33,14 @@ const InvoiceBreakdownModal = ({ state, onClose, unitType }) => {
 
   const period = month ? `${MONTHS[month]} ${year}` : `${year}`;
   const unitLabel = (unitType || "ctn").toUpperCase();
+  const unitLabelEl = isValueMode ? (
+    <span style={{ display: "inline-flex", alignItems: "center", verticalAlign: "middle" }}>
+      <RiyalIcon width={11} height={11} color="#64748B" />
+    </span>
+  ) : (
+    unitLabel
+  );
+  const excelUnitLabel = isValueMode ? "SAR" : unitLabel;
 
   const openCustomerAnalysis = (row) => {
     const params = new URLSearchParams();
@@ -59,9 +68,9 @@ const InvoiceBreakdownModal = ({ state, onClose, unitType }) => {
           <div style={{ fontSize: 10, color: "#94A3B8" }}>{r.item_cd} · {r.prod_nm}</div>
         </div>
       ) },
-    { title: `Paid (${unitLabel})`, dataIndex: "paid_qty", align: "right", width: 110,
+    { title: <span>Paid ({unitLabelEl})</span>, dataIndex: "paid_qty", align: "right", width: 110,
       render: (v) => <span style={{ fontWeight: 600 }}>{fmtNum(v)}</span> },
-    { title: `Free (${unitLabel})`, dataIndex: "free_qty", align: "right", width: 110,
+    { title: <span>Free ({unitLabelEl})</span>, dataIndex: "free_qty", align: "right", width: 110,
       render: (v) => v > 0
         ? <span style={{ color: "#10B981", fontWeight: 600 }}>{fmtNum(v)}</span>
         : <span style={{ color: "#94A3B8" }}>-</span> },
@@ -103,9 +112,9 @@ const InvoiceBreakdownModal = ({ state, onClose, unitType }) => {
           </div>
         )
         : <span style={{ color: "#CBD5E1" }}>-</span> },
-    { title: `Paid (${unitLabel})`, dataIndex: "paid_total", align: "right", width: 120,
+    { title: <span>Paid ({unitLabelEl})</span>, dataIndex: "paid_total", align: "right", width: 120,
       render: (v) => <b>{fmtNum(v)}</b> },
-    { title: `Free (${unitLabel})`, dataIndex: "free_total", align: "right", width: 120,
+    { title: <span>Free ({unitLabelEl})</span>, dataIndex: "free_total", align: "right", width: 120,
       render: (v) => v > 0
         ? <b style={{ color: "#10B981" }}>{fmtNum(v)}</b>
         : <span style={{ color: "#94A3B8" }}>-</span> },
@@ -142,8 +151,8 @@ const InvoiceBreakdownModal = ({ state, onClose, unitType }) => {
       { header: "Salesman Name",  key: "salesman_nm", width: 22 },
       { header: "Item Code",      key: "item_cd",     width: 14 },
       { header: "Item Name",      key: "item_nm",     width: 32 },
-      { header: `Paid (${unitLabel})`, key: "paid_qty", width: 14, type: "number" },
-      { header: `Free (${unitLabel})`, key: "free_qty", width: 14, type: "number" },
+      { header: `Paid (${excelUnitLabel})`, key: "paid_qty", width: 14, type: "number" },
+      { header: `Free (${excelUnitLabel})`, key: "free_qty", width: 14, type: "number" },
     ];
     const slug = (s) => (s || "").replace(/[^\w]+/g, "_").toLowerCase();
     exportRowsToExcel({
@@ -179,8 +188,16 @@ const InvoiceBreakdownModal = ({ state, onClose, unitType }) => {
         <>
           <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
             <StatChip label="Invoices" value={data.invoice_count} />
-            <StatChip label={`Total Paid (${unitLabel})`} value={fmtNum(data.total_paid)} accent="#3B82F6" />
-            <StatChip label={`Total Free (${unitLabel})`} value={fmtNum(data.total_free)} accent="#10B981" />
+            <StatChip
+              label={<span>Total Paid ({unitLabelEl})</span>}
+              value={fmtNum(data.total_paid)}
+              accent="#3B82F6"
+            />
+            <StatChip
+              label={<span>Total Free ({unitLabelEl})</span>}
+              value={fmtNum(data.total_free)}
+              accent="#10B981"
+            />
             {isKa && <Tag color="purple" style={{ alignSelf: "center" }}>KA group ({customerCode})</Tag>}
             <Button
               size="small"

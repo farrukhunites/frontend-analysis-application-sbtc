@@ -7,6 +7,7 @@ import { getAllBranches } from "../../../API/Branches";
 import { getAllProducts } from "../../../API/Products";
 import { getSalesmanAchievement, getSalesmanCustomerBreakdown } from "../../../API/Reports";
 import { pinGrandTotal } from "./reportUtils";
+import RiyalIcon from "../../../Utils/RiyalIcon";
 import "./reports.css";
 
 const slug = (name) => name.replace(/\s+/g, "_").toLowerCase();
@@ -69,7 +70,11 @@ const VarCell = ({ v }) => {
 
 const SalesmanAchievement = () => {
   const { selectedMonth }   = useDateFilter();
-  const { unitType, valueType } = useContext(UnitValueContext);
+  const { unitType, valueType, effectiveUnitType, mode } = useContext(UnitValueContext);
+  const isValueMode = mode === "val";
+  const unitLabelNode = isValueMode
+    ? <RiyalIcon width={11} height={11} color="#FFFFFF" />
+    : (unitType || "ctn").toUpperCase();
 
   const [branches, setBranches]                 = useState([]);
   const [selectedBranches, setSelectedBranches] = useState([]);
@@ -108,7 +113,7 @@ const SalesmanAchievement = () => {
     setLoading(true);
     getSalesmanAchievement({
       month:        selectedMonth,
-      unitType,
+      unitType:     effectiveUnitType,
       valueType,
       branchCodes:  selectedBranches,
       productCodes: selectedProducts,
@@ -117,7 +122,7 @@ const SalesmanAchievement = () => {
       else setReportData(res);
       setLoading(false);
     });
-  }, [selectedMonth, unitType, valueType, selectedBranches, selectedProducts]);
+  }, [selectedMonth, effectiveUnitType, valueType, selectedBranches, selectedProducts]);
 
   // product name → code (from the full product list used by the filter)
   const productNameToCode = useMemo(() => {
@@ -146,7 +151,7 @@ const SalesmanAchievement = () => {
       salesmanCd:  row.salesman_code,
       month:       selectedMonth,
       productCodes,
-      unitType,
+      unitType:    effectiveUnitType,
       valueType,
       branchCodes: selectedBranches,
     });
@@ -157,7 +162,7 @@ const SalesmanAchievement = () => {
     } else {
       setBreakdown((p) => ({ ...p, loading: false, data: res.results || [], total: res.total || 0 }));
     }
-  }, [selectedMonth, unitType, valueType, selectedProducts, selectedBranches, productNameToCode]);
+  }, [selectedMonth, effectiveUnitType, valueType, selectedProducts, selectedBranches, productNameToCode]);
 
   // Dynamic columns
   const columns = useMemo(() => {
@@ -568,7 +573,7 @@ const SalesmanAchievement = () => {
               <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginTop: 2 }}>
                 {breakdown.subtitle} · {breakdown.data.length} customer{breakdown.data.length !== 1 ? "s" : ""}
                 {" · "}Total: <b style={{ color: "var(--color-primary)" }}>{breakdown.total?.toLocaleString()}</b>
-                {" "}{unitType?.toUpperCase()}
+                {" "}{isValueMode ? <RiyalIcon width={11} height={11} color="#1E3A5F" /> : unitType?.toUpperCase()}
               </div>
             )}
           </div>
@@ -625,7 +630,11 @@ const SalesmanAchievement = () => {
                 render: (v) => <Tag style={{ fontSize: 11, margin: 0 }}>{v}</Tag>,
               },
               {
-                title: `Sales (${unitType?.toUpperCase()})`,
+                title: isValueMode ? (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}>
+                    Sales (<RiyalIcon width={11} height={11} color="#FFFFFF" />)
+                  </span>
+                ) : `Sales (${unitType?.toUpperCase()})`,
                 dataIndex: "sales",
                 key: "sales",
                 width: 120,

@@ -8,6 +8,7 @@ import { getAllChannels } from "../../../API/Channels";
 import { getChannelCustomerYoY, getCustomerInvoiceBreakdown } from "../../../API/Reports";
 import InvoiceBreakdownModal from "./InvoiceBreakdownModal";
 import { pinGrandTotal } from "./reportUtils";
+import RiyalIcon from "../../../Utils/RiyalIcon";
 import "./ChannelCustomerYoY.css";
 import "./reports.css";
 
@@ -65,7 +66,8 @@ const GrowthCell = ({ pct, value }) => {
 
 const ChannelCustomerYoY = () => {
   const { selectedProduct }     = useContext(ProductContext);
-  const { unitType, valueType } = useContext(UnitValueContext);
+  const { unitType, valueType, effectiveUnitType, mode } = useContext(UnitValueContext);
+  const isValueMode = mode === "val";
 
   const [channels, setChannels]               = useState([]);
   const [branches, setBranches]               = useState([]);
@@ -102,14 +104,14 @@ const ChannelCustomerYoY = () => {
       channel:      selectedChannel,
       branchCode:   selectedBranch,
       productCodes: selectedProduct.code,
-      unitType,
+      unitType:     effectiveUnitType,
       valueType,
     }).then((res) => {
       if (res?.error) { message.error("Failed to load report"); setData(null); }
       else setData(res);
       setLoading(false);
     });
-  }, [selectedChannel, selectedBranch, selectedProduct, unitType, valueType]);
+  }, [selectedChannel, selectedBranch, selectedProduct, effectiveUnitType, valueType]);
 
   const toggleYear = (year) => {
     setExpandedYears((prev) => {
@@ -146,7 +148,7 @@ const ChannelCustomerYoY = () => {
       productCodes: selectedProduct?.code,
       year,
       month,
-      unitType,
+      unitType: effectiveUnitType,
       valueType,
     }).then((res) => {
       if (res?.error) {
@@ -482,7 +484,14 @@ const ChannelCustomerYoY = () => {
         />
 
         <span style={{ fontSize: 12, color: "#94A3B8" }}>
-          Product: <b style={{ color: "#64748B" }}>{selectedProduct?.name || "-"}</b> · {valueType?.toUpperCase()} · {unitType?.toUpperCase()}
+          Product: <b style={{ color: "#64748B" }}>{selectedProduct?.name || "-"}</b> · {valueType?.toUpperCase()} ·{" "}
+          {isValueMode ? (
+            <span style={{ display: "inline-flex", alignItems: "center", verticalAlign: "middle" }}>
+              <RiyalIcon width={11} height={11} color="#64748B" />
+            </span>
+          ) : (
+            unitType?.toUpperCase()
+          )}
         </span>
 
         <Button
@@ -522,6 +531,7 @@ const ChannelCustomerYoY = () => {
         state={breakdown}
         onClose={closeBreakdown}
         unitType={unitType}
+        isValueMode={isValueMode}
       />
     </div>
   );

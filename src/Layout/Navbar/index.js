@@ -1,6 +1,6 @@
 import { Header } from "antd/es/layout/layout";
 import "./style.css";
-import { message, Radio, Select, Tooltip } from "antd";
+import { message, Radio, Segmented, Select, Tooltip } from "antd";
 import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
 import DateFilter from "../../Components/DateFilter";
 import { useContext, useEffect, useState } from "react";
@@ -8,6 +8,7 @@ import { useLocation } from "react-router-dom";
 import { getAllProducts } from "../../API/Products";
 import { ProductContext } from "../../Contexts/ProductContext";
 import { UnitValueContext } from "../../Contexts/UnitValueContext";
+import { UserContext } from "../../App";
 
 const { Option } = Select;
 
@@ -17,8 +18,15 @@ const Navbar = ({ collapsed, setCollapsed }) => {
   const { pathname } = useLocation();
   const [productOptions, setProductOptions] = useState([]);
   const { selectedProduct, setSelectedProduct } = useContext(ProductContext);
-  const { unitType, setUnitType, valueType, setValueType } = useContext(UnitValueContext);
+  const { unitType, setUnitType, valueType, setValueType, mode, setMode } = useContext(UnitValueContext);
+  const { userData } = useContext(UserContext);
+  const isAdmin = userData?.role === "admin";
+  const isValueMode = mode === "val";
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isAdmin && mode !== "qty") setMode("qty");
+  }, [isAdmin, mode, setMode]);
 
   const [msgApi, contextHolder] = message.useMessage();
 
@@ -134,15 +142,31 @@ const Navbar = ({ collapsed, setCollapsed }) => {
           </Select>
         </div>
 
-        {/* Center: unit & value type toggles */}
+        {/* Center: measure, unit & value type toggles */}
         <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500 }}>Unit:</span>
-            <Radio.Group size="small" value={unitType} onChange={(e) => setUnitType(e.target.value)}>
-              <Radio.Button value="ctn">CTN</Radio.Button>
-              <Radio.Button value="pcs">PCS</Radio.Button>
-            </Radio.Group>
-          </div>
+          {isAdmin && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500 }}>Measure:</span>
+              <Segmented
+                size="small"
+                value={mode}
+                onChange={(v) => setMode(v)}
+                options={[
+                  { label: "QTY", value: "qty" },
+                  { label: "VAL", value: "val" },
+                ]}
+              />
+            </div>
+          )}
+          {!isValueMode && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500 }}>Unit:</span>
+              <Radio.Group size="small" value={unitType} onChange={(e) => setUnitType(e.target.value)}>
+                <Radio.Button value="ctn">CTN</Radio.Button>
+                <Radio.Button value="pcs">PCS</Radio.Button>
+              </Radio.Group>
+            </div>
+          )}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500 }}>Type:</span>
             <Radio.Group size="small" value={valueType} onChange={(e) => setValueType(e.target.value)}>

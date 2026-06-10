@@ -35,7 +35,9 @@ const { Option } = Select;
 
 const CustomerAnalysis = () => {
   const { selectedProduct, setSelectedProduct } = useContext(ProductContext);
-  const { unitType, valueType } = useContext(UnitValueContext);
+  const { unitType, valueType, effectiveUnitType, mode } = useContext(UnitValueContext);
+  const isValueMode = mode === "val";
+  const chartUnit = isValueMode ? "SAR" : unitType;
 
   const [loading, setLoading] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState();
@@ -127,7 +129,7 @@ const CustomerAnalysis = () => {
 
   // Fetch customer insight whenever selection or unit/value type changes
   useEffect(() => {
-    if (!selectedCustomer || !selectedBranch || !selectedProduct || !valueType || !unitType) return;
+    if (!selectedCustomer || !selectedBranch || !selectedProduct || !valueType || !effectiveUnitType) return;
 
     const fetchCustomerInsight = async () => {
       setLoading(true);
@@ -136,7 +138,7 @@ const CustomerAnalysis = () => {
           customer_code: selectedCustomer.code,
           branch_code: selectedBranch.code,
           sales_type: valueType,
-          unit: unitType,
+          unit: effectiveUnitType,
           product_code: selectedProduct.code,
         });
         if (res?.success === false) {
@@ -153,7 +155,7 @@ const CustomerAnalysis = () => {
     };
 
     fetchCustomerInsight();
-  }, [selectedCustomer, selectedBranch, valueType, unitType, selectedProduct]);
+  }, [selectedCustomer, selectedBranch, valueType, effectiveUnitType, selectedProduct]);
 
   // Fetch customer list when branch + channel are both selected
   useEffect(() => {
@@ -207,7 +209,7 @@ const CustomerAnalysis = () => {
         customer_code: customer.code,
         branch_code: selectedBranch.code,
         sales_type: valueType,
-        unit: unitType,
+        unit: effectiveUnitType,
         product_code: selectedProduct?.code,
       });
       if (res?.success === false) {
@@ -278,9 +280,9 @@ const CustomerAnalysis = () => {
     { title: "Customer Code",        value: customer.code,                                           icon: <UserOutlined /> },
     { title: "Branch",               value: customer.branch,                                         icon: <AimOutlined /> },
     { title: "Channel",              value: customer.channel,                                        icon: <SlidersOutlined /> },
-    { title: "Total Sales (2023+)",  value: customer.totalSales.toLocaleString() + " " + unitType,  icon: <DollarOutlined /> },
-    { title: "Sales YTD",            value: customer.ytdSales.toLocaleString() + " " + unitType,    icon: <LineChartOutlined /> },
-    { title: "Sales MTD",            value: customer.mtdSales.toLocaleString() + " " + unitType,    icon: <CalendarOutlined /> },
+    { title: "Total Sales (2023+)",  value: <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>{isValueMode && <RiyalIcon width={14} height={14} />}{customer.totalSales.toLocaleString()}{!isValueMode && " " + unitType}</span>,  icon: <DollarOutlined /> },
+    { title: "Sales YTD",            value: <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>{isValueMode && <RiyalIcon width={14} height={14} />}{customer.ytdSales.toLocaleString()}{!isValueMode && " " + unitType}</span>,    icon: <LineChartOutlined /> },
+    { title: "Sales MTD",            value: <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>{isValueMode && <RiyalIcon width={14} height={14} />}{customer.mtdSales.toLocaleString()}{!isValueMode && " " + unitType}</span>,    icon: <CalendarOutlined /> },
     { title: "Dry Months",           value: customer.dryMonths,                                     icon: <StopOutlined /> },
     { title: "Salesman (Last Sale)",  value: salesmanCell(customer.salesman, customer.salesmanCd),          icon: <UserOutlined />,
       onClick: customer.salesmanCd ? () => openSalesmanAnalysis(customer.salesmanCd) : undefined,
@@ -527,7 +529,11 @@ const CustomerAnalysis = () => {
                   {orderQuality.return_rate_percent != null ? `${orderQuality.return_rate_percent}%` : "—"}
                 </span>
                 {orderQuality.return_amount > 0 && (
-                  <span className="ca-rank-total">{orderQuality.return_amount?.toLocaleString()} {unitType} returned</span>
+                  <span className="ca-rank-total" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    {orderQuality.return_amount?.toLocaleString()}
+                    {isValueMode ? <RiyalIcon width={10} height={10} color="currentColor" /> : ` ${unitType}`}
+                    {" returned"}
+                  </span>
                 )}
               </div>
             </div>
@@ -553,7 +559,7 @@ const CustomerAnalysis = () => {
             graphTitle="Monthly Sales (Current Year)"
             labels={customerData?.monthly_sales_current_year?.months || []}
             colourTheme={[CHART_COLORS[2]]}
-            units={[unitType]}
+            units={[chartUnit]}
             series={[{ name: "Sales", data: customerData?.monthly_sales_current_year?.sales || [] }]}
           />
         </div>
@@ -566,7 +572,7 @@ const CustomerAnalysis = () => {
               colourTheme={CHART_COLORS.slice(0, skuMix.length)}
               series={skuMix.map((s) => s.sales)}
               seriesValues={skuMix.map((s) => s.sales)}
-              units={[unitType]}
+              units={[chartUnit]}
               showTable={false}
             />
           </div>
@@ -580,7 +586,7 @@ const CustomerAnalysis = () => {
             graphTitle="Year-over-Year Monthly Comparison"
             labels={customerData?.graph?.months || []}
             colourTheme={[CHART_COLORS[1], CHART_COLORS[0], CHART_COLORS[2], CHART_COLORS[3]]}
-            units={[unitType, unitType, unitType, unitType]}
+            units={[chartUnit, chartUnit, chartUnit, chartUnit]}
             series={[
               { name: "2023", data: customerData?.graph?.["2023"] || [] },
               { name: "2024", data: customerData?.graph?.["2024"] || [] },
@@ -599,7 +605,7 @@ const CustomerAnalysis = () => {
               graphTitle="Gross vs Net Sales (All Time)"
               labels={["Total Sales"]}
               colourTheme={[CHART_COLORS[0], CHART_COLORS[4]]}
-              units={[unitType, unitType]}
+              units={[chartUnit, chartUnit]}
               series={[
                 { name: "Gross Sales", data: [orderQuality.total_gross] },
                 { name: "Net Sales",   data: [orderQuality.total_net] },
@@ -646,8 +652,8 @@ const CustomerAnalysis = () => {
                     columns={[
                       { title: "Item Code", dataIndex: "item_cd", key: "item_cd", width: 110 },
                       { title: "Item Name", dataIndex: "item_nm", key: "item_nm" },
-                      { title: `Paid (${unitType})`, dataIndex: "paid_qty", key: "paid_qty", width: 110, align: "right" },
-                      { title: `Free (${unitType})`, dataIndex: "free_qty", key: "free_qty", width: 110, align: "right",
+                      { title: isValueMode ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}>Paid (<RiyalIcon width={10} height={10} color="currentColor" />)</span> : `Paid (${unitType})`, dataIndex: "paid_qty", key: "paid_qty", width: 110, align: "right" },
+                      { title: isValueMode ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}>Free (<RiyalIcon width={10} height={10} color="currentColor" />)</span> : `Free (${unitType})`, dataIndex: "free_qty", key: "free_qty", width: 110, align: "right",
                         render: (val) => val > 0
                           ? <span style={{ color: "#10B981", fontWeight: 600 }}>{val}</span>
                           : <span style={{ color: "#94A3B8" }}>—</span>
@@ -684,12 +690,13 @@ const CustomerAnalysis = () => {
         ranking={ranking}
         selectedCode={customer.code}
         unitType={unitType}
+        isValueMode={isValueMode}
       />
     </div>
   );
 };
 
-const CustomerRankingModal = ({ state, onClose, ranking, selectedCode, unitType }) => {
+const CustomerRankingModal = ({ state, onClose, ranking, selectedCode, unitType, isValueMode }) => {
   const isBranch = state.scope === "branch";
   const rows = isBranch ? ranking?.branch_list : ranking?.channel_list;
   const title = isBranch ? "Branch Ranking (YTD)" : "Channel Ranking (YTD)";
@@ -713,7 +720,7 @@ const CustomerRankingModal = ({ state, onClose, ranking, selectedCode, unitType 
       ) },
     { title: "Channel", dataIndex: "channel", width: 110,
       render: (v) => v ? <Tag color="blue">{v}</Tag> : <span style={{ color: "#CBD5E1" }}>-</span> },
-    { title: `YTD (${(unitType || "ctn").toUpperCase()})`, dataIndex: "ytd_total", align: "right", width: 150,
+    { title: isValueMode ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}>YTD (<RiyalIcon width={10} height={10} color="currentColor" />)</span> : `YTD (${(unitType || "ctn").toUpperCase()})`, dataIndex: "ytd_total", align: "right", width: 150,
       render: (v) => <b>{Number(v || 0).toLocaleString()}</b> },
   ];
 

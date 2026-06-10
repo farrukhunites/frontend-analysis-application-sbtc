@@ -14,6 +14,7 @@ import {
 } from "../../../API/Reports";
 import InvoiceBreakdownModal from "./InvoiceBreakdownModal";
 import { pinGrandTotal } from "./reportUtils";
+import RiyalIcon from "../../../Utils/RiyalIcon";
 import "./reports.css";
 
 const MONTHS = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -40,7 +41,8 @@ const StatChip = ({ label, value, accent }) => (
 
 const ChannelAchievement = () => {
   const { selectedMonth }       = useDateFilter();
-  const { unitType, valueType } = useContext(UnitValueContext);
+  const { unitType, valueType, effectiveUnitType, mode } = useContext(UnitValueContext);
+  const isValueMode = mode === "val";
   const { selectedProduct }     = useContext(ProductContext);
 
   const [branches, setBranches]         = useState([]);
@@ -74,7 +76,7 @@ const ChannelAchievement = () => {
       productCodes: selectedProduct.code,
       branchCode,
       month: selectedMonth,
-      unitType,
+      unitType: effectiveUnitType,
       valueType,
       lookbackMonths,
     }).then((res) => {
@@ -82,7 +84,7 @@ const ChannelAchievement = () => {
       else setData(res);
       setLoading(false);
     });
-  }, [selectedProduct, branchCode, selectedMonth, unitType, valueType, lookbackMonths]);
+  }, [selectedProduct, branchCode, selectedMonth, effectiveUnitType, valueType, lookbackMonths]);
 
   // ── Drill-down handlers ─────────────────────────────────────────────────
   const openCustomerBreakdown = ({ row, monthNum }) => {
@@ -102,7 +104,7 @@ const ChannelAchievement = () => {
       branchCode,
       month:        mYYYYMM,
       productCodes: selectedProduct?.code,
-      unitType,
+      unitType:     effectiveUnitType,
       valueType,
     }).then((res) => {
       if (res?.error) {
@@ -137,7 +139,7 @@ const ChannelAchievement = () => {
       productCodes: selectedProduct?.code,
       year,
       month:        monthNum,
-      unitType,
+      unitType:     effectiveUnitType,
       valueType,
     }).then((res) => {
       if (res?.error) {
@@ -463,7 +465,7 @@ const ChannelAchievement = () => {
         />
 
         <span style={{ fontSize: 12, color: "#94A3B8" }}>
-          Month: <b style={{ color: "#64748B" }}>{selectedMonth || "-"}</b> · {valueType?.toUpperCase()} · {unitType?.toUpperCase()}
+          Month: <b style={{ color: "#64748B" }}>{selectedMonth || "-"}</b> · {valueType?.toUpperCase()} · {isValueMode ? <RiyalIcon width={11} height={11} color="#64748B" /> : unitType?.toUpperCase()}
         </span>
 
         <Button
@@ -481,7 +483,11 @@ const ChannelAchievement = () => {
       {data && (
         <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
           <StatChip
-            label={`Total Target (${unitType.toUpperCase()})`}
+            label={isValueMode ? (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                Total Target (<RiyalIcon width={10} height={10} color="#64748B" />)
+              </span>
+            ) : `Total Target (${unitType.toUpperCase()})`}
             value={fmtNum(data.total_target)}
           />
           <StatChip
@@ -526,6 +532,7 @@ const ChannelAchievement = () => {
         onClose={closeCustomerBreakdown}
         onPickCustomer={openInvoiceBreakdown}
         unitType={unitType}
+        isValueMode={isValueMode}
         productLabel={data?.product_label}
       />
 
@@ -534,15 +541,15 @@ const ChannelAchievement = () => {
         state={invBreakdown}
         onClose={closeInvoiceBreakdown}
         unitType={unitType}
+        isValueMode={isValueMode}
       />
     </div>
   );
 };
 
 // ── 1st-level drill: customers in (channel × branch-scope × month) ───────
-const CustomerBreakdownModal = ({ state, onClose, onPickCustomer, unitType, productLabel }) => {
+const CustomerBreakdownModal = ({ state, onClose, onPickCustomer, unitType, isValueMode, productLabel }) => {
   const { open, loading, data, channel, monthLabel } = state;
-  const unitLabel = (unitType || "ctn").toUpperCase();
 
   const columns = [
     { title: "#", width: 50, align: "center",
@@ -560,7 +567,12 @@ const CustomerBreakdownModal = ({ state, onClose, onPickCustomer, unitType, prod
       ) },
     { title: "Branch", dataIndex: "branch_name", key: "branch_name", width: 160,
       render: (v) => <Tag color="blue">{v}</Tag> },
-    { title: `Sales (${unitLabel})`, dataIndex: "sales", align: "right", width: 140,
+    { title: isValueMode ? (
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}>
+          Sales (<RiyalIcon width={11} height={11} color="#FFFFFF" />)
+        </span>
+      ) : `Sales (${(unitType || "ctn").toUpperCase()})`,
+      dataIndex: "sales", align: "right", width: 140,
       defaultSortOrder: "descend",
       sorter: (a, b) => (a.sales || 0) - (b.sales || 0),
       render: (v) => <b>{fmtNum(v)}</b> },
@@ -592,7 +604,11 @@ const CustomerBreakdownModal = ({ state, onClose, onPickCustomer, unitType, prod
         <>
           <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
             <StatChip label="Customers" value={data.results.length} />
-            <StatChip label={`Total (${unitLabel})`} value={fmtNum(data.total)} accent="#3B82F6" />
+            <StatChip label={isValueMode ? (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                Total (<RiyalIcon width={10} height={10} color="#64748B" />)
+              </span>
+            ) : `Total (${(unitType || "ctn").toUpperCase()})`} value={fmtNum(data.total)} accent="#3B82F6" />
           </div>
           <Table
             size="small"

@@ -50,7 +50,7 @@ const channelOptions = [
 const PotentialCustomers = () => {
   const { selectedMonth } = useDateFilter();
   const { selectedProduct } = useContext(ProductContext);
-  const { unitType, valueType } = useContext(UnitValueContext);
+  const { unitType, valueType, effectiveUnitType } = useContext(UnitValueContext);
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
@@ -67,7 +67,7 @@ const PotentialCustomers = () => {
         const res = await getPotentialCustomers(
           selectedMonth,
           selectedProduct?.code,
-          unitType,
+          effectiveUnitType,
           valueType,
         );
         if (res) {
@@ -84,7 +84,7 @@ const PotentialCustomers = () => {
     if (selectedMonth && selectedProduct?.code) {
       fetchPotentialCustomers();
     }
-  }, [selectedMonth, selectedProduct, unitType, valueType]);
+  }, [selectedMonth, selectedProduct, effectiveUnitType, valueType]);
 
   const [searchText, setSearchText] = useState("");
   const [searchedColumn, setSearchedColumn] = useState("");

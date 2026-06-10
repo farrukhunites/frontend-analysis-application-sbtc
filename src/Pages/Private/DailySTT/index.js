@@ -8,6 +8,7 @@ import { ProductContext } from "../../../Contexts/ProductContext";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
 import { UnitValueContext } from "../../../Contexts/UnitValueContext";
 import { getDailySTT } from "../../../API/Daily STT Report";
+import RiyalIcon from "../../../Utils/RiyalIcon";
 
 const branch_region_map = {
   "SBTC BISHA": "SOUTHERN",
@@ -45,7 +46,8 @@ const DailySTT = () => {
   const [reportMonths, setReportMonths]     = useState([]); // YYYYMM ints from backend
   const [expandedCols, setExpandedCols]     = useState(() => new Set()); // product codes (or "__total__") expanded
   const [msgApi, contextHolder] = message.useMessage();
-  const { unitType, valueType } = useContext(UnitValueContext);
+  const { unitType, valueType, effectiveUnitType, mode } = useContext(UnitValueContext);
+  const isValueMode = mode === "val";
 
   // From / To month range (local — not tied to global DateFilter)
   const [fromMonth, setFromMonth] = useState(selectedMonth || dayjs().format("YYYYMM"));
@@ -226,26 +228,36 @@ const DailySTT = () => {
             branchMap[b.branch_code].products[slug] = {
               net_ctn: b.net_sales_ctn || 0,
               net_pcs: b.net_sales_pcs || 0,
+              net_val: b.net_sales_val || 0,
               gross_ctn: b.gross_sales_ctn || 0,
               gross_pcs: b.gross_sales_pcs || 0,
+              gross_val: b.gross_sales_val || 0,
               target_ctn: b.target_ctn || 0,
               target_pcs: b.target_pcs || 0,
+              target_val: b.target_val || 0,
               prev_net_ctn: b.prev_net_sales_ctn || 0,
               prev_net_pcs: b.prev_net_sales_pcs || 0,
+              prev_net_val: b.prev_net_sales_val || 0,
               prev_gross_ctn: b.prev_gross_sales_ctn || 0,
               prev_gross_pcs: b.prev_gross_sales_pcs || 0,
+              prev_gross_val: b.prev_gross_sales_val || 0,
               monthly: (b.monthly_breakdown || []).map((m) => ({
                 year_month:     m.year_month,
                 net_ctn:        m.net_sales_ctn   || 0,
                 net_pcs:        m.net_sales_pcs   || 0,
+                net_val:        m.net_sales_val   || 0,
                 gross_ctn:      m.gross_sales_ctn || 0,
                 gross_pcs:      m.gross_sales_pcs || 0,
+                gross_val:      m.gross_sales_val || 0,
                 target_ctn:     m.target_ctn     || 0,
                 target_pcs:     m.target_pcs     || 0,
+                target_val:     m.target_val     || 0,
                 prev_net_ctn:   m.prev_net_sales_ctn   || 0,
                 prev_net_pcs:   m.prev_net_sales_pcs   || 0,
+                prev_net_val:   m.prev_net_sales_val   || 0,
                 prev_gross_ctn: m.prev_gross_sales_ctn || 0,
                 prev_gross_pcs: m.prev_gross_sales_pcs || 0,
+                prev_gross_val: m.prev_gross_sales_val || 0,
               })),
             };
           });
@@ -284,9 +296,9 @@ const DailySTT = () => {
     if (!dailySTTReport?.length) return [];
 
     const slugOf = (p) => p.name.toLowerCase().replace(/\s+/g, "_");
-    const salesKey  = `${valueType}_${unitType}`;        // e.g. net_ctn / gross_pcs
-    const targetKey = `target_${unitType}`;
-    const prevKey   = `prev_${valueType}_${unitType}`;
+    const salesKey  = `${valueType}_${effectiveUnitType}`;        // e.g. net_ctn / gross_pcs / net_val
+    const targetKey = `target_${effectiveUnitType}`;
+    const prevKey   = `prev_${valueType}_${effectiveUnitType}`;
 
     const aggregateInto = (target, branchList) => {
       selectedProducts.forEach((p) => {
@@ -365,7 +377,7 @@ const DailySTT = () => {
     result.push(grandTotal);
 
     return result;
-  }, [dailySTTReport, selectedProducts, valueType, unitType, reportMonths]);
+  }, [dailySTTReport, selectedProducts, valueType, effectiveUnitType, reportMonths]);
 
   const exportToExcel = async () => {
     if (!processedData.length) { message.warning("No data to export"); return; }

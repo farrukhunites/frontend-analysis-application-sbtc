@@ -1,6 +1,7 @@
 import { Modal, Skeleton, Empty, Table, Tag, Button } from "antd";
 import { DownloadOutlined } from "@ant-design/icons";
 import { openCustomerAnalysis, openSalesmanAnalysis, exportRowsToExcel } from "./reportUtils";
+import RiyalIcon from "../../../Utils/RiyalIcon";
 import "./reports.css";
 
 const fmtNum = (v) =>
@@ -23,12 +24,20 @@ const StatChip = ({ label, value, accent }) => (
  *  - unitType, valueType
  *  - selectedProductCode (string | null) — passed to drill links
  */
-const ChannelCoverageCustomersModal = ({ state, onClose, unitType, valueType, selectedProductCode }) => {
-  const { open, loading, data, branchName, channel, hasProductFilter, productName, mode } = state;
+const ChannelCoverageCustomersModal = ({ state, onClose, unitType, valueType, isValueMode = false, selectedProductCode }) => {
+  const { open, loading, data, branchName, channel, channels, hasProductFilter, productName, mode } = state;
   const isRemaining = mode === "remaining";
 
   const unitLabel = (unitType || "ctn").toUpperCase();
   const valueLabel = (valueType || "net").toUpperCase();
+  const unitLabelEl = isValueMode ? (
+    <span style={{ display: "inline-flex", alignItems: "center", verticalAlign: "middle" }}>
+      <RiyalIcon width={11} height={11} color="#64748B" />
+    </span>
+  ) : (
+    unitLabel
+  );
+  const excelUnitLabel = isValueMode ? "SAR" : unitLabel;
 
   const showYtd = hasProductFilter && !isRemaining;
 
@@ -78,7 +87,7 @@ const ChannelCoverageCustomersModal = ({ state, onClose, unitType, valueType, se
       ) : <span style={{ color: "#CBD5E1" }}>-</span>,
     },
     showYtd && {
-      title: `YTD ${valueLabel} (${unitLabel})`,
+      title: <span>YTD {valueLabel} ({unitLabelEl})</span>,
       dataIndex: "ytd_value",
       align: "right",
       width: 160,
@@ -94,9 +103,15 @@ const ChannelCoverageCustomersModal = ({ state, onClose, unitType, valueType, se
     ? (productName || "Selected product")
     : "All products";
 
+  const channelScope = channel
+    ? channel
+    : channels?.length
+    ? `${channels.length} channels: ${channels.join(", ")}`
+    : "All channels";
+
   const scopeLabel = [
     branchName,
-    channel || "All channels",
+    channelScope,
     productLabel,
   ].filter(Boolean).join(" · ");
 
@@ -109,7 +124,7 @@ const ChannelCoverageCustomersModal = ({ state, onClose, unitType, valueType, se
       { header: "Salesman Name", key: "salesman_nm",   width: 26 },
       ...(showYtd
         ? [{
-            header: `YTD ${valueLabel} (${unitLabel})`,
+            header: `YTD ${valueLabel} (${excelUnitLabel})`,
             key: "ytd_value", width: 22, type: "number",
           }]
         : []),
@@ -151,7 +166,7 @@ const ChannelCoverageCustomersModal = ({ state, onClose, unitType, valueType, se
             <StatChip label="Customers" value={fmtNum(data.customer_count)} />
             {showYtd && (
               <StatChip
-                label={`Total YTD ${valueLabel} (${unitLabel})`}
+                label={<span>Total YTD {valueLabel} ({unitLabelEl})</span>}
                 value={fmtNum(data.total_value)}
                 accent="#3B82F6"
               />

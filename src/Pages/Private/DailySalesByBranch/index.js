@@ -7,6 +7,7 @@ import { UnitValueContext } from "../../../Contexts/UnitValueContext";
 import { getAllProducts } from "../../../API/Products";
 import { getDailyBranchSales, getDailyCustomerBreakdown } from "../../../API/Daily STT Report";
 import { openSalesmanAnalysis } from "../Reports/reportUtils";
+import RiyalIcon from "../../../Utils/RiyalIcon";
 import "./style.css";
 
 const { Option } = Select;
@@ -19,7 +20,8 @@ const DailySalesByBranch = () => {
   const [loading, setLoading] = useState(false);
   const [salesData, setSalesData] = useState([]);
   const [dayColumns, setDayColumns] = useState([]);
-  const { unitType, valueType } = useContext(UnitValueContext);
+  const { unitType, valueType, effectiveUnitType, mode } = useContext(UnitValueContext);
+  const isValueMode = mode === "val";
   const [channels, setChannels] = useState([
     "BRN",
     "RTI",
@@ -86,7 +88,7 @@ const DailySalesByBranch = () => {
         const res = await getDailyBranchSales(
           selectedMonth,
           selectedProduct.code,
-          unitType,
+          effectiveUnitType,
           valueType,
           selectedChannels,
         );
@@ -107,7 +109,7 @@ const DailySalesByBranch = () => {
     };
 
     fetchSales();
-  }, [selectedProduct, unitType, valueType, selectedMonth, selectedChannels]);
+  }, [selectedProduct, effectiveUnitType, valueType, selectedMonth, selectedChannels]);
 
   // ------------------------------
   // Columns for Table
@@ -306,7 +308,7 @@ const DailySalesByBranch = () => {
       branchCode:   row.branchCode,
       date:         dateStr,
       productCodes,
-      unitType,
+      unitType:     effectiveUnitType,
       valueType,
       channels:     drillChannels,
     });
@@ -584,7 +586,14 @@ const DailySalesByBranch = () => {
               <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginTop: 2 }}>
                 {drillModal.data.length} customer{drillModal.data.length !== 1 ? "s" : ""}
                 {" · "}Total: <b style={{ color: "var(--color-primary)" }}>{drillModal.total?.toLocaleString()}</b>
-                {" "}{unitType?.toUpperCase()}
+                {" "}
+                {isValueMode ? (
+                  <span style={{ display: "inline-flex", alignItems: "center", verticalAlign: "-2px" }}>
+                    <RiyalIcon width={12} height={12} color="var(--color-primary)" />
+                  </span>
+                ) : (
+                  unitType?.toUpperCase()
+                )}
               </div>
             )}
           </div>
@@ -666,7 +675,11 @@ const DailySalesByBranch = () => {
                 ),
               },
               {
-                title: `Sales (${unitType?.toUpperCase()})`,
+                title: isValueMode ? (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}>
+                    Sales (<RiyalIcon width={11} height={11} color="#FFFFFF" />)
+                  </span>
+                ) : `Sales (${unitType?.toUpperCase()})`,
                 dataIndex: "sales",
                 key: "sales",
                 width: 110,

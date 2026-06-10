@@ -18,6 +18,7 @@ import { useDateFilter } from "../../../Contexts/DateFilterContext";
 import { ProductContext } from "../../../Contexts/ProductContext";
 import { UnitValueContext } from "../../../Contexts/UnitValueContext";
 import { CHART_COLORS } from "../../../Components/Charts/chartConfig";
+import RiyalIcon from "../../../Utils/RiyalIcon";
 
 // Define a safe initial structure for dashboardData
 const initialDashboardData = {
@@ -39,7 +40,10 @@ const initialDashboardData = {
 const Dashboard = ({ branchCode = null }) => {
   const { selectedMonth } = useDateFilter();
   const { selectedProduct } = useContext(ProductContext);
-  const { unitType, valueType } = useContext(UnitValueContext);
+  const { unitType, valueType, effectiveUnitType, mode } = useContext(UnitValueContext);
+  const isValueMode = mode === "val";
+  // Charts can only render strings in tooltips — use "SAR" in value mode.
+  const chartUnit = isValueMode ? "SAR" : unitType;
 
   // State for dashboard data and filters
   const [dashboardData, setDashboardData] = useState(initialDashboardData);
@@ -65,7 +69,7 @@ const Dashboard = ({ branchCode = null }) => {
           endpoint,
           selectedMonth,
           productCode,
-          unitType,
+          effectiveUnitType,
           valueType,
           branchCode
         );
@@ -114,7 +118,7 @@ const Dashboard = ({ branchCode = null }) => {
       setLoading(false);
       setDashboardData(initialDashboardData);
     }
-  }, [selectedMonth, selectedProduct, unitType, valueType, branchCode]); // Dependencies remain the same
+  }, [selectedMonth, selectedProduct, effectiveUnitType, valueType, branchCode]); // Dependencies remain the same
 
   // --- Customer By Channel Data Processor Effect ---
   useEffect(() => {
@@ -278,7 +282,14 @@ const Dashboard = ({ branchCode = null }) => {
                   <div className="tab-icon">{tab.icon}</div>
                   <div className="tab-title">{tab.title || "N/A"}</div>
                 </div>
-                <div className="tab-value">{tab.value || "N/A"}</div>
+                <div className="tab-value">
+                  {tab.is_value && (
+                    <span style={{ display: "inline-flex", alignItems: "center", marginRight: 6, verticalAlign: "-3px" }}>
+                      <RiyalIcon width={18} height={18} color="#1E293B" />
+                    </span>
+                  )}
+                  {tab.value || "N/A"}
+                </div>
                 <div className="tab-footer">
                   <span
                     className={`tab-change ${
@@ -304,7 +315,7 @@ const Dashboard = ({ branchCode = null }) => {
                 // Safely access properties with optional chaining and nullish coalescing
                 labels={dashboardData.weekly_sales_graph?.week || []}
                 colourTheme={[CHART_COLORS[0]]}
-                units={[unitType]}
+                units={[chartUnit]}
                 series={[
                   {
                     name: selectedProduct?.name || "Sales",
@@ -319,7 +330,7 @@ const Dashboard = ({ branchCode = null }) => {
                 graphTitle="Daily Sales Trend"
                 labels={dailySalesLabels}
                 colourTheme={[CHART_COLORS[0]]}
-                units={[unitType]}
+                units={[chartUnit]}
                 series={[
                   {
                     name: `${selectedProduct?.name || "Product"} Sales`,
@@ -350,7 +361,7 @@ const Dashboard = ({ branchCode = null }) => {
                 graphTitle="Monthly Sales By Date"
                 labels={dashboardData?.monthly_daily_graph?.day || []}
                 colourTheme={[CHART_COLORS[4]]}
-                units={[unitType]}
+                units={[chartUnit]}
                 series={[
                   {
                     name: "Daily Sales",
@@ -367,7 +378,7 @@ const Dashboard = ({ branchCode = null }) => {
                 graphTitle="Monthly Cumulative Sales By Date"
                 labels={dashboardData?.monthly_daily_graph?.day || []}
                 colourTheme={[CHART_COLORS[2]]}
-                units={[unitType]}
+                units={[chartUnit]}
                 series={[
                   {
                     name: "Cumulative Sales",
@@ -384,7 +395,7 @@ const Dashboard = ({ branchCode = null }) => {
                 graphTitle="Weekly Sales YTD"
                 labels={dashboardData.weekly_ytd_graph?.Week || []}
                 colourTheme={[CHART_COLORS[1]]}
-                units={[unitType]}
+                units={[chartUnit]}
                 series={[
                   {
                     name: "Weekly Sales",
@@ -413,7 +424,7 @@ const Dashboard = ({ branchCode = null }) => {
                 graphTitle="Monthly Sales"
                 labels={dashboardData?.monthly_sales_target_graph?.Months || []}
                 colourTheme={[CHART_COLORS[0], CHART_COLORS[2]]}
-                units={[unitType, unitType]}
+                units={[chartUnit, chartUnit]}
                 series={[
                   {
                     name: "Actual Sales", // Also safe guard the data arrays
@@ -440,7 +451,7 @@ const Dashboard = ({ branchCode = null }) => {
                 graphTitle="Branch-wise Sales vs Target"
                 labels={dashboardData.branch_sales_target_graph?.branches || []}
                 colourTheme={[CHART_COLORS[3], CHART_COLORS[0]]}
-                units={[unitType, unitType]}
+                units={[chartUnit, chartUnit]}
                 series={[
                   {
                     name: "Sales",
@@ -458,10 +469,10 @@ const Dashboard = ({ branchCode = null }) => {
           <div className="row">
             <div className="graph">
               <AreaChart
-                graphTitle={`SKU Contribution (${unitType})`}
+                graphTitle={`SKU Contribution (${chartUnit})`}
                 labels={dashboardData.sku_contribution_graph?.labels || []}
                 colourTheme={[CHART_COLORS[0]]}
-                units={[unitType]}
+                units={[chartUnit]}
                 series={[
                   {
                     name: "Sales",
