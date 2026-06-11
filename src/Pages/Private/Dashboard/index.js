@@ -189,6 +189,7 @@ const Dashboard = ({ branchCode = null }) => {
       change: tab?.change,
       positive: tab?.positive,
       subtitle: tab?.subtitle,
+      is_value: tab?.is_value,
     })
   );
   // Pad the array to ensure there are always 5 elements to avoid mapping issues in JSX
