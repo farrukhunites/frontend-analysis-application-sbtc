@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
-import { Form, Input, Button, message, Divider, Skeleton, Radio, DatePicker } from "antd";
+import { Form, Input, Button, message, Divider, Skeleton, Radio, DatePicker, Select } from "antd";
 import dayjs from "dayjs";
 import {
   LockOutlined,
@@ -9,8 +9,9 @@ import {
   AppstoreOutlined,
   SyncOutlined,
   ClockCircleOutlined,
+  TeamOutlined,
 } from "@ant-design/icons";
-import { changePassword } from "../../../API/Auth";
+import { changePassword, getAdminUsers, adminSetPassword } from "../../../API/Auth";
 import { getAllBranches } from "../../../API/Branches";
 import { getAllProducts } from "../../../API/Products";
 import { streamForceRefresh } from "../../../API/ForceRefresh";
@@ -41,6 +42,34 @@ const Settings = () => {
   const [branchNames, setBranchNames] = useState([]);
   const [productNames, setProductNames] = useState([]);
   const [resolving, setResolving] = useState(true);
+
+  // Admin: reset any user's password
+  const [adminForm] = Form.useForm();
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [adminUsersLoading, setAdminUsersLoading] = useState(false);
+  const [adminResetLoading, setAdminResetLoading] = useState(false);
+
+  const isAdmin = userData?.role === "admin";
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    setAdminUsersLoading(true);
+    getAdminUsers()
+      .then((res) => setAdminUsers(res?.results || []))
+      .finally(() => setAdminUsersLoading(false));
+  }, [isAdmin]);
+
+  const onAdminResetPassword = async (values) => {
+    setAdminResetLoading(true);
+    const res = await adminSetPassword(values);
+    if (Math.floor(res?.status / 100) === 2) {
+      msgAPI.success(res?.data?.message || "Password updated successfully!");
+      adminForm.resetFields();
+    } else {
+      msgAPI.error(res?.data?.error || "Failed to update password");
+    }
+    setAdminResetLoading(false);
+  };
 
   // Resolve allowed_branches / allowed_products codes → names
   useEffect(() => {
@@ -285,6 +314,88 @@ const Settings = () => {
           </Form>
         </div>
       </div>
+
+      {/* Admin-only: reset password for any user */}
+      {isAdmin && (
+        <div className="settings-card settings-card--full" style={{ marginTop: 20 }}>
+          <div className="card-section-header">
+            <div className="section-icon admin">
+              <TeamOutlined />
+            </div>
+            <div>
+              <div className="section-title">Reset User Password</div>
+              <div className="section-desc">Set a new password for any user (admin only)</div>
+            </div>
+          </div>
+
+          <Divider style={{ margin: "16px 0" }} />
+
+          <Form
+            form={adminForm}
+            layout="vertical"
+            onFinish={onAdminResetPassword}
+            style={{ maxWidth: 560 }}
+          >
+            <Form.Item
+              name="user_id"
+              label="User"
+              rules={[{ required: true, message: "Please select a user" }]}
+            >
+              <Select
+                size="large"
+                showSearch
+                placeholder="Search by name, username, or employee code"
+                loading={adminUsersLoading}
+                optionFilterProp="label"
+                options={adminUsers.map((u) => ({
+                  value: u.id,
+                  label: `${u.name || u.username} · ${u.username}${u.employee_code ? ` · ${u.employee_code}` : ""}${u.role === "admin" ? " · admin" : ""}`,
+                }))}
+              />
+            </Form.Item>
+
+            <Form.Item
+              name="new_password"
+              label="New Password"
+              rules={[
+                { required: true, message: "Please enter new password" },
+                { min: 6, message: "Password must be at least 6 characters" },
+              ]}
+            >
+              <Input.Password size="large" placeholder="Enter new password" />
+            </Form.Item>
+
+            <Form.Item
+              name="confirm_password"
+              label="Confirm Password"
+              dependencies={["new_password"]}
+              rules={[
+                { required: true, message: "Please confirm new password" },
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    if (!value || getFieldValue("new_password") === value) {
+                      return Promise.resolve();
+                    }
+                    return Promise.reject("Passwords do not match");
+                  },
+                }),
+              ]}
+            >
+              <Input.Password size="large" placeholder="Re-enter new password" />
+            </Form.Item>
+
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={adminResetLoading}
+              size="large"
+              style={{ marginTop: 8 }}
+            >
+              Reset Password
+            </Button>
+          </Form>
+        </div>
+      )}
 
       {/* Admin-only: Force Refresh */}
       {userData?.role === "admin" && (

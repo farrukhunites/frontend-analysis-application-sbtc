@@ -49,4 +49,29 @@ const changePassword = async (data) => {
   }
 };
 
-export { login, refresh, changePassword };
+const getAdminUsers = async () => {
+  try {
+    const res = await axios.get(
+      `${process.env.REACT_APP_BACKEND_URL}admin/users/`,
+      { headers: { Authorization: `Bearer ${getToken()}` } }
+    );
+    return res.data;
+  } catch (error) {
+    return { error: error.response?.data || error.message };
+  }
+};
+
+const adminSetPassword = async (data) => {
+  try {
+    const res = await axios.post(
+      `${process.env.REACT_APP_BACKEND_URL}admin/set-password/`,
+      data,
+      { headers: { Authorization: `Bearer ${getToken()}` } }
+    );
+    return res;
+  } catch (error) {
+    return error.response;
+  }
+};
+
+export { login, refresh, changePassword, getAdminUsers, adminSetPassword };
