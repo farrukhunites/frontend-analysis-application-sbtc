@@ -31,6 +31,7 @@ const FIELD_META = {
   qtyconv:       { title: "Qty (Ctn)",    width: 90,  align: "right", render: (v) => v?.toLocaleString() },
   totqty:        { title: "Total Qty",    width: 90,  align: "right", render: (v) => v?.toLocaleString() },
   unitprice:     { title: "Unit Price",   width: 100, align: "right", render: (v) => v?.toLocaleString() },
+  amtdisc:       { title: "Discount",     width: 100, align: "right", render: (v) => v?.toLocaleString() },
   tp_ord:        { title: "TP Ord",       width: 90,  align: "right", render: (v) => v?.toLocaleString() },
   driver_cd:     { title: "Driver Code",  width: 100 },
   driver_nm:     { title: "Driver",       width: 160, ellipsis: true },

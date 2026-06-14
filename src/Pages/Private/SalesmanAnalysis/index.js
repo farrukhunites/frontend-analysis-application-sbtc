@@ -206,6 +206,8 @@ const SalesmanAnalysis = () => {
     { title: "Type",       dataIndex: "tp",        width: 110 },
     { title: "Qty",        dataIndex: "qtyconv",   width: 80, align: "right" },
     { title: "Price",      dataIndex: "unitprice", width: 90, align: "right" },
+    { title: "Discount",   dataIndex: "amtdisc",   width: 90, align: "right",
+      render: (v) => (v ? Number(v).toLocaleString() : 0) },
   ];
 
   return (

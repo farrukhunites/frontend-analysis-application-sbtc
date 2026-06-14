@@ -334,6 +334,7 @@ const CustomerAnalysis = () => {
     { title: "Qty Ordered",        dataIndex: "qtyorder",      key: "qtyorder" },
     { title: "Qty Converted",      dataIndex: "qtyconv",       key: "qtyconv" },
     { title: "Unit Price",         dataIndex: "unitprice",     key: "unitprice" },
+    { title: "Discount",           dataIndex: "amtdisc",       key: "amtdisc" },
     { title: "Total Qty",          dataIndex: "totqty",        key: "totqty" },
     { title: "Product Name",       dataIndex: "prod_nm",       key: "prod_nm" },
     { title: "Brand",              dataIndex: "branded_nm",    key: "branded_nm" },
