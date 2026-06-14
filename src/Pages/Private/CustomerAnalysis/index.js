@@ -157,9 +157,9 @@ const CustomerAnalysis = () => {
     fetchCustomerInsight();
   }, [selectedCustomer, selectedBranch, valueType, effectiveUnitType, selectedProduct]);
 
-  // Fetch customer list when branch + channel are both selected
+  // Fetch customer list when branch is selected (optionally filtered by channel)
   useEffect(() => {
-    if (!selectedBranch || !selectedChannel) {
+    if (!selectedBranch) {
       setCustomers([]);
       setSelectedCustomer(null);
       return;
@@ -173,7 +173,11 @@ const CustomerAnalysis = () => {
           setCustomers(res);
         } else {
           setCustomers([]);
-          message.warning("No customers found for this branch + channel");
+          message.warning(
+            selectedChannel
+              ? "No customers found for this branch + channel"
+              : "No customers found for this branch"
+          );
         }
       } catch {
         message.error("Failed to fetch customers");
@@ -376,8 +380,9 @@ const CustomerAnalysis = () => {
           showSearch
           value={selectedChannel?.name || null}
           onChange={handleChannelChange}
+          allowClear
           style={{ flex: 1 }}
-          placeholder="Select Channel"
+          placeholder="Select Channel (optional)"
           optionFilterProp="children"
           filterOption={(input, option) =>
             option.children.toLowerCase().includes(input.toLowerCase())
@@ -389,7 +394,7 @@ const CustomerAnalysis = () => {
         </Select>
 
         <Select
-          disabled={!selectedBranch || !selectedChannel}
+          disabled={!selectedBranch}
           loading={loading}
           showSearch
           value={selectedCustomer?.code || null}

@@ -3,7 +3,9 @@ import { getToken } from "../../Utils/UpdateUserState";
 
 // Function to fetch all branches
 const getCustomersByBranchByCHannel = async (code, channel_name) => {
-  const API_URL = `${process.env.REACT_APP_BACKEND_URL}customers/by-branch/?branch_id=${code}&channel_name=${channel_name}`;
+  const params = new URLSearchParams({ branch_id: code });
+  if (channel_name) params.append("channel_name", channel_name);
+  const API_URL = `${process.env.REACT_APP_BACKEND_URL}customers/by-branch/?${params.toString()}`;
 
   try {
     const response = await axios.get(API_URL, {
