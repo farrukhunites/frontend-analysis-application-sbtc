@@ -13,7 +13,7 @@ import BarChart from "../../../Components/Charts/BarChart";
 import DonutChart from "../../../Components/Charts/DonutChart";
 import { useContext, useEffect, useState } from "react";
 import { message, Select, Skeleton } from "antd";
-import { getDashboardData } from "../../../API/AnalysisSnapshot";
+import { getDashboardData } from "../../../API/Dashboard";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
 import { ProductContext } from "../../../Contexts/ProductContext";
 import { UnitValueContext } from "../../../Contexts/UnitValueContext";
