@@ -8,8 +8,6 @@ import { useLocation } from "react-router-dom";
 import { getAllProducts } from "../../API/Products";
 import { ProductContext } from "../../Contexts/ProductContext";
 import { UnitValueContext } from "../../Contexts/UnitValueContext";
-import { UserContext } from "../../App";
-
 const { Option } = Select;
 
 const PAGES_WITHOUT_DATE_FILTER = ["/customer-analysis", "/daily-stt"];
@@ -19,14 +17,8 @@ const Navbar = ({ collapsed, setCollapsed }) => {
   const [productOptions, setProductOptions] = useState([]);
   const { selectedProduct, setSelectedProduct } = useContext(ProductContext);
   const { unitType, setUnitType, valueType, setValueType, mode, setMode } = useContext(UnitValueContext);
-  const { userData } = useContext(UserContext);
-  const isAdmin = userData?.role === "admin";
   const isValueMode = mode === "val";
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!isAdmin && mode !== "qty") setMode("qty");
-  }, [isAdmin, mode, setMode]);
 
   const [msgApi, contextHolder] = message.useMessage();
 
@@ -144,20 +136,18 @@ const Navbar = ({ collapsed, setCollapsed }) => {
 
         {/* Center: measure, unit & value type toggles */}
         <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-          {isAdmin && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500 }}>Measure:</span>
-              <Segmented
-                size="small"
-                value={mode}
-                onChange={(v) => setMode(v)}
-                options={[
-                  { label: "QTY", value: "qty" },
-                  { label: "VAL", value: "val" },
-                ]}
-              />
-            </div>
-          )}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500 }}>Measure:</span>
+            <Segmented
+              size="small"
+              value={mode}
+              onChange={(v) => setMode(v)}
+              options={[
+                { label: "QTY", value: "qty" },
+                { label: "VAL", value: "val" },
+              ]}
+            />
+          </div>
           {!isValueMode && (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500 }}>Unit:</span>
