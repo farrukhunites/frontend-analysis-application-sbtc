@@ -49,6 +49,7 @@ function App() {
     position: "",
     allowed_branches: "",
     allowed_products: "",
+    allowed_channels: "",
     role: "",
   });
   const [userToken, setUserToken] = useState({ access: "", refresh: "" });

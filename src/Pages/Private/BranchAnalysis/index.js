@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
-import { Select, Skeleton, message } from "antd";
-import { ShopOutlined } from "@ant-design/icons";
+import { useContext, useEffect, useMemo, useState } from "react";
+import { Select, Skeleton, Tag, Tooltip, message } from "antd";
+import { ShopOutlined, AppstoreOutlined } from "@ant-design/icons";
 import Dashboard from "../Dashboard";
 import { getAllBranches } from "../../../API/Branches";
+import { UserContext } from "../../../App";
 import "./style.css";
 
 const shortBranch = (name) =>
@@ -11,9 +12,17 @@ const shortBranch = (name) =>
 const ALL_BRANCHES = "__all__";
 
 const BranchAnalysis = () => {
+  const { userData } = useContext(UserContext);
+
   const [branches, setBranches] = useState([]);
   const [selectedBranch, setSelectedBranch] = useState(ALL_BRANCHES);
   const [loadingBranches, setLoadingBranches] = useState(true);
+
+  const allowedChannelNames = useMemo(
+    () =>
+      Array.isArray(userData?.allowed_channels) ? userData.allowed_channels : [],
+    [userData]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -40,24 +49,43 @@ const BranchAnalysis = () => {
           <ShopOutlined />
           <span>Dashboard</span>
         </div>
-        <Select
-          showSearch
-          loading={loadingBranches}
-          value={selectedBranch}
-          onChange={setSelectedBranch}
-          placeholder="Select branch"
-          style={{ minWidth: 240 }}
-          options={[
-            { value: ALL_BRANCHES, label: "All Branches" },
-            ...branches.map((b) => ({
-              value: b.code,
-              label: shortBranch(b.name) || b.code,
-            })),
-          ]}
-          filterOption={(input, opt) =>
-            (opt?.label || "").toLowerCase().includes(input.toLowerCase())
-          }
-        />
+        <div className="branch-dashboard__filters">
+          {allowedChannelNames.length > 0 && (
+            <Tooltip title="Dashboard totals are scoped to these channels">
+              <div className="branch-dashboard__channels">
+                <AppstoreOutlined className="branch-dashboard__channels-icon" />
+                <span className="branch-dashboard__channels-label">
+                  Allowed Channels:
+                </span>
+                <div className="branch-dashboard__channels-list">
+                  {allowedChannelNames.map((name) => (
+                    <Tag key={name} className="branch-dashboard__channel-tag">
+                      {name}
+                    </Tag>
+                  ))}
+                </div>
+              </div>
+            </Tooltip>
+          )}
+          <Select
+            showSearch
+            loading={loadingBranches}
+            value={selectedBranch}
+            onChange={setSelectedBranch}
+            placeholder="Select branch"
+            style={{ minWidth: 220 }}
+            options={[
+              { value: ALL_BRANCHES, label: "All Branches" },
+              ...branches.map((b) => ({
+                value: b.code,
+                label: shortBranch(b.name) || b.code,
+              })),
+            ]}
+            filterOption={(input, opt) =>
+              (opt?.label || "").toLowerCase().includes(input.toLowerCase())
+            }
+          />
+        </div>
       </div>
 
       {loadingBranches ? (

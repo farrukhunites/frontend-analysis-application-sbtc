@@ -7,6 +7,7 @@ import {
   IdcardOutlined,
   BankOutlined,
   AppstoreOutlined,
+  ShopOutlined,
   SyncOutlined,
   ClockCircleOutlined,
   TeamOutlined,
@@ -14,6 +15,7 @@ import {
 import { changePassword, getAdminUsers, adminSetPassword } from "../../../API/Auth";
 import { getAllBranches } from "../../../API/Branches";
 import { getAllProducts } from "../../../API/Products";
+import { getAllChannels } from "../../../API/Channels";
 import { streamForceRefresh } from "../../../API/ForceRefresh";
 import { UserContext } from "../../../App";
 import "./style.css";
@@ -41,6 +43,7 @@ const Settings = () => {
 
   const [branchNames, setBranchNames] = useState([]);
   const [productNames, setProductNames] = useState([]);
+  const [channelNames, setChannelNames] = useState([]);
   const [resolving, setResolving] = useState(true);
 
   // Admin: reset any user's password
@@ -76,13 +79,15 @@ const Settings = () => {
     const resolveCodes = async () => {
       setResolving(true);
       try {
-        const [branchRes, productRes] = await Promise.all([
+        const [branchRes, productRes, channelRes] = await Promise.all([
           getAllBranches(),
           getAllProducts(),
+          getAllChannels(),
         ]);
 
         const allBranches = branchRes?.results || [];
         const allProducts = productRes?.results || [];
+        const allChannels = channelRes?.results || [];
 
         const allowedBranchCodes = Array.isArray(userData?.allowed_branches)
           ? userData.allowed_branches
@@ -90,6 +95,10 @@ const Settings = () => {
 
         const allowedProductCodes = Array.isArray(userData?.allowed_products)
           ? userData.allowed_products
+          : [];
+
+        const allowedChannelCodes = Array.isArray(userData?.allowed_channels)
+          ? userData.allowed_channels
           : [];
 
         if (allowedBranchCodes.length === 0) {
@@ -109,6 +118,15 @@ const Settings = () => {
           );
           setProductNames(names);
         }
+
+        if (allowedChannelCodes.length === 0) {
+          setChannelNames(["All Channels"]);
+        } else {
+          const names = allowedChannelCodes.map(
+            (name) => allChannels.find((c) => c.name === name)?.name || name
+          );
+          setChannelNames(names);
+        }
       } catch {
         setBranchNames(
           Array.isArray(userData?.allowed_branches)
@@ -119,6 +137,11 @@ const Settings = () => {
           Array.isArray(userData?.allowed_products)
             ? userData.allowed_products
             : ["All Products"]
+        );
+        setChannelNames(
+          Array.isArray(userData?.allowed_channels)
+            ? userData.allowed_channels
+            : ["All Channels"]
         );
       } finally {
         setResolving(false);
@@ -246,6 +269,20 @@ const Settings = () => {
                   : <div className="info-tags">
                       {productNames.map((name) => (
                         <span key={name} className="info-tag info-tag--product">{name}</span>
+                      ))}
+                    </div>}
+              </div>
+            </div>
+
+            <div className="info-row">
+              <ShopOutlined className="info-icon" />
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div className="info-label">Allowed Channels</div>
+                {resolving
+                  ? <Skeleton active title={false} paragraph={{ rows: 1, width: "70%" }} style={{ marginTop: 8 }} />
+                  : <div className="info-tags">
+                      {channelNames.map((name) => (
+                        <span key={name} className="info-tag info-tag--channel">{name}</span>
                       ))}
                     </div>}
               </div>

@@ -25,3 +25,50 @@
   color: var(--color-accent);
   font-size: 18px;
 }
+
+.branch-dashboard__filters {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.branch-dashboard__channels {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 4px 10px;
+  background: rgba(59, 130, 246, 0.06);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.branch-dashboard__channels-icon {
+  color: var(--color-accent);
+  font-size: 14px;
+}
+
+.branch-dashboard__channels-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.branch-dashboard__channels-list {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.branch-dashboard__channel-tag {
+  margin: 0;
+  border-radius: 4px;
+  font-weight: 500;
+  color: var(--color-primary);
+  background: #fff;
+  border-color: var(--color-border);
+}

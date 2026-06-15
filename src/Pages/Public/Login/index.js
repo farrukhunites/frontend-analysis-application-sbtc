@@ -38,6 +38,7 @@ const Login = () => {
             employee_code: loginData?.data?.employee_code,
             allowed_branches: loginData?.data?.allowed_branches,
             allowed_products: loginData?.data?.allowed_products,
+            allowed_channels: loginData?.data?.allowed_channels,
             denied_pages:     loginData?.data?.denied_pages   || [],
             denied_reports:   loginData?.data?.denied_reports || [],
           })
