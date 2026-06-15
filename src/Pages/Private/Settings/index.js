@@ -287,6 +287,26 @@ const Settings = () => {
                     </div>}
               </div>
             </div>
+
+            <div className="info-row">
+              <TeamOutlined className="info-icon" />
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div className="info-label">Allowed Salesmen</div>
+                <div className="info-tags">
+                  {(() => {
+                    const codes = Array.isArray(userData?.allowed_salesmen)
+                      ? userData.allowed_salesmen
+                      : [];
+                    if (codes.length === 0) {
+                      return <span className="info-tag info-tag--salesman">All Salesmen</span>;
+                    }
+                    return codes.map((code) => (
+                      <span key={code} className="info-tag info-tag--salesman">{code}</span>
+                    ));
+                  })()}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

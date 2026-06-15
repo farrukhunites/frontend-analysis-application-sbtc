@@ -187,6 +187,12 @@
   border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
+.info-tag--salesman {
+  background: rgba(245, 158, 11, 0.1);
+  color: #b45309;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
 /* Force Refresh card */
 .settings-card--full {
   grid-column: 1 / -1;
