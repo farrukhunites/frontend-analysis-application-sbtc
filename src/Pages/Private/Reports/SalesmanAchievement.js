@@ -1,6 +1,7 @@
 import { useContext, useEffect, useMemo, useState, useCallback } from "react";
-import { Table, Select, Skeleton, message, Button, Divider, Modal, Spin, Tag, Input, Space } from "antd";
+import { Table, Select, Skeleton, message, Button, Divider, Modal, Spin, Tag, Input, Space, Switch, DatePicker } from "antd";
 import { DownloadOutlined, SearchOutlined } from "@ant-design/icons";
+import dayjs from "dayjs";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
 import { UnitValueContext } from "../../../Contexts/UnitValueContext";
 import { getAllBranches } from "../../../API/Branches";
@@ -84,6 +85,19 @@ const SalesmanAchievement = () => {
   const [reportData, setReportData]             = useState({ products: [], results: [] });
   const [breakdown, setBreakdown]               = useState({ open: false, loading: false, title: "", subtitle: "", data: [], total: 0 });
 
+  // Optional multi-month range. Off by default → single-month behaviour
+  // driven by navbar's selectedMonth (unchanged).
+  const [rangeMode, setRangeMode] = useState(false);
+  const [fromMonth, setFromMonth] = useState(null); // dayjs | null
+  const [toMonth,   setToMonth]   = useState(null); // dayjs | null
+
+  const fromMonthStr  = fromMonth ? fromMonth.format("YYYYMM") : null;
+  const toMonthStr    = toMonth   ? toMonth.format("YYYYMM")   : null;
+  const isRangeActive = rangeMode && fromMonthStr && toMonthStr;
+  const periodLabel   = isRangeActive
+    ? `${fromMonth.format("MMM YYYY")} → ${toMonth.format("MMM YYYY")}`
+    : (selectedMonth ? dayjs(selectedMonth, "YYYYMM").format("MMM YYYY") : "");
+
   // Load branches + products once
   useEffect(() => {
     getAllBranches().then((res) => {
@@ -109,10 +123,18 @@ const SalesmanAchievement = () => {
 
   // Fetch report when filters change
   useEffect(() => {
-    if (!selectedMonth || !selectedBranches.length || !selectedProducts.length) return;
+    if (!selectedBranches.length || !selectedProducts.length) return;
+    // Range mode requires both bounds; single mode requires selectedMonth.
+    if (rangeMode) {
+      if (!isRangeActive) return;
+    } else if (!selectedMonth) {
+      return;
+    }
     setLoading(true);
     getSalesmanAchievement({
-      month:        selectedMonth,
+      ...(isRangeActive
+        ? { fromMonth: fromMonthStr, toMonth: toMonthStr }
+        : { month: selectedMonth }),
       unitType:     effectiveUnitType,
       valueType,
       branchCodes:  selectedBranches,
@@ -122,7 +144,7 @@ const SalesmanAchievement = () => {
       else setReportData(res);
       setLoading(false);
     });
-  }, [selectedMonth, effectiveUnitType, valueType, selectedBranches, selectedProducts]);
+  }, [selectedMonth, rangeMode, fromMonthStr, toMonthStr, isRangeActive, effectiveUnitType, valueType, selectedBranches, selectedProducts]);
 
   // product name → code (from the full product list used by the filter)
   const productNameToCode = useMemo(() => {
@@ -149,7 +171,9 @@ const SalesmanAchievement = () => {
 
     const res = await getSalesmanCustomerBreakdown({
       salesmanCd:  row.salesman_code,
-      month:       selectedMonth,
+      ...(isRangeActive
+        ? { fromMonth: fromMonthStr, toMonth: toMonthStr }
+        : { month: selectedMonth }),
       productCodes,
       unitType:    effectiveUnitType,
       valueType,
@@ -162,7 +186,7 @@ const SalesmanAchievement = () => {
     } else {
       setBreakdown((p) => ({ ...p, loading: false, data: res.results || [], total: res.total || 0 }));
     }
-  }, [selectedMonth, effectiveUnitType, valueType, selectedProducts, selectedBranches, productNameToCode]);
+  }, [selectedMonth, isRangeActive, fromMonthStr, toMonthStr, effectiveUnitType, valueType, selectedProducts, selectedBranches, productNameToCode]);
 
   // Dynamic columns
   const columns = useMemo(() => {
@@ -181,7 +205,7 @@ const SalesmanAchievement = () => {
           render:    (v) => <span style={{ color: "#64748B" }}>{fmtNum(v)}</span>,
         },
         {
-          title:     "MTD",
+          title:     isRangeActive ? "Sales" : "MTD",
           dataIndex: `${slug(p)}_actual`,
           align:     "right",
           width:     90,
@@ -253,7 +277,7 @@ const SalesmanAchievement = () => {
             render:    (v) => <span style={{ color: "#64748B" }}>{fmtNum(v)}</span>,
           },
           {
-            title:     "MTD",
+            title:     isRangeActive ? "Sales" : "MTD",
             dataIndex: "total_actual",
             align:     "right",
             width:     100,
@@ -276,25 +300,29 @@ const SalesmanAchievement = () => {
     ];
   }, [reportData, openBreakdown]);
 
-  // Rows + appended GRAND TOTAL row (scrolls within the body, unlike a sticky summary)
   const dataSource = useMemo(() => {
-    const { products: prods, results } = reportData;
+    const { results } = reportData;
     if (!results?.length) return [];
-    const rows = results.map((r, i) => ({ ...r, key: i }));
+    return results.map((r, i) => ({ ...r, key: i }));
+  }, [reportData]);
 
+  // Sticky grand-total — rendered via Table.summary so it stays visible
+  // regardless of pagination/scroll.
+  const grandTotals = useMemo(() => {
+    const { products: prods, results } = reportData;
+    if (!results?.length) return null;
     const sum = (field) => results.reduce((acc, r) => acc + (r[field] || 0), 0);
-    const grand = { key: "grand-total", isGrandTotal: true };
+    const gt = { isGrandTotal: true };
     prods.forEach((p) => {
       const s = slug(p);
-      grand[`${s}_target`]   = sum(`${s}_target`);
-      grand[`${s}_actual`]   = sum(`${s}_actual`);
-      grand[`${s}_variance`] = sum(`${s}_variance`);
+      gt[`${s}_target`]   = sum(`${s}_target`);
+      gt[`${s}_actual`]   = sum(`${s}_actual`);
+      gt[`${s}_variance`] = sum(`${s}_variance`);
     });
-    grand.total_target   = sum("total_target");
-    grand.total_actual   = sum("total_actual");
-    grand.total_variance = sum("total_variance");
-
-    return [...rows, grand];
+    gt.total_target   = sum("total_target");
+    gt.total_actual   = sum("total_actual");
+    gt.total_variance = sum("total_variance");
+    return gt;
   }, [reportData]);
 
   const exportToExcel = async () => {
@@ -351,13 +379,13 @@ const SalesmanAchievement = () => {
     const r2 = ws.getRow(2); r2.height = 18;
     col = 4;
     products.forEach(() => {
-      ["Target", "MTD", "+/-"].forEach((lbl, i) => {
+      ["Target", isRangeActive ? "Sales" : "MTD", "+/-"].forEach((lbl, i) => {
         r2.getCell(col + i).value = lbl;
         r2.getCell(col + i).style = hdr(NAV);
       });
       col += 3;
     });
-    ["Target", "MTD", "+/-"].forEach((lbl, i) => {
+    ["Target", isRangeActive ? "Sales" : "MTD", "+/-"].forEach((lbl, i) => {
       r2.getCell(col + i).value = lbl;
       r2.getCell(col + i).style = hdr(NAV2);
     });
@@ -480,7 +508,9 @@ const SalesmanAchievement = () => {
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
     a.href = url;
-    a.download = `Salesman_Achievement_${selectedMonth}.xlsx`;
+    a.download = isRangeActive
+      ? `Salesman_Achievement_${fromMonthStr}_to_${toMonthStr}.xlsx`
+      : `Salesman_Achievement_${selectedMonth}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -537,6 +567,48 @@ const SalesmanAchievement = () => {
           )}
         />
 
+        <div style={{ display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
+          <Switch
+            size="small"
+            checked={rangeMode}
+            onChange={(v) => {
+              setRangeMode(v);
+              if (!v) { setFromMonth(null); setToMonth(null); }
+              else if (selectedMonth) {
+                const m = dayjs(selectedMonth, "YYYYMM");
+                setFromMonth((prev) => prev || m);
+                setToMonth((prev) => prev || m);
+              }
+            }}
+          />
+          <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500 }}>Multi-month</span>
+        </div>
+
+        {rangeMode && (
+          <>
+            <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500, whiteSpace: "nowrap" }}>From:</span>
+            <DatePicker
+              picker="month"
+              value={fromMonth}
+              onChange={setFromMonth}
+              format="MMM YYYY"
+              allowClear={false}
+              style={{ minWidth: 130 }}
+              disabledDate={(d) => toMonth && d && d.isAfter(toMonth, "month")}
+            />
+            <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500, whiteSpace: "nowrap" }}>To:</span>
+            <DatePicker
+              picker="month"
+              value={toMonth}
+              onChange={setToMonth}
+              format="MMM YYYY"
+              allowClear={false}
+              style={{ minWidth: 130 }}
+              disabledDate={(d) => fromMonth && d && d.isBefore(fromMonth, "month")}
+            />
+          </>
+        )}
+
         <Button
           type="primary"
           icon={<DownloadOutlined />}
@@ -559,6 +631,40 @@ const SalesmanAchievement = () => {
           scroll={{ x: "max-content", y: "55vh" }}
           locale={{ emptyText: "Select a month with available targets to view the report" }}
           rowClassName={(r) => (r.isGrandTotal ? "report-grand-total-row" : "")}
+          summary={() => {
+            if (!grandTotals) return null;
+            const { products: prods } = reportData;
+            let idx = 0;
+            const cell = (content, opts = {}) => (
+              <Table.Summary.Cell
+                key={idx}
+                index={idx++}
+                align={opts.align || "right"}
+                colSpan={opts.colSpan}
+              >
+                {content}
+              </Table.Summary.Cell>
+            );
+            return (
+              <Table.Summary fixed>
+                <Table.Summary.Row className="report-grand-total-row">
+                  {cell("", { align: "center" })}
+                  {cell(<b>GRAND TOTAL</b>, { colSpan: 2, align: "left" })}
+                  {prods.flatMap((p) => {
+                    const s = slug(p);
+                    return [
+                      cell(<span style={{ color: "#64748B" }}>{fmtNum(grandTotals[`${s}_target`])}</span>),
+                      cell(<b>{fmtNum(grandTotals[`${s}_actual`])}</b>),
+                      cell(<VarCell v={grandTotals[`${s}_variance`]} />, { align: "center" }),
+                    ];
+                  })}
+                  {cell(<span style={{ color: "#64748B" }}>{fmtNum(grandTotals.total_target)}</span>)}
+                  {cell(<b style={{ color: "var(--color-primary)" }}>{fmtNum(grandTotals.total_actual)}</b>)}
+                  {cell(<VarCell v={grandTotals.total_variance} />, { align: "center" })}
+                </Table.Summary.Row>
+              </Table.Summary>
+            );
+          }}
         />
       )}
 

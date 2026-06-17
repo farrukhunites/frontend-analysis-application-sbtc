@@ -312,8 +312,7 @@ const ChannelCustomerYoY = () => {
 
   const dataSource = useMemo(() => {
     if (!data) return [];
-    const rows = data.rows.map((r, i) => ({ ...r, key: i }));
-    return [...rows, { ...data.grand_total, key: "grand-total", isGrandTotal: true }];
+    return data.rows.map((r, i) => ({ ...r, key: i }));
   }, [data]);
 
   // ── Excel export (full monthly matrix) ──────────────────────────────────
@@ -518,6 +517,50 @@ const ChannelCustomerYoY = () => {
           pagination={{ pageSize: 50, showSizeChanger: false, size: "small" }}
           scroll={{ x: "max-content", y: "55vh" }}
           rowClassName={(r) => (r.isGrandTotal ? "yoy-grand-total-row" : "")}
+          summary={() => {
+            if (!data?.grand_total) return null;
+            const gt = data.grand_total;
+            const { years, months_by_year, growth_pairs } = data;
+            let i = 0;
+            const cell = (content, opts = {}) => (
+              <Table.Summary.Cell
+                key={i}
+                index={i++}
+                align={opts.align || "right"}
+                colSpan={opts.colSpan}
+              >
+                {content}
+              </Table.Summary.Cell>
+            );
+            const cells = [];
+            cells.push(cell(<b>{gt.name || "GRAND TOTAL"}</b>, { align: "left" }));
+            cells.push(cell(""));
+            years.forEach((year) => {
+              if (expandedYears.has(year)) {
+                (months_by_year[String(year)] || []).forEach((m) => {
+                  cells.push(cell(
+                    <span style={{ fontSize: 12 }}>
+                      {fmtNum(gt[`m_${year}_${String(m).padStart(2, "0")}`])}
+                    </span>
+                  ));
+                });
+              }
+              cells.push(cell(
+                <b style={{ color: "var(--color-primary)" }}>{fmtNum(gt[`y_${year}`])}</b>
+              ));
+            });
+            growth_pairs.forEach((g) => {
+              cells.push(cell(
+                <GrowthCell pct={gt[`gp_${g.prev}_${g.curr}`]} value={gt[`gv_${g.prev}_${g.curr}`]} />,
+                { align: "center" }
+              ));
+            });
+            return (
+              <Table.Summary fixed>
+                <Table.Summary.Row className="yoy-grand-total-row">{cells}</Table.Summary.Row>
+              </Table.Summary>
+            );
+          }}
         />
       )}
 

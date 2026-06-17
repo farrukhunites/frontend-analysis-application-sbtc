@@ -1,12 +1,15 @@
 import axios from "axios";
 import { getToken } from "../../Utils/UpdateUserState";
 
-export const getSalesmanAchievement = ({ month, unitType, valueType, branchCodes, productCodes }) =>
+export const getSalesmanAchievement = ({ month, fromMonth, toMonth, unitType, valueType, branchCodes, productCodes }) =>
   axios
     .get(`${process.env.REACT_APP_BACKEND_URL}reports/salesman-achievement/`, {
       headers: { Authorization: `Bearer ${getToken()}` },
       params: {
-        month,
+        // Range overrides single month when both bounds are provided.
+        ...(fromMonth && toMonth
+          ? { from_month: fromMonth, to_month: toMonth }
+          : { month }),
         unit_type:        unitType,
         value_type:       valueType,
         "branch_codes[]":  branchCodes,
@@ -156,13 +159,15 @@ export const getRawSales = ({ startDate, endDate, branchCodes, productCodes, pag
     .then((r) => r.data)
     .catch((err) => ({ error: err.response?.data || err.message }));
 
-export const getSalesmanCustomerBreakdown = ({ salesmanCd, month, productCodes, unitType, valueType, branchCodes }) =>
+export const getSalesmanCustomerBreakdown = ({ salesmanCd, month, fromMonth, toMonth, productCodes, unitType, valueType, branchCodes }) =>
   axios
     .get(`${process.env.REACT_APP_BACKEND_URL}reports/salesman-customer-breakdown/`, {
       headers: { Authorization: `Bearer ${getToken()}` },
       params: {
         salesman_cd:      salesmanCd,
-        month,
+        ...(fromMonth && toMonth
+          ? { from_month: fromMonth, to_month: toMonth }
+          : { month }),
         product_codes:    productCodes || undefined,
         unit_type:        unitType,
         value_type:       valueType,

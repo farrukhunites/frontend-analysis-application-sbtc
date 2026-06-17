@@ -16,13 +16,18 @@ const FIELD_META = {
   cust_cd:       { title: "Cust Code",    width: 100 },
   cust_nm:       { title: "Customer",     width: 220, ellipsis: true },
   otlcd:         { title: "Channel",      width: 90, render: (v) => v ? <Tag color="blue" style={{ margin: 0, fontSize: 11 }}>{v}</Tag> : "-" },
+  cusgrcd:           { title: "Cust Grp Code", width: 110 },
   cusgrcd_nm:    { title: "Cust Group",   width: 140, ellipsis: true },
   salesman_cd:   { title: "Sm Code",      width: 90 },
   salesman_nm:   { title: "Salesman",     width: 180, ellipsis: true },
+  salesman_mobile_no:{ title: "SM Mobile",    width: 120 },
   salespointcd:  { title: "Branch Code",  width: 100 },
   salespoint_nm: { title: "Branch",       width: 160, ellipsis: true },
   prod_cd:       { title: "Prod Code",    width: 100 },
   prod_nm:       { title: "Product",      width: 220, ellipsis: true },
+  prod_nm3:          { title: "Prod Name 3",   width: 200, ellipsis: true },
+  prod_nmg1:         { title: "Prod Group",    width: 160, ellipsis: true },
+  branded_nm:        { title: "Brand",         width: 140, ellipsis: true },
   item_cd:       { title: "Item Code",    width: 110 },
   item_nm:       { title: "Item",         width: 220, ellipsis: true },
   packing:       { title: "Packing",      width: 80,  align: "right" },
@@ -38,6 +43,7 @@ const FIELD_META = {
   so_cd:         { title: "SO Code",      width: 110 },
   so_dt:         { title: "SO Date",      width: 100, render: (v) => v ? dayjs(v).format("DD MMM YYYY") : "-" },
   do_dt:         { title: "DO Date",      width: 100, render: (v) => v ? dayjs(v).format("DD MMM YYYY") : "-" },
+  bin_cd:        { title: "Bin Code",     width: 100 },
 };
 
 const RawData = () => {

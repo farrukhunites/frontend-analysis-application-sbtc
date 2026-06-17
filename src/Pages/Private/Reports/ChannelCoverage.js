@@ -561,7 +561,7 @@ const ChannelCoverage = () => {
     // Each row's `total_*` from the backend covers ALL channels. Re-derive
     // them from the currently-visible channels so excluding (e.g.) BRN
     // actually drops it out of the TOTAL column too.
-    const rows = results.map((r, i) => {
+    return results.map((r, i) => {
       let a = 0, sel = 0;
       channels.forEach((ch) => {
         const s = slug(ch);
@@ -577,29 +577,31 @@ const ChannelCoverage = () => {
         ...(hasFilter ? { total_remaining: Math.max(0, a - sel) } : null),
       };
     });
+  }, [reportData, visibleChannels, hasFilter]);
 
-    const sum = (field) => rows.reduce((acc, r) => acc + (r[field] || 0), 0);
-    const grand = { key: "grand-total", isGrandTotal: true, branch: "" };
+  // Sticky grand-total — rendered via Table.summary so it stays visible
+  // regardless of pagination/scroll position.
+  const grandTotals = useMemo(() => {
+    const channels = visibleChannels;
+    if (!dataSource.length || !channels.length) return null;
+    const pct = (s, a) => (a ? Math.round((s / a) * 1000) / 10 : 0);
+    const sum = (field) => dataSource.reduce((acc, r) => acc + (r[field] || 0), 0);
+    const gt = {};
     channels.forEach((ch) => {
       const s = slug(ch);
       const a = sum(`${s}_all`);
       const sel = sum(`${s}_selected`);
-      grand[`${s}_all`] = a;
-      grand[`${s}_selected`] = sel;
-      grand[`${s}_pct`] = pct(sel, a);
-      if (hasFilter) grand[`${s}_remaining`] = Math.max(0, a - sel);
+      gt[`${s}_all`] = a;
+      gt[`${s}_selected`] = sel;
+      gt[`${s}_pct`] = pct(sel, a);
+      if (hasFilter) gt[`${s}_remaining`] = Math.max(0, a - sel);
     });
-    grand.total_all = sum("total_all");
-    grand.total_selected = sum("total_selected");
-    grand.total_pct = pct(grand.total_selected, grand.total_all);
-    if (hasFilter)
-      grand.total_remaining = Math.max(
-        0,
-        grand.total_all - grand.total_selected,
-      );
-
-    return [...rows, grand];
-  }, [reportData, visibleChannels, hasFilter]);
+    gt.total_all = sum("total_all");
+    gt.total_selected = sum("total_selected");
+    gt.total_pct = pct(gt.total_selected, gt.total_all);
+    if (hasFilter) gt.total_remaining = Math.max(0, gt.total_all - gt.total_selected);
+    return gt;
+  }, [dataSource, visibleChannels, hasFilter]);
 
   const exportToExcel = async () => {
     const channels = visibleChannels;
@@ -1151,6 +1153,48 @@ const ChannelCoverage = () => {
             emptyText: "Select a month and branches to view the report",
           }}
           rowClassName={(r) => (r.isGrandTotal ? "report-grand-total-row" : "")}
+          summary={() => {
+            if (!grandTotals) return null;
+            const channels = visibleChannels;
+            let i = 0;
+            const cell = (content, opts = {}) => (
+              <Table.Summary.Cell
+                key={i}
+                index={i++}
+                align={opts.align || "right"}
+                colSpan={opts.colSpan}
+              >
+                {content}
+              </Table.Summary.Cell>
+            );
+            const cells = [];
+            cells.push(cell("", { align: "center" }));
+            cells.push(cell(<b>GRAND TOTAL</b>, { align: "left" }));
+            channels.forEach((ch) => {
+              const s = slug(ch);
+              if (hasFilter) {
+                cells.push(cell(<span style={{ color: "#64748B" }}>{fmtNum(grandTotals[`${s}_all`])}</span>));
+                cells.push(cell(<b style={{ color: "var(--color-accent)" }}>{fmtNum(grandTotals[`${s}_selected`])}</b>));
+                cells.push(cell(<b style={{ color: "#B91C1C" }}>{fmtNum(grandTotals[`${s}_remaining`])}</b>));
+                cells.push(cell(<PctCell v={grandTotals[`${s}_pct`]} allCount={grandTotals[`${s}_all`]} />, { align: "center" }));
+              } else {
+                cells.push(cell(<b style={{ color: "var(--color-accent)" }}>{fmtNum(grandTotals[`${s}_all`])}</b>));
+              }
+            });
+            if (hasFilter) {
+              cells.push(cell(<b>{fmtNum(grandTotals.total_all)}</b>));
+              cells.push(cell(<b style={{ color: "var(--color-primary)" }}>{fmtNum(grandTotals.total_selected)}</b>));
+              cells.push(cell(<b style={{ color: "#B91C1C" }}>{fmtNum(grandTotals.total_remaining)}</b>));
+              cells.push(cell(<PctCell v={grandTotals.total_pct} allCount={grandTotals.total_all} />, { align: "center" }));
+            } else {
+              cells.push(cell(<b style={{ color: "var(--color-primary)" }}>{fmtNum(grandTotals.total_all)}</b>));
+            }
+            return (
+              <Table.Summary fixed>
+                <Table.Summary.Row className="report-grand-total-row">{cells}</Table.Summary.Row>
+              </Table.Summary>
+            );
+          }}
         />
       )}
 
