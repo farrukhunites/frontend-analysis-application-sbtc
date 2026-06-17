@@ -4,6 +4,7 @@ import { DownloadOutlined, DoubleLeftOutlined, DoubleRightOutlined } from "@ant-
 import { ProductContext } from "../../../Contexts/ProductContext";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
 import { UnitValueContext } from "../../../Contexts/UnitValueContext";
+import { UserContext } from "../../../App";
 import { getAllProducts } from "../../../API/Products";
 import { getDailyBranchSales, getDailyCustomerBreakdown } from "../../../API/Daily STT Report";
 import { openSalesmanAnalysis } from "../Reports/reportUtils";
@@ -15,6 +16,7 @@ const { Option } = Select;
 const DailySalesByBranch = () => {
   const { selectedMonth } = useDateFilter();
   const { selectedProduct, setSelectedProduct } = useContext(ProductContext);
+  const { userData } = useContext(UserContext);
 
   const [productOptions, setProductOptions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -22,21 +24,24 @@ const DailySalesByBranch = () => {
   const [dayColumns, setDayColumns] = useState([]);
   const { unitType, valueType, effectiveUnitType, mode } = useContext(UnitValueContext);
   const isValueMode = mode === "val";
-  const [channels, setChannels] = useState([
-    "BRN",
-    "RTI",
-    "WS",
-    "PHA",
-    "CFC",
-    "CSM",
-    "DSC",
-    "ECM",
-    "HRC",
-    "KA",
-    "MM",
-    "RTA",
-  ]);
-  const [selectedChannels, setSelectedChannels] = useState(channels);
+
+  // Channels are scoped to whatever the logged-in user is permitted to see.
+  const channels = useMemo(
+    () => (Array.isArray(userData?.allowed_channels) ? userData.allowed_channels : []),
+    [userData],
+  );
+  const [selectedChannels, setSelectedChannels] = useState([]);
+
+  // Keep selection in sync with allowed list — drop anything no longer allowed,
+  // and seed with the full allowed list the first time it arrives.
+  useEffect(() => {
+    setSelectedChannels((prev) => {
+      if (!channels.length) return [];
+      if (!prev.length) return channels;
+      const filtered = prev.filter((c) => channels.includes(c));
+      return filtered.length ? filtered : channels;
+    });
+  }, [channels]);
 
   // Default: only the most recent 7 day-columns are visible to avoid horizontal scroll.
   const [showAllDays, setShowAllDays] = useState(false);
