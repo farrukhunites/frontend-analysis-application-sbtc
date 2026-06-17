@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useContext } from "react";
 import { Table, message, Skeleton, Tabs, Select, Button, Modal, Spin, Tag } from "antd";
-import { DownloadOutlined } from "@ant-design/icons";
+import { DownloadOutlined, DoubleLeftOutlined, DoubleRightOutlined } from "@ant-design/icons";
 import { ProductContext } from "../../../Contexts/ProductContext";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
 import { UnitValueContext } from "../../../Contexts/UnitValueContext";
@@ -37,6 +37,10 @@ const DailySalesByBranch = () => {
     "RTA",
   ]);
   const [selectedChannels, setSelectedChannels] = useState(channels);
+
+  // Default: only the most recent 7 day-columns are visible to avoid horizontal scroll.
+  const [showAllDays, setShowAllDays] = useState(false);
+  const DEFAULT_RECENT_DAYS = 7;
 
   // Drill-down modal state
   const [drillModal, setDrillModal] = useState({ open: false, loading: false, title: "", data: [], total: 0, branchCode: "" });
@@ -115,7 +119,13 @@ const DailySalesByBranch = () => {
   // Columns for Table
   // ------------------------------
   const columns = useMemo(() => {
-    const dayCols = dayColumns.map((d) => ({
+    const canCollapse = dayColumns.length > DEFAULT_RECENT_DAYS;
+    const visibleDayColumns = (showAllDays || !canCollapse)
+      ? dayColumns
+      : dayColumns.slice(-DEFAULT_RECENT_DAYS);
+    const hiddenCount = dayColumns.length - visibleDayColumns.length;
+
+    const dayCols = visibleDayColumns.map((d) => ({
       title: (
         <div style={{ textAlign: "center", lineHeight: 1.3 }}>
           <div>{d.title}</div>
@@ -140,6 +150,44 @@ const DailySalesByBranch = () => {
         );
       },
     }));
+
+    // Insert a clickable expander/collapser column at the start of the day strip.
+    if (canCollapse) {
+      const expanded = showAllDays;
+      dayCols.unshift({
+        title: (
+          <div
+            onClick={() => setShowAllDays((v) => !v)}
+            style={{
+              textAlign: "center",
+              cursor: "pointer",
+              color: "#3B82F6",
+              fontSize: 11,
+              lineHeight: 1.3,
+              padding: "2px 4px",
+              userSelect: "none",
+            }}
+            title={expanded ? "Hide earlier days" : `Show all ${dayColumns.length} days`}
+          >
+            {expanded ? (
+              <>
+                <DoubleRightOutlined style={{ fontSize: 10 }} />
+                <div style={{ fontSize: 10, opacity: 0.85 }}>hide</div>
+              </>
+            ) : (
+              <>
+                <DoubleLeftOutlined style={{ fontSize: 10 }} />
+                <div style={{ fontSize: 10, opacity: 0.85 }}>+{hiddenCount} earlier</div>
+              </>
+            )}
+          </div>
+        ),
+        key: "__day_toggle__",
+        width: 64,
+        align: "center",
+        render: () => <span style={{ color: "#CBD5E1" }}>·</span>,
+      });
+    }
 
     const renderNumber = (v, color = "#000", bold = true) => {
       if (v === 0 || v === null || v === undefined) return "-";
@@ -243,7 +291,7 @@ const DailySalesByBranch = () => {
       ...dayCols,
       ...numericCols,
     ];
-  }, [dayColumns]);
+  }, [dayColumns, showAllDays]);
 
   // ------------------------------
   // Append Grand Total Row
