@@ -21,6 +21,12 @@
   border: 1px solid var(--color-border);
 }
 
+/* YTD card carries the extra abs-change line — needs a bit more room */
+.dashboard .top-tabs-container .tab-card:last-child {
+  flex: 1.35;
+  min-width: 240px;
+}
+
 .dashboard .tab-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(30, 58, 95, 0.12);
@@ -83,6 +89,15 @@
 
 .dashboard .tab-change.negative {
   color: var(--color-error);
+}
+
+.dashboard .tab-change-abs {
+  font-weight: 500;
+  font-size: 11px;
+  opacity: 0.9;
+  margin-left: 4px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .dashboard .tab-subtext {

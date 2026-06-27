@@ -188,6 +188,8 @@ const Dashboard = ({ branchCode = null }) => {
       ][index] || <LineChartOutlined key={`default-${index}`} />,
       change: tab?.change,
       positive: tab?.positive,
+      abs_change: tab?.abs_change,
+      abs_change_suffix: tab?.abs_change_suffix,
       subtitle: tab?.subtitle,
       is_value: tab?.is_value,
     })
@@ -300,6 +302,22 @@ const Dashboard = ({ branchCode = null }) => {
                     {/* Safely display change, defaulting to 0 */}
                     {tab.positive ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
                     {Math.abs(tab.change || 0)}%
+                    {typeof tab.abs_change === "number" && (
+                      <span className="tab-change-abs">
+                        {tab.abs_change >= 0 ? "+" : "−"}
+                        {tab.is_value && (
+                          <span style={{ display: "inline-flex", alignItems: "center", verticalAlign: "-2px", margin: "0 2px" }}>
+                            <RiyalIcon
+                              width={10}
+                              height={10}
+                              color={tab.positive ? "#10B981" : "#EF4444"}
+                            />
+                          </span>
+                        )}
+                        {Math.abs(tab.abs_change).toLocaleString()}
+                        {!tab.is_value && (tab.abs_change_suffix || "").toUpperCase()}
+                      </span>
+                    )}
                   </span>
                   {tab.subtitle && (
                     <span className="tab-subtext">{tab.subtitle}</span>
