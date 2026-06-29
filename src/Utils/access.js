@@ -19,6 +19,7 @@ export const REPORT_KEYS = {
   CUSTOMER_YOY:         "customer_yoy",
   CHANNEL_ACHIEVEMENT:  "channel_achievement",
   CHANNEL_COVERAGE:     "channel_coverage",
+  TARGET_FEASIBILITY:   "target_feasibility",
   RAW_DATA:             "raw_data",
 };
 

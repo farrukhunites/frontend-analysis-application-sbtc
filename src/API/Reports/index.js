@@ -159,6 +159,49 @@ export const getRawSales = ({ startDate, endDate, branchCodes, productCodes, pag
     .then((r) => r.data)
     .catch((err) => ({ error: err.response?.data || err.message }));
 
+export const getTargetFeasibility = ({ month, unitType, branchCodes, productCodes }) =>
+  axios
+    .get(`${process.env.REACT_APP_BACKEND_URL}reports/target-feasibility/`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+      params: {
+        month,
+        unit_type:         unitType,
+        "branch_codes[]":  branchCodes?.length ? branchCodes : undefined,
+        "product_codes[]": productCodes?.length ? productCodes : undefined,
+      },
+    })
+    .then((r) => r.data)
+    .catch((err) => ({ error: err.response?.data || err.message }));
+
+export const getTargetFeasibilitySalesmen = ({ month, branchCode, unitType, productCodes }) =>
+  axios
+    .get(`${process.env.REACT_APP_BACKEND_URL}reports/target-feasibility/salesmen/`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+      params: {
+        month,
+        branch_code:       branchCode,
+        unit_type:         unitType,
+        "product_codes[]": productCodes?.length ? productCodes : undefined,
+      },
+    })
+    .then((r) => r.data)
+    .catch((err) => ({ error: err.response?.data || err.message }));
+
+export const getTargetFeasibilityCustomers = ({ month, branchCode, salesmanCode, unitType, productCodes }) =>
+  axios
+    .get(`${process.env.REACT_APP_BACKEND_URL}reports/target-feasibility/customers/`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+      params: {
+        month,
+        branch_code:       branchCode,
+        salesman_code:     salesmanCode,
+        unit_type:         unitType,
+        "product_codes[]": productCodes?.length ? productCodes : undefined,
+      },
+    })
+    .then((r) => r.data)
+    .catch((err) => ({ error: err.response?.data || err.message }));
+
 export const getSalesmanCustomerBreakdown = ({ salesmanCd, month, fromMonth, toMonth, productCodes, unitType, valueType, branchCodes }) =>
   axios
     .get(`${process.env.REACT_APP_BACKEND_URL}reports/salesman-customer-breakdown/`, {

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useContext, useMemo, useState } from "react";
 import { Tabs, Skeleton, Empty } from "antd";
-import { CalendarOutlined, AimOutlined, TrophyOutlined, RiseOutlined, AppstoreOutlined, TeamOutlined, DatabaseOutlined } from "@ant-design/icons";
+import { CalendarOutlined, AimOutlined, TrophyOutlined, RiseOutlined, AppstoreOutlined, TeamOutlined, DatabaseOutlined, BulbOutlined } from "@ant-design/icons";
 import { UserContext } from "../../../App";
 import { REPORT_KEYS, isReportBlocked } from "../../../Utils/access";
 
@@ -10,6 +10,7 @@ const SalesmanAchievement = lazy(() => import("./SalesmanAchievement"));
 const ChannelCustomerYoY  = lazy(() => import("./ChannelCustomerYoY"));
 const ChannelAchievement  = lazy(() => import("./ChannelAchievement"));
 const ChannelCoverage     = lazy(() => import("./ChannelCoverage"));
+const TargetFeasibility   = lazy(() => import("./TargetFeasibility"));
 const RawData             = lazy(() => import("./RawData"));
 
 const TabLoader = () => (
@@ -100,6 +101,20 @@ const TABS = [
     children:  (
       <Suspense fallback={<TabLoader />}>
         <ChannelCoverage />
+      </Suspense>
+    ),
+  },
+  {
+    key:       "target-feasibility",
+    reportKey: REPORT_KEYS.TARGET_FEASIBILITY,
+    label:     (
+      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <BulbOutlined /> Target Feasibility
+      </span>
+    ),
+    children:  (
+      <Suspense fallback={<TabLoader />}>
+        <TargetFeasibility />
       </Suspense>
     ),
   },
