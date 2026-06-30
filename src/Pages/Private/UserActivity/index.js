@@ -80,7 +80,7 @@ const UserActivity = () => {
   const [pathFilter, setPathFilter] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
-  const [allUsersModalOpen, setAllUsersModalOpen] = useState(false);
+  const [allUsersModal, setAllUsersModal] = useState({ open: false, scope: "today" });
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -131,9 +131,13 @@ const UserActivity = () => {
   if (!isAdmin) return <Navigate to="/" replace />;
 
   const summary = data?.summary || {};
-  const topUsers = data?.top_users || [];
+  const topUsersToday = data?.top_users_today || [];
+  const topUsers3d    = data?.top_users_3d    || [];
   const topEndpoints = data?.top_endpoints || [];
   const recent = data?.recent || { results: [], total: 0 };
+
+  const modalUsers = allUsersModal.scope === "today" ? topUsersToday : topUsers3d;
+  const modalLabel = allUsersModal.scope === "today" ? "Today" : "Last 3 Days";
 
   return (
     <div className="user-activity-page">
@@ -156,17 +160,34 @@ const UserActivity = () => {
 
           <div className="activity-charts-row">
             <Card
-              title={<span><UserOutlined /> Top {Math.min(5, topUsers.length)} Users (7d)</span>}
+              title={<span><UserOutlined /> Top {Math.min(5, topUsersToday.length)} Users (Today)</span>}
               size="small"
               className="activity-chart-card"
-              extra={topUsers.length > 5 ? (
-                <Button type="link" size="small" onClick={() => setAllUsersModalOpen(true)}>
-                  View all ({topUsers.length})
+              extra={topUsersToday.length > 5 ? (
+                <Button type="link" size="small" onClick={() => setAllUsersModal({ open: true, scope: "today" })}>
+                  View all ({topUsersToday.length})
                 </Button>
               ) : null}
             >
               <TopBar
-                items={topUsers.slice(0, 5)}
+                items={topUsersToday.slice(0, 5)}
+                getLabel={(u) => u.username || "anonymous"}
+                getCount={(u) => u.call_count}
+              />
+            </Card>
+
+            <Card
+              title={<span><UserOutlined /> Top {Math.min(5, topUsers3d.length)} Users (3d)</span>}
+              size="small"
+              className="activity-chart-card"
+              extra={topUsers3d.length > 5 ? (
+                <Button type="link" size="small" onClick={() => setAllUsersModal({ open: true, scope: "3d" })}>
+                  View all ({topUsers3d.length})
+                </Button>
+              ) : null}
+            >
+              <TopBar
+                items={topUsers3d.slice(0, 5)}
                 getLabel={(u) => u.username || "anonymous"}
                 getCount={(u) => u.call_count}
               />
@@ -253,17 +274,17 @@ const UserActivity = () => {
           </Card>
 
           <Modal
-            open={allUsersModalOpen}
-            onCancel={() => setAllUsersModalOpen(false)}
+            open={allUsersModal.open}
+            onCancel={() => setAllUsersModal({ open: false, scope: allUsersModal.scope })}
             footer={null}
             width={620}
             title={
               <div>
                 <div style={{ fontSize: 15, fontWeight: 600 }}>
-                  <UserOutlined /> All Active Users (7d)
+                  <UserOutlined /> All Active Users ({modalLabel})
                 </div>
                 <div style={{ fontSize: 12, color: "#64748B", fontWeight: 400 }}>
-                  {topUsers.length} user{topUsers.length !== 1 ? "s" : ""} ranked by API call count
+                  {modalUsers.length} user{modalUsers.length !== 1 ? "s" : ""} ranked by API call count
                 </div>
               </div>
             }
@@ -273,7 +294,7 @@ const UserActivity = () => {
               size="small"
               bordered
               rowKey={(r) => r.username || "anonymous"}
-              dataSource={topUsers}
+              dataSource={modalUsers}
               pagination={{ pageSize: 15, size: "small", showSizeChanger: false }}
               scroll={{ y: 420 }}
               columns={[

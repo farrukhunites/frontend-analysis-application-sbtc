@@ -58,12 +58,18 @@
 
 .activity-charts-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 16px;
   margin-bottom: 20px;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1400px) {
+  .activity-charts-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 800px) {
   .activity-charts-row {
     grid-template-columns: 1fr;
   }
