@@ -44,4 +44,19 @@ const getCustomerInsight = async ({
   }
 };
 
-export { getCustomersByBranchByCHannel, getCustomerInsight };
+const getCustomerReturnBreakdown = ({ customer_code, branch_code, scope = "all", unit_type = "ctn", product_code }) =>
+  axios
+    .get(`${process.env.REACT_APP_BACKEND_URL}customer-return-breakdown/`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+      params: {
+        customer_code,
+        branch_code,
+        scope,
+        unit_type,
+        product_code: product_code || undefined,
+      },
+    })
+    .then((r) => r.data)
+    .catch((err) => ({ error: err.response?.data || err.message }));
+
+export { getCustomersByBranchByCHannel, getCustomerInsight, getCustomerReturnBreakdown };

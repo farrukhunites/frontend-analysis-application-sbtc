@@ -24,6 +24,7 @@ import { getAllBranches } from "../../../API/Branches";
 import {
   getCustomerInsight,
   getCustomersByBranchByCHannel,
+  getCustomerReturnBreakdown,
 } from "../../../API/Customer";
 import { ProductContext } from "../../../Contexts/ProductContext";
 import { UnitValueContext } from "../../../Contexts/UnitValueContext";
@@ -48,6 +49,7 @@ const CustomerAnalysis = () => {
   const [branches, setBranches] = useState([]);
   const [channels, setChannels] = useState([]);
   const [rankModal, setRankModal] = useState({ open: false, scope: null });
+  const [returnModal, setReturnModal] = useState({ open: false, scope: "all", loading: false, results: [], totalQty: 0 });
 
   const [searchParams] = useSearchParams();
   const locationState = useLocation().state;
@@ -242,7 +244,10 @@ const CustomerAnalysis = () => {
     dryMonths: customerData?.dry_months ?? 0,
     salesman:            customerData?.salesman || "-",
     salesmanCd:          customerData?.salesman_cd || null,
-    contribution: customerData?.contribution_percent || 0,
+    branchContributionMtd:  customerData?.branch_contribution_mtd_percent ?? null,
+    branchContributionYtd:  customerData?.branch_contribution_ytd_percent ?? null,
+    channelContributionMtd: customerData?.channel_contribution_mtd_percent ?? null,
+    channelContributionYtd: customerData?.channel_contribution_ytd_percent ?? null,
     paymentPending:   customerData?.payment_pending ?? 0,
     lastPaymentDate:  customerData?.last_payment_date || null,
     assignedSalesman:    customerData?.assigned_salesman || "-",
@@ -294,9 +299,18 @@ const CustomerAnalysis = () => {
     { title: "Assigned Salesman",    value: salesmanCell(customer.assignedSalesman, customer.assignedSalesmanCd), icon: <UserOutlined />,
       onClick: customer.assignedSalesmanCd ? () => openSalesmanAnalysis(customer.assignedSalesmanCd) : undefined,
       tooltip: customer.assignedSalesmanCd ? "Open Salesman Analysis in new tab" : undefined },
-    { title: "Contribution",         value: customer.contribution ? customer.contribution + " %" : "-", icon: <LineChartOutlined /> },
     {
-      title: "Payment Pending",
+      title: "Branch Contribution",
+      value: <ContributionValue mtd={customer.branchContributionMtd} ytd={customer.branchContributionYtd} />,
+      icon: <LineChartOutlined />,
+    },
+    {
+      title: "Channel Contribution",
+      value: <ContributionValue mtd={customer.channelContributionMtd} ytd={customer.channelContributionYtd} />,
+      icon: <SlidersOutlined />,
+    },
+    {
+      title: "Payment Pending (Overdue)",
       value: (
         <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <RiyalIcon /> {customer.paymentPending?.toLocaleString()}
@@ -348,10 +362,33 @@ const CustomerAnalysis = () => {
   ];
 
   // Return rate severity colour
-  const returnRateColor =
-    orderQuality.return_rate_percent > 10 ? "#EF4444"
-    : orderQuality.return_rate_percent > 5  ? "#F59E0B"
-    : "#10B981";
+  const rateColour = (rate) =>
+    rate > 10 ? "#EF4444" : rate > 5 ? "#F59E0B" : "#10B981";
+  const returnRateColor    = rateColour(orderQuality.return_rate_percent);
+  const returnRateColorYtd = rateColour(orderQuality.return_rate_ytd_percent);
+
+  const openReturnBreakdown = async (scope) => {
+    if (!selectedCustomer || !selectedBranch) return;
+    setReturnModal({ open: true, scope, loading: true, results: [], totalQty: 0 });
+    const res = await getCustomerReturnBreakdown({
+      customer_code: selectedCustomer.code,
+      branch_code:   selectedBranch.code,
+      scope,
+      unit_type:     effectiveUnitType,
+      product_code:  selectedProduct?.code,
+    });
+    if (res?.error) {
+      message.error("Failed to load return breakdown");
+      setReturnModal((p) => ({ ...p, loading: false }));
+    } else {
+      setReturnModal((p) => ({
+        ...p,
+        loading: false,
+        results: res.results || [],
+        totalQty: res.total_qty || 0,
+      }));
+    }
+  };
 
   return (
     <div className="customer-analysis">
@@ -523,13 +560,17 @@ const CustomerAnalysis = () => {
             </div>
           </div>
 
-          {/* ── Return Rate ───────────────────────────────────────────── */}
-          <div className="ca-rank-card">
+          {/* ── Return Rate (All Time) ───────────────────────────────── */}
+          <div
+            className="ca-rank-card ca-rank-card--clickable"
+            onClick={() => openReturnBreakdown("all")}
+            title="Click to see returned SKUs and reasons"
+          >
             <div className="ca-rank-icon" style={{ background: `${returnRateColor}18`, color: returnRateColor }}>
               <SwapOutlined />
             </div>
             <div className="ca-rank-body">
-              <div className="ca-rank-label">Return Rate</div>
+              <div className="ca-rank-label">Return Rate (All Time)</div>
               <div className="ca-rank-value">
                 <span className="ca-rank-num" style={{ color: returnRateColor }}>
                   {orderQuality.return_rate_percent != null ? `${orderQuality.return_rate_percent}%` : "—"}
@@ -537,6 +578,32 @@ const CustomerAnalysis = () => {
                 {orderQuality.return_amount > 0 && (
                   <span className="ca-rank-total" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                     {orderQuality.return_amount?.toLocaleString()}
+                    {isValueMode ? <RiyalIcon width={10} height={10} color="currentColor" /> : ` ${unitType}`}
+                    {" returned"}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* ── Return Rate (YTD) ─────────────────────────────────────── */}
+          <div
+            className="ca-rank-card ca-rank-card--clickable"
+            onClick={() => openReturnBreakdown("ytd")}
+            title="Click to see returned SKUs and reasons (YTD)"
+          >
+            <div className="ca-rank-icon" style={{ background: `${returnRateColorYtd}18`, color: returnRateColorYtd }}>
+              <SwapOutlined />
+            </div>
+            <div className="ca-rank-body">
+              <div className="ca-rank-label">Return Rate (YTD)</div>
+              <div className="ca-rank-value">
+                <span className="ca-rank-num" style={{ color: returnRateColorYtd }}>
+                  {orderQuality.return_rate_ytd_percent != null ? `${orderQuality.return_rate_ytd_percent}%` : "—"}
+                </span>
+                {orderQuality.return_amount_ytd > 0 && (
+                  <span className="ca-rank-total" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    {orderQuality.return_amount_ytd?.toLocaleString()}
                     {isValueMode ? <RiyalIcon width={10} height={10} color="currentColor" /> : ` ${unitType}`}
                     {" returned"}
                   </span>
@@ -698,6 +765,14 @@ const CustomerAnalysis = () => {
         unitType={unitType}
         isValueMode={isValueMode}
       />
+
+      {/* ── Return breakdown modal ────────────────────────────────────── */}
+      <ReturnBreakdownModal
+        state={returnModal}
+        onClose={() => setReturnModal((p) => ({ ...p, open: false }))}
+        unitType={effectiveUnitType}
+        isValueMode={isValueMode}
+      />
     </div>
   );
 };
@@ -756,6 +831,110 @@ const CustomerRankingModal = ({ state, onClose, ranking, selectedCode, unitType,
         dataSource={rows || []}
         pagination={{ pageSize: 20, size: "small", showSizeChanger: false }}
         rowClassName={(r) => r.customer_code === selectedCode ? "ranking-row-selected" : ""}
+        scroll={{ y: "55vh" }}
+      />
+    </Modal>
+  );
+};
+
+const ContributionValue = ({ mtd, ytd }) => {
+  const fmt = (v) => (v != null && v > 0 ? `${v.toFixed(2)}%` : "-");
+  return (
+    <div style={{ display: "flex", gap: 12, alignItems: "baseline" }}>
+      <span>
+        <span style={{ fontWeight: 600 }}>{fmt(mtd)}</span>
+        <span style={{ fontSize: 11, color: "#64748B", marginLeft: 4 }}>MTD</span>
+      </span>
+      <span style={{ color: "#CBD5E1" }}>·</span>
+      <span>
+        <span style={{ fontWeight: 600 }}>{fmt(ytd)}</span>
+        <span style={{ fontSize: 11, color: "#64748B", marginLeft: 4 }}>YTD</span>
+      </span>
+    </div>
+  );
+};
+
+const BIN_COLORS = {
+  GS:  "green",
+  BS:  "red",
+  DM:  "volcano",
+  FA:  "orange",
+  NE:  "gold",
+  WZD: "default",
+};
+
+const ReturnBreakdownModal = ({ state, onClose, unitType, isValueMode }) => {
+  const title = state.scope === "ytd"
+    ? "Returned SKUs — Year to Date"
+    : "Returned SKUs — All Time";
+
+  // Group rows by bin_cd for the summary strip
+  const byBin = {};
+  for (const r of state.results || []) {
+    const k = r.bin_cd || "—";
+    if (!byBin[k]) byBin[k] = { bin_cd: k, bin_label: r.bin_label, qty: 0, count: 0 };
+    byBin[k].qty += Number(r.qty || 0);
+    byBin[k].count += 1;
+  }
+  const binSummary = Object.values(byBin).sort((a, b) => b.qty - a.qty);
+
+  const columns = [
+    { title: "#", width: 50, align: "center",
+      render: (_, __, i) => i + 1 },
+    { title: "Item", dataIndex: "item_nm",
+      render: (v, r) => (
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 12 }}>{v || "—"}</div>
+          <div style={{ fontSize: 11, color: "#64748B" }}>{r.item_cd}</div>
+        </div>
+      ) },
+    { title: "Reason", dataIndex: "bin_cd", width: 150,
+      render: (v, r) => (
+        <Tag color={BIN_COLORS[v] || "default"} style={{ fontWeight: 600 }}>
+          {r.bin_label || v || "—"}
+        </Tag>
+      ) },
+    { title: isValueMode
+        ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}>Qty (<RiyalIcon width={10} height={10} color="currentColor" />)</span>
+        : `Qty (${(unitType || "ctn").toUpperCase()})`,
+      dataIndex: "qty", align: "right", width: 130,
+      render: (v) => <b>{Number(v || 0).toLocaleString()}</b> },
+  ];
+
+  return (
+    <Modal
+      open={state.open}
+      onCancel={onClose}
+      footer={null}
+      width={820}
+      title={
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>{title}</div>
+          <div style={{ fontSize: 12, color: "#64748B", fontWeight: 400 }}>
+            Total returned: <b>{Number(state.totalQty || 0).toLocaleString()}</b>{" "}
+            {isValueMode ? "SAR" : (unitType || "ctn").toUpperCase()} · {state.results?.length || 0} line(s)
+          </div>
+        </div>
+      }
+      destroyOnClose
+    >
+      {binSummary.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+          {binSummary.map((b) => (
+            <Tag key={b.bin_cd} color={BIN_COLORS[b.bin_cd] || "default"} style={{ fontWeight: 600 }}>
+              {b.bin_label || b.bin_cd}: {b.qty.toLocaleString()} ({b.count} sku{b.count === 1 ? "" : "s"})
+            </Tag>
+          ))}
+        </div>
+      )}
+      <Table
+        size="small"
+        bordered
+        loading={state.loading}
+        rowKey={(r) => `${r.item_cd}-${r.bin_cd}`}
+        columns={columns}
+        dataSource={state.results || []}
+        pagination={{ pageSize: 20, size: "small", showSizeChanger: false }}
         scroll={{ y: "55vh" }}
       />
     </Modal>
