@@ -34,6 +34,7 @@ const DailySalesByBranch = () => {
   const { userData } = useContext(UserContext);
 
   const [productOptions, setProductOptions] = useState([]);
+  const [useAllProducts, setUseAllProducts] = useState(false);
   const [loading, setLoading] = useState(false);
   const [salesData, setSalesData] = useState([]);
   const [dayColumns, setDayColumns] = useState([]);
@@ -117,12 +118,24 @@ const DailySalesByBranch = () => {
   // ------------------------------
   useEffect(() => {
     const fetchSales = async () => {
-      if (!selectedProduct) return;
+      if (!useAllProducts && !selectedProduct) return;
+      if (useAllProducts && !productOptions.length) return;
       setLoading(true);
       try {
+        // "All Products" is a page-local virtual option — expand to every
+        // non-virtual product code so the backend aggregates across the full
+        // catalog. Keeps ProductContext untouched so the navbar's Product
+        // select doesn't show a fake "All Products" entry.
+        const codeParam = useAllProducts
+          ? productOptions
+              .filter((p) => p.code && !p.code.startsWith("99999"))
+              .map((p) => p.code)
+              .join(",")
+          : selectedProduct.code;
+
         const res = await getDailyBranchSales(
           selectedMonth,
-          selectedProduct.code,
+          codeParam,
           effectiveUnitType,
           valueType,
           selectedChannels,
@@ -146,6 +159,8 @@ const DailySalesByBranch = () => {
     fetchSales();
   }, [
     selectedProduct,
+    useAllProducts,
+    productOptions,
     effectiveUnitType,
     valueType,
     selectedMonth,
@@ -691,18 +706,26 @@ const DailySalesByBranch = () => {
             showSearch
             optionFilterProp="label"
             loading={loading}
-            value={selectedProduct?.code}
+            value={useAllProducts ? "__ALL__" : selectedProduct?.code}
             onChange={(code) => {
+              if (code === "__ALL__") {
+                setUseAllProducts(true);
+                return;
+              }
+              setUseAllProducts(false);
               const prod = productOptions.find((p) => p.code === code);
               if (prod) setSelectedProduct(prod);
             }}
             style={{ minWidth: 220 }}
             placeholder="Select product"
             disabled={!productOptions.length}
-            options={productOptions.map((p) => ({
-              value: p.code,
-              label: p.name,
-            }))}
+            options={[
+              { value: "__ALL__", label: "All Products" },
+              ...productOptions.map((p) => ({
+                value: p.code,
+                label: p.name,
+              })),
+            ]}
           />
           <span
             style={{
