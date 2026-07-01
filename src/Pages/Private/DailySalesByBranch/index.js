@@ -1,12 +1,29 @@
 import { useState, useEffect, useMemo, useContext } from "react";
-import { Table, message, Skeleton, Select, Button, Modal, Spin, Tag, Divider } from "antd";
-import { DownloadOutlined, DoubleLeftOutlined, DoubleRightOutlined } from "@ant-design/icons";
+import {
+  Table,
+  message,
+  Skeleton,
+  Select,
+  Button,
+  Modal,
+  Spin,
+  Tag,
+  Divider,
+} from "antd";
+import {
+  DownloadOutlined,
+  DoubleLeftOutlined,
+  DoubleRightOutlined,
+} from "@ant-design/icons";
 import { ProductContext } from "../../../Contexts/ProductContext";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
 import { UnitValueContext } from "../../../Contexts/UnitValueContext";
 import { UserContext } from "../../../App";
 import { getAllProducts } from "../../../API/Products";
-import { getDailyBranchSales, getDailyCustomerBreakdown } from "../../../API/Daily STT Report";
+import {
+  getDailyBranchSales,
+  getDailyCustomerBreakdown,
+} from "../../../API/Daily STT Report";
 import { openSalesmanAnalysis } from "../Reports/reportUtils";
 import RiyalIcon from "../../../Utils/RiyalIcon";
 import "./style.css";
@@ -20,12 +37,16 @@ const DailySalesByBranch = () => {
   const [loading, setLoading] = useState(false);
   const [salesData, setSalesData] = useState([]);
   const [dayColumns, setDayColumns] = useState([]);
-  const { unitType, valueType, effectiveUnitType, mode } = useContext(UnitValueContext);
+  const { unitType, valueType, effectiveUnitType, mode } =
+    useContext(UnitValueContext);
   const isValueMode = mode === "val";
 
   // Channels are scoped to whatever the logged-in user is permitted to see.
   const channels = useMemo(
-    () => (Array.isArray(userData?.allowed_channels) ? userData.allowed_channels : []),
+    () =>
+      Array.isArray(userData?.allowed_channels)
+        ? userData.allowed_channels
+        : [],
     [userData],
   );
   const [selectedChannels, setSelectedChannels] = useState([]);
@@ -46,7 +67,14 @@ const DailySalesByBranch = () => {
   const DEFAULT_RECENT_DAYS = 7;
 
   // Drill-down modal state
-  const [drillModal, setDrillModal] = useState({ open: false, loading: false, title: "", data: [], total: 0, branchCode: "" });
+  const [drillModal, setDrillModal] = useState({
+    open: false,
+    loading: false,
+    title: "",
+    data: [],
+    total: 0,
+    branchCode: "",
+  });
 
   // ------------------------------
   // Fetch products
@@ -102,8 +130,8 @@ const DailySalesByBranch = () => {
 
         const results = res?.results || [];
         const mappedDays = (res?.day_columns || []).map((d) => ({
-          key:      d.key,
-          title:    d.title,
+          key: d.key,
+          title: d.title,
           shortDay: d.shortDay,
         }));
 
@@ -116,16 +144,23 @@ const DailySalesByBranch = () => {
     };
 
     fetchSales();
-  }, [selectedProduct, effectiveUnitType, valueType, selectedMonth, selectedChannels]);
+  }, [
+    selectedProduct,
+    effectiveUnitType,
+    valueType,
+    selectedMonth,
+    selectedChannels,
+  ]);
 
   // ------------------------------
   // Columns for Table
   // ------------------------------
   const columns = useMemo(() => {
     const canCollapse = dayColumns.length > DEFAULT_RECENT_DAYS;
-    const visibleDayColumns = (showAllDays || !canCollapse)
-      ? dayColumns
-      : dayColumns.slice(-DEFAULT_RECENT_DAYS);
+    const visibleDayColumns =
+      showAllDays || !canCollapse
+        ? dayColumns
+        : dayColumns.slice(-DEFAULT_RECENT_DAYS);
     const hiddenCount = dayColumns.length - visibleDayColumns.length;
 
     const dayCols = visibleDayColumns.map((d) => ({
@@ -170,7 +205,11 @@ const DailySalesByBranch = () => {
               padding: "2px 4px",
               userSelect: "none",
             }}
-            title={expanded ? "Hide earlier days" : `Show all ${dayColumns.length} days`}
+            title={
+              expanded
+                ? "Hide earlier days"
+                : `Show all ${dayColumns.length} days`
+            }
           >
             {expanded ? (
               <>
@@ -180,7 +219,9 @@ const DailySalesByBranch = () => {
             ) : (
               <>
                 <DoubleLeftOutlined style={{ fontSize: 10 }} />
-                <div style={{ fontSize: 10, opacity: 0.85 }}>+{hiddenCount} earlier</div>
+                <div style={{ fontSize: 10, opacity: 0.85 }}>
+                  +{hiddenCount} earlier
+                </div>
               </>
             )}
           </div>
@@ -252,9 +293,7 @@ const DailySalesByBranch = () => {
           !v ? (
             "-"
           ) : (
-            <b style={{ color: v >= 100 ? "green" : "red" }}>
-              {v.toFixed(2)}%
-            </b>
+            <b style={{ color: v >= 100 ? "green" : "red" }}>{v.toFixed(2)}%</b>
           ),
       },
       {
@@ -273,9 +312,7 @@ const DailySalesByBranch = () => {
           !v ? (
             "-"
           ) : (
-            <b style={{ color: v >= 100 ? "green" : "red" }}>
-              {v.toFixed(2)}%
-            </b>
+            <b style={{ color: v >= 100 ? "green" : "red" }}>{v.toFixed(2)}%</b>
           ),
       },
     ];
@@ -289,7 +326,9 @@ const DailySalesByBranch = () => {
         width: 160,
         render: (v, row) =>
           row.isChannel ? (
-            <span style={{ color: "var(--color-text-secondary)", fontSize: 12 }}>
+            <span
+              style={{ color: "var(--color-text-secondary)", fontSize: 12 }}
+            >
               <Tag style={{ margin: 0, fontSize: 11 }}>{v}</Tag>
             </span>
           ) : (
@@ -316,8 +355,8 @@ const DailySalesByBranch = () => {
     dayColumns.forEach((d) => {
       total[d.key] = salesData.reduce((sum, r) => sum + (r[d.key] || 0), 0);
     });
-    total.total     = salesData.reduce((sum, r) => sum + (r.total  || 0), 0);
-    total.target    = salesData.reduce((sum, r) => sum + (r.target || 0), 0);
+    total.total = salesData.reduce((sum, r) => sum + (r.total || 0), 0);
+    total.target = salesData.reduce((sum, r) => sum + (r.target || 0), 0);
     total.remaining = total.target - total.total;
     total.achievement = total.target ? (total.total / total.target) * 100 : 0;
     const lastDayKey = dayColumns[dayColumns.length - 1].key;
@@ -328,13 +367,14 @@ const DailySalesByBranch = () => {
   }, [salesData, dayColumns]);
 
   const branchRows = useMemo(
-    () => salesData.map((r, idx) => ({
-      key: `b-${idx}`,
-      ...r,
-      children: (r.channels || []).length
-        ? r.channels.map((c, ci) => ({ key: `b-${idx}-c-${ci}`, ...c }))
-        : undefined,
-    })),
+    () =>
+      salesData.map((r, idx) => ({
+        key: `b-${idx}`,
+        ...r,
+        children: (r.channels || []).length
+          ? r.channels.map((c, ci) => ({ key: `b-${idx}-c-${ci}`, ...c }))
+          : undefined,
+      })),
     [salesData],
   );
 
@@ -347,8 +387,8 @@ const DailySalesByBranch = () => {
   const handleCellClick = async (row, dayMeta) => {
     if (!row.branchCode || row.isTotal) return;
     const dayNum = parseInt(dayMeta.title, 10);
-    const year   = parseInt(selectedMonth.slice(0, 4), 10);
-    const month  = parseInt(selectedMonth.slice(4), 10);
+    const year = parseInt(selectedMonth.slice(0, 4), 10);
+    const month = parseInt(selectedMonth.slice(4), 10);
     const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
     const productCodes = selectedProduct?.code || "";
 
@@ -356,22 +396,34 @@ const DailySalesByBranch = () => {
     const titlePrefix = row.isChannel
       ? `${row.channel} (channel) — ${dayMeta.title} ${dayMeta.shortDay}`
       : `${row.branch} — ${dayMeta.title} ${dayMeta.shortDay}`;
-    setDrillModal({ open: true, loading: true, title: titlePrefix, data: [], total: 0, branchCode: row.branchCode });
+    setDrillModal({
+      open: true,
+      loading: true,
+      title: titlePrefix,
+      data: [],
+      total: 0,
+      branchCode: row.branchCode,
+    });
 
     const res = await getDailyCustomerBreakdown({
-      branchCode:   row.branchCode,
-      date:         dateStr,
+      branchCode: row.branchCode,
+      date: dateStr,
       productCodes,
-      unitType:     effectiveUnitType,
+      unitType: effectiveUnitType,
       valueType,
-      channels:     drillChannels,
+      channels: drillChannels,
     });
 
     if (res?.error) {
       message.error("Failed to load breakdown");
       setDrillModal((p) => ({ ...p, loading: false }));
     } else {
-      setDrillModal((p) => ({ ...p, loading: false, data: res.results || [], total: res.total || 0 }));
+      setDrillModal((p) => ({
+        ...p,
+        loading: false,
+        data: res.results || [],
+        total: res.total || 0,
+      }));
     }
   };
 
@@ -389,27 +441,31 @@ const DailySalesByBranch = () => {
     });
 
     // ── Palette ───────────────────────────────────────────────
-    const NAV   = "1E3A5F";
-    const BLUE  = "3B82F6";
+    const NAV = "1E3A5F";
+    const BLUE = "3B82F6";
     const AMBER = "F59E0B";
     const GREEN = "10B981";
-    const RED   = "EF4444";
+    const RED = "EF4444";
     const LGRAY = "F1F5F9";
     const AGOLD = "FEF3C7";
 
     // ── Column definitions ────────────────────────────────────
     const summaryKeys = [
-      { key: "total",       header: "MTD",           color: BLUE  },
-      { key: "target",      header: "Target",        color: null  },
-      { key: "remaining",   header: "Remaining",     color: AMBER },
-      { key: "achievement", header: "Achievement %", color: null  },
-      { key: "dailyAch",    header: "Daily Ach %",   color: null  },
+      { key: "total", header: "MTD", color: BLUE },
+      { key: "target", header: "Target", color: null },
+      { key: "remaining", header: "Remaining", color: AMBER },
+      { key: "achievement", header: "Achievement %", color: null },
+      { key: "dailyAch", header: "Daily Ach %", color: null },
     ];
 
     // Widths will be patched after data rows are written — set 10 as placeholder
     sheet.columns = [
       { key: "branch", header: "Branch", width: 10 },
-      ...dayColumns.map((d) => ({ key: d.key, header: `${d.title} ${d.shortDay}`, width: 10 })),
+      ...dayColumns.map((d) => ({
+        key: d.key,
+        header: `${d.title} ${d.shortDay}`,
+        width: 10,
+      })),
       ...summaryKeys.map((s) => ({ key: s.key, header: s.header, width: 10 })),
     ];
 
@@ -425,14 +481,18 @@ const DailySalesByBranch = () => {
 
     // ── Header row style ──────────────────────────────────────
     const headerStyle = (bgArgb) => ({
-      font:      { bold: true, size: 10, color: { argb: "FFFFFFFF" } },
-      fill:      { type: "pattern", pattern: "solid", fgColor: { argb: `FF${bgArgb}` } },
+      font: { bold: true, size: 10, color: { argb: "FFFFFFFF" } },
+      fill: {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: `FF${bgArgb}` },
+      },
       alignment: { horizontal: "center", vertical: "middle", wrapText: true },
       border: {
-        top:    { style: "thin", color: { argb: "FFE2E8F0" } },
+        top: { style: "thin", color: { argb: "FFE2E8F0" } },
         bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
-        left:   { style: "thin", color: { argb: "FFE2E8F0" } },
-        right:  { style: "thin", color: { argb: "FFE2E8F0" } },
+        left: { style: "thin", color: { argb: "FFE2E8F0" } },
+        right: { style: "thin", color: { argb: "FFE2E8F0" } },
       },
     });
 
@@ -440,7 +500,10 @@ const DailySalesByBranch = () => {
     hRow.height = 32;
 
     // Branch header
-    Object.assign(hRow.getCell(1), { value: "Branch", style: headerStyle(NAV) });
+    Object.assign(hRow.getCell(1), {
+      value: "Branch",
+      style: headerStyle(NAV),
+    });
 
     // Day headers
     dayColumns.forEach((d, i) => {
@@ -460,19 +523,29 @@ const DailySalesByBranch = () => {
     });
 
     // ── Data rows ─────────────────────────────────────────────
-    const numFmt    = '_(* #,##0_);[Red]_(* (#,##0);_(* "-"_);_(@_)';
-    const pctFmt    = "0.00%";
-    const borderThin = (argb = "FFE2E8F0") => ({ style: "thin", color: { argb } });
+    const numFmt = '_(* #,##0_);[Red]_(* (#,##0);_(* "-"_);_(@_)';
+    const pctFmt = "0.00%";
+    const borderThin = (argb = "FFE2E8F0") => ({
+      style: "thin",
+      color: { argb },
+    });
     const cellBorder = {
-      top: borderThin(), bottom: borderThin(), left: borderThin(), right: borderThin(),
+      top: borderThin(),
+      bottom: borderThin(),
+      left: borderThin(),
+      right: borderThin(),
     };
 
     dataWithTotal.forEach((row, rowIdx) => {
       const isGrandTotal = row.isTotal;
-      const isEven       = rowIdx % 2 === 0;
-      const bgArgb       = isGrandTotal ? `FF${AGOLD}` : isEven ? "FFFFFFFF" : `FF${LGRAY}`;
+      const isEven = rowIdx % 2 === 0;
+      const bgArgb = isGrandTotal
+        ? `FF${AGOLD}`
+        : isEven
+          ? "FFFFFFFF"
+          : `FF${LGRAY}`;
 
-      const dataRow  = sheet.addRow({});
+      const dataRow = sheet.addRow({});
       dataRow.height = 18;
 
       // Branch cell
@@ -480,54 +553,79 @@ const DailySalesByBranch = () => {
       const branchCell = dataRow.getCell(1);
       branchCell.value = row.branch;
       branchCell.style = {
-        font:      { bold: isGrandTotal, size: 10, color: { argb: "FF1E293B" } },
-        fill:      { type: "pattern", pattern: "solid", fgColor: { argb: bgArgb } },
+        font: { bold: isGrandTotal, size: 10, color: { argb: "FF1E293B" } },
+        fill: { type: "pattern", pattern: "solid", fgColor: { argb: bgArgb } },
         alignment: { vertical: "middle" },
-        border:    cellBorder,
+        border: cellBorder,
       };
 
       // Day value cells
       dayColumns.forEach((d, i) => {
         const cell = dataRow.getCell(i + 2);
-        const val  = row[d.key] || 0;
+        const val = row[d.key] || 0;
         cell.value = val === 0 ? null : val;
         measureCol(i + 1, val === 0 ? "-" : val.toLocaleString());
         cell.style = {
-          numFmt:    numFmt,
-          font:      { bold: isGrandTotal, size: 10 },
-          fill:      { type: "pattern", pattern: "solid", fgColor: { argb: bgArgb } },
+          numFmt: numFmt,
+          font: { bold: isGrandTotal, size: 10 },
+          fill: {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: bgArgb },
+          },
           alignment: { horizontal: "right", vertical: "middle" },
-          border:    cellBorder,
+          border: cellBorder,
         };
       });
 
       // Summary cells
       summaryKeys.forEach((s, i) => {
         const cell = dataRow.getCell(summaryStartCol + i);
-        const raw  = row[s.key];
+        const raw = row[s.key];
 
         if (s.key === "achievement" || s.key === "dailyAch") {
           cell.value = raw ? raw / 100 : null;
           measureCol(summaryStartCol - 1 + i, raw ? `${raw.toFixed(2)}%` : "-");
           const aboveTarget = raw >= 100;
           cell.style = {
-            numFmt:    pctFmt,
-            font:      { bold: true, size: 10, color: { argb: raw ? `FF${aboveTarget ? GREEN : RED}` : "FF64748B" } },
-            fill:      { type: "pattern", pattern: "solid", fgColor: { argb: bgArgb } },
+            numFmt: pctFmt,
+            font: {
+              bold: true,
+              size: 10,
+              color: {
+                argb: raw ? `FF${aboveTarget ? GREEN : RED}` : "FF64748B",
+              },
+            },
+            fill: {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: bgArgb },
+            },
             alignment: { horizontal: "right", vertical: "middle" },
-            border:    cellBorder,
+            border: cellBorder,
           };
         } else {
           const val = raw || 0;
           cell.value = val === 0 ? null : val;
-          measureCol(summaryStartCol - 1 + i, val === 0 ? "-" : val.toLocaleString());
+          measureCol(
+            summaryStartCol - 1 + i,
+            val === 0 ? "-" : val.toLocaleString(),
+          );
           const txtArgb = s.color ? `FF${s.color}` : "FF1E293B";
           cell.style = {
-            numFmt:    numFmt,
-            font:      { bold: isGrandTotal || !!s.color, size: 10, color: { argb: txtArgb } },
-            fill:      { type: "pattern", pattern: "solid", fgColor: { argb: bgArgb } },
+            numFmt: numFmt,
+            font: {
+              bold: isGrandTotal || !!s.color,
+              size: 10,
+              color: { argb: txtArgb },
+            },
+            fill: {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: bgArgb },
+            },
             alignment: { horizontal: "right", vertical: "middle" },
-            border:    cellBorder,
+            border: cellBorder,
           };
         }
       });
@@ -540,10 +638,12 @@ const DailySalesByBranch = () => {
 
     // ── Write & download ──────────────────────────────────────
     const buffer = await workbook.xlsx.writeBuffer();
-    const blob   = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    const url    = URL.createObjectURL(blob);
-    const a      = document.createElement("a");
-    a.href     = url;
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
     a.download = `Daily_Sales_${selectedMonth}_${selectedProduct?.name}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
@@ -561,7 +661,15 @@ const DailySalesByBranch = () => {
         }}
       >
         <h2 style={{ margin: 0 }}>Daily Sales by Branch</h2>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, justifyContent: "flex-end" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            flex: 1,
+            justifyContent: "flex-end",
+          }}
+        >
           <span
             style={{
               color: "#64748B",
@@ -584,7 +692,10 @@ const DailySalesByBranch = () => {
             style={{ minWidth: 220 }}
             placeholder="Select product"
             disabled={!productOptions.length}
-            options={productOptions.map((p) => ({ value: p.code, label: p.name }))}
+            options={productOptions.map((p) => ({
+              value: p.code,
+              label: p.name,
+            }))}
           />
           <span
             style={{
@@ -646,23 +757,29 @@ const DailySalesByBranch = () => {
         </div>
       </div>
 
-      {loading && <Skeleton active paragraph={{ rows: 10 }} style={{ marginBottom: 20 }} />}
-
+      {loading && (
+        <Skeleton
+          active
+          paragraph={{ rows: 10 }}
+          style={{ marginBottom: 20 }}
+        />
+      )}
 
       <Table
         columns={columns}
         dataSource={branchRows}
         bordered
         size="middle"
-        scroll={{ x: "max-content", y: "60vh" }}
+        scroll={{ x: "max-content", y: "calc(100vh - 400px)" }}
         pagination={false}
         style={{ background: "#fff", borderRadius: 8 }}
         summary={() => {
           if (!grandTotals) return null;
           const canCollapse = dayColumns.length > DEFAULT_RECENT_DAYS;
-          const visibleDayColumns = (showAllDays || !canCollapse)
-            ? dayColumns
-            : dayColumns.slice(-DEFAULT_RECENT_DAYS);
+          const visibleDayColumns =
+            showAllDays || !canCollapse
+              ? dayColumns
+              : dayColumns.slice(-DEFAULT_RECENT_DAYS);
           let idx = 0;
           const cell = (content, opts = {}) => (
             <Table.Summary.Cell
@@ -682,16 +799,33 @@ const DailySalesByBranch = () => {
               <b style={{ color: v >= 100 ? "green" : "red" }}>
                 {v.toFixed(2)}%
               </b>
-            ) : "-";
+            ) : (
+              "-"
+            );
           return (
             <Table.Summary fixed>
               <Table.Summary.Row className="grand-total-row">
                 {cell(<b>GRAND TOTAL</b>, { align: "left" })}
-                {canCollapse && cell(<span style={{ color: "#CBD5E1" }}>·</span>, { align: "center" })}
-                {visibleDayColumns.map((d) => cell(<b style={{ color: "#000" }}>{fmt(grandTotals[d.key])}</b>))}
-                {cell(<b style={{ color: "#3B82F6" }}>{fmt(grandTotals.total)}</b>)}
-                {cell(<b style={{ color: "#F59E0B" }}>{fmt(grandTotals.remaining)}</b>)}
-                {cell(<b style={{ color: "#000" }}>{fmt(grandTotals.target)}</b>)}
+                {canCollapse &&
+                  cell(<span style={{ color: "#CBD5E1" }}>·</span>, {
+                    align: "center",
+                  })}
+                {visibleDayColumns.map((d) =>
+                  cell(
+                    <b style={{ color: "#000" }}>{fmt(grandTotals[d.key])}</b>,
+                  ),
+                )}
+                {cell(
+                  <b style={{ color: "#3B82F6" }}>{fmt(grandTotals.total)}</b>,
+                )}
+                {cell(
+                  <b style={{ color: "#F59E0B" }}>
+                    {fmt(grandTotals.remaining)}
+                  </b>,
+                )}
+                {cell(
+                  <b style={{ color: "#000" }}>{fmt(grandTotals.target)}</b>,
+                )}
                 {cell(pctCell(grandTotals.achievement))}
                 {cell(pctCell(grandTotals.dailyAch))}
               </Table.Summary.Row>
@@ -704,17 +838,42 @@ const DailySalesByBranch = () => {
       <Modal
         title={
           <div>
-            <div style={{ fontWeight: 700, fontSize: 15, color: "var(--color-text-primary)" }}>
+            <div
+              style={{
+                fontWeight: 700,
+                fontSize: 15,
+                color: "var(--color-text-primary)",
+              }}
+            >
               {drillModal.title}
             </div>
             {!drillModal.loading && (
-              <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginTop: 2 }}>
-                {drillModal.data.length} customer{drillModal.data.length !== 1 ? "s" : ""}
-                {" · "}Total: <b style={{ color: "var(--color-primary)" }}>{drillModal.total?.toLocaleString()}</b>
-                {" "}
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "var(--color-text-secondary)",
+                  marginTop: 2,
+                }}
+              >
+                {drillModal.data.length} customer
+                {drillModal.data.length !== 1 ? "s" : ""}
+                {" · "}Total:{" "}
+                <b style={{ color: "var(--color-primary)" }}>
+                  {drillModal.total?.toLocaleString()}
+                </b>{" "}
                 {isValueMode ? (
-                  <span style={{ display: "inline-flex", alignItems: "center", verticalAlign: "-2px" }}>
-                    <RiyalIcon width={12} height={12} color="var(--color-primary)" />
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      verticalAlign: "-2px",
+                    }}
+                  >
+                    <RiyalIcon
+                      width={12}
+                      height={12}
+                      color="var(--color-primary)"
+                    />
                   </span>
                 ) : (
                   unitType?.toUpperCase()
@@ -744,7 +903,16 @@ const DailySalesByBranch = () => {
                 title: "#",
                 width: 40,
                 align: "center",
-                render: (_, __, i) => <span style={{ color: "var(--color-text-secondary)", fontSize: 11 }}>{i + 1}</span>,
+                render: (_, __, i) => (
+                  <span
+                    style={{
+                      color: "var(--color-text-secondary)",
+                      fontSize: 11,
+                    }}
+                  >
+                    {i + 1}
+                  </span>
+                ),
               },
               {
                 title: "Customer",
@@ -754,14 +922,39 @@ const DailySalesByBranch = () => {
                 render: (v, r) => {
                   const params = new URLSearchParams({
                     customer_code: r.customer_code,
-                    branch_code:   drillModal.branchCode,
-                    channel_code:  r.channel,
-                    ...(selectedProduct?.code && { product_code: selectedProduct.code }),
+                    branch_code: drillModal.branchCode,
+                    channel_code: r.channel,
+                    ...(selectedProduct?.code && {
+                      product_code: selectedProduct.code,
+                    }),
                   });
                   return (
-                    <div onClick={() => window.open(`/customer-analysis?${params.toString()}`, "_blank")} style={{ cursor: "pointer" }}>
-                      <div style={{ fontWeight: 500, fontSize: 12, color: "var(--color-accent)" }}>{v}</div>
-                      <div style={{ fontSize: 11, color: "var(--color-text-secondary)" }}>{r.customer_code}</div>
+                    <div
+                      onClick={() =>
+                        window.open(
+                          `/customer-analysis?${params.toString()}`,
+                          "_blank",
+                        )
+                      }
+                      style={{ cursor: "pointer" }}
+                    >
+                      <div
+                        style={{
+                          fontWeight: 500,
+                          fontSize: 12,
+                          color: "var(--color-accent)",
+                        }}
+                      >
+                        {v}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: "var(--color-text-secondary)",
+                        }}
+                      >
+                        {r.customer_code}
+                      </div>
                     </div>
                   );
                 },
@@ -772,55 +965,102 @@ const DailySalesByBranch = () => {
                 key: "channel",
                 width: 80,
                 align: "center",
-                render: (v) => <Tag style={{ fontSize: 11, margin: 0 }}>{v}</Tag>,
+                render: (v) => (
+                  <Tag style={{ fontSize: 11, margin: 0 }}>{v}</Tag>
+                ),
               },
               {
                 title: "Salesman",
                 dataIndex: "salesman",
                 key: "salesman",
                 ellipsis: true,
-                render: (v, r) => (r.salesman_code && r.salesman_code !== "-") ? (
-                  <div
-                    onClick={() => openSalesmanAnalysis({
-                      salesmanCode: r.salesman_code,
-                      branchCode:   drillModal.branchCode,
-                      productCode:  selectedProduct?.code,
-                    })}
-                    style={{ cursor: "pointer" }}
-                    title="Open Salesman Analysis in new tab"
-                  >
-                    <div style={{ fontWeight: 500, fontSize: 12, color: "var(--color-accent)" }}>{v}</div>
-                    <div style={{ fontSize: 11, color: "var(--color-text-secondary)" }}>{r.salesman_code}</div>
-                  </div>
-                ) : (
-                  <div>
-                    <div style={{ fontWeight: 500, fontSize: 12 }}>{v}</div>
-                    <div style={{ fontSize: 11, color: "var(--color-text-secondary)" }}>—</div>
-                  </div>
-                ),
+                render: (v, r) =>
+                  r.salesman_code && r.salesman_code !== "-" ? (
+                    <div
+                      onClick={() =>
+                        openSalesmanAnalysis({
+                          salesmanCode: r.salesman_code,
+                          branchCode: drillModal.branchCode,
+                          productCode: selectedProduct?.code,
+                        })
+                      }
+                      style={{ cursor: "pointer" }}
+                      title="Open Salesman Analysis in new tab"
+                    >
+                      <div
+                        style={{
+                          fontWeight: 500,
+                          fontSize: 12,
+                          color: "var(--color-accent)",
+                        }}
+                      >
+                        {v}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: "var(--color-text-secondary)",
+                        }}
+                      >
+                        {r.salesman_code}
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div style={{ fontWeight: 500, fontSize: 12 }}>{v}</div>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: "var(--color-text-secondary)",
+                        }}
+                      >
+                        —
+                      </div>
+                    </div>
+                  ),
               },
               {
                 title: isValueMode ? (
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}>
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                      justifyContent: "flex-end",
+                    }}
+                  >
                     Sales (<RiyalIcon width={11} height={11} color="#FFFFFF" />)
                   </span>
-                ) : `Sales (${unitType?.toUpperCase()})`,
+                ) : (
+                  `Sales (${unitType?.toUpperCase()})`
+                ),
                 dataIndex: "sales",
                 key: "sales",
                 width: 110,
                 align: "right",
                 render: (v) => (
-                  <b style={{ color: "var(--color-primary)" }}>{v?.toLocaleString()}</b>
+                  <b style={{ color: "var(--color-primary)" }}>
+                    {v?.toLocaleString()}
+                  </b>
                 ),
               },
             ]}
             summary={() => (
               <Table.Summary.Row>
                 <Table.Summary.Cell index={0} colSpan={4}>
-                  <b style={{ color: "var(--color-text-secondary)", fontSize: 12 }}>Total</b>
+                  <b
+                    style={{
+                      color: "var(--color-text-secondary)",
+                      fontSize: 12,
+                    }}
+                  >
+                    Total
+                  </b>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={4} align="right">
-                  <b style={{ color: "var(--color-primary)" }}>{drillModal.total?.toLocaleString()}</b>
+                  <b style={{ color: "var(--color-primary)" }}>
+                    {drillModal.total?.toLocaleString()}
+                  </b>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
             )}
