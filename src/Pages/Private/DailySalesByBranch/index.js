@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useContext } from "react";
-import { Table, message, Skeleton, Tabs, Select, Button, Modal, Spin, Tag } from "antd";
+import { Table, message, Skeleton, Select, Button, Modal, Spin, Tag, Divider } from "antd";
 import { DownloadOutlined, DoubleLeftOutlined, DoubleRightOutlined } from "@ant-design/icons";
 import { ProductContext } from "../../../Contexts/ProductContext";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
@@ -10,8 +10,6 @@ import { getDailyBranchSales, getDailyCustomerBreakdown } from "../../../API/Dai
 import { openSalesmanAnalysis } from "../Reports/reportUtils";
 import RiyalIcon from "../../../Utils/RiyalIcon";
 import "./style.css";
-
-const { Option } = Select;
 
 const DailySalesByBranch = () => {
   const { selectedMonth } = useDateFilter();
@@ -208,6 +206,7 @@ const DailySalesByBranch = () => {
         title: "MTD",
         dataIndex: "total",
         key: "total",
+        width: 110,
         align: "right",
         sorter: (a, b) =>
           a.isTotal ? 1 : b.isTotal ? -1 : (a.total || 0) - (b.total || 0),
@@ -217,6 +216,7 @@ const DailySalesByBranch = () => {
         title: "Remaining",
         dataIndex: "remaining",
         key: "remaining",
+        width: 110,
         align: "right",
         sorter: (a, b) =>
           a.isTotal
@@ -230,6 +230,7 @@ const DailySalesByBranch = () => {
         title: "Target",
         dataIndex: "target",
         key: "target",
+        width: 110,
         align: "right",
         sorter: (a, b) =>
           a.isTotal ? 1 : b.isTotal ? -1 : (a.target || 0) - (b.target || 0),
@@ -239,6 +240,7 @@ const DailySalesByBranch = () => {
         title: "Achievement %",
         dataIndex: "achievement",
         key: "achievement",
+        width: 120,
         align: "right",
         sorter: (a, b) =>
           a.isTotal
@@ -259,6 +261,7 @@ const DailySalesByBranch = () => {
         title: "Daily Ach %",
         dataIndex: "dailyAch",
         key: "dailyAch",
+        width: 120,
         align: "right",
         sorter: (a, b) =>
           a.isTotal
@@ -299,49 +302,47 @@ const DailySalesByBranch = () => {
   }, [dayColumns, showAllDays]);
 
   // ------------------------------
-  // Append Grand Total Row
+  // Grand-total row (computed, rendered via sticky Table.Summary — not
+  // appended to dataSource, so it stays pinned to the viewport bottom).
   // ------------------------------
-  const dataWithTotal = useMemo(() => {
-    if (!salesData.length) return [];
+  const grandTotals = useMemo(() => {
+    if (!salesData.length || !dayColumns.length) return null;
 
-    const totalRow = {
+    const total = {
       branch: "GRAND TOTAL",
       key: "grand-total",
       isTotal: true,
     };
-
-    // Sum each day
     dayColumns.forEach((d) => {
-      totalRow[d.key] = salesData.reduce((sum, r) => sum + (r[d.key] || 0), 0);
+      total[d.key] = salesData.reduce((sum, r) => sum + (r[d.key] || 0), 0);
     });
-
-    totalRow.total = salesData.reduce((sum, r) => sum + (r.total || 0), 0);
-    totalRow.target = salesData.reduce((sum, r) => sum + (r.target || 0), 0);
-    totalRow.remaining = totalRow.target - totalRow.total;
-    totalRow.achievement = totalRow.target
-      ? (totalRow.total / totalRow.target) * 100
+    total.total     = salesData.reduce((sum, r) => sum + (r.total  || 0), 0);
+    total.target    = salesData.reduce((sum, r) => sum + (r.target || 0), 0);
+    total.remaining = total.target - total.total;
+    total.achievement = total.target ? (total.total / total.target) * 100 : 0;
+    const lastDayKey = dayColumns[dayColumns.length - 1].key;
+    total.dailyAch = total.target
+      ? (total[lastDayKey] / (total.target / salesData.length)) * 100
       : 0;
-    totalRow.dailyAch = totalRow.target
-      ? (totalRow[dayColumns[dayColumns.length - 1].key] /
-          (totalRow.target / salesData.length)) *
-        100
-      : 0;
+    return total;
+  }, [salesData, dayColumns]);
 
-    const branchRows = salesData.map((r, idx) => ({
+  const branchRows = useMemo(
+    () => salesData.map((r, idx) => ({
       key: `b-${idx}`,
       ...r,
       children: (r.channels || []).length
         ? r.channels.map((c, ci) => ({ key: `b-${idx}-c-${ci}`, ...c }))
         : undefined,
-    }));
+    })),
+    [salesData],
+  );
 
-    return [...branchRows, totalRow];
-  }, [salesData, dayColumns]);
-
-  const productTabs = productOptions.map((p) => ({
-    label: p.name,
-    key: p.code,
-  }));
+  // Kept for Excel export — grand total appended as last row like before.
+  const dataWithTotal = useMemo(
+    () => (grandTotals ? [...branchRows, grandTotals] : branchRows),
+    [branchRows, grandTotals],
+  );
 
   const handleCellClick = async (row, dayMeta) => {
     if (!row.branchCode || row.isTotal) return;
@@ -548,84 +549,155 @@ const DailySalesByBranch = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleChannelChange = (values) => {
-    if (values.includes("ALL")) {
-      setSelectedChannels(channels); // select all
-    } else if (values.includes("NONE")) {
-      setSelectedChannels([]); // unselect all
-    } else {
-      setSelectedChannels(values);
-    }
-  };
-
   return (
     <div className="daily-sales-report" style={{ padding: 0 }}>
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
+          alignItems: "center",
+          gap: 12,
           marginBottom: 5,
         }}
       >
-        <h2>Daily Sales by Branch</h2>
-        {/* Channel Select */}
-        <Select
-          mode="multiple"
-          loading={loading}
-          value={selectedChannels}
-          onChange={handleChannelChange}
-          style={{ flex: 1, maxWidth: "500px" }}
-          placeholder="Select Channels"
-        >
-          <Option key="ALL" value="ALL">
-            Select All
-          </Option>
-          <Option key="NONE" value="NONE">
-            Unselect All
-          </Option>
-          {channels.map((channel) => (
-            <Option key={channel} value={channel}>
-              {channel}
-            </Option>
-          ))}
-        </Select>
+        <h2 style={{ margin: 0 }}>Daily Sales by Branch</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, justifyContent: "flex-end" }}>
+          <span
+            style={{
+              color: "#64748B",
+              fontSize: 13,
+              fontWeight: 500,
+              whiteSpace: "nowrap",
+            }}
+          >
+            Product:
+          </span>
+          <Select
+            showSearch
+            optionFilterProp="label"
+            loading={loading}
+            value={selectedProduct?.code}
+            onChange={(code) => {
+              const prod = productOptions.find((p) => p.code === code);
+              if (prod) setSelectedProduct(prod);
+            }}
+            style={{ minWidth: 220 }}
+            placeholder="Select product"
+            disabled={!productOptions.length}
+            options={productOptions.map((p) => ({ value: p.code, label: p.name }))}
+          />
+          <span
+            style={{
+              color: "#64748B",
+              fontSize: 13,
+              fontWeight: 500,
+              whiteSpace: "nowrap",
+            }}
+          >
+            Channel:
+          </span>
+          <Select
+            mode="multiple"
+            showSearch
+            optionFilterProp="label"
+            loading={loading}
+            value={selectedChannels}
+            onChange={setSelectedChannels}
+            maxTagCount="responsive"
+            allowClear
+            style={{ flex: 1, minWidth: 240, maxWidth: 520 }}
+            placeholder="All channels"
+            disabled={!channels.length}
+            options={channels.map((c) => ({ value: c, label: c }))}
+            dropdownRender={(menu) => (
+              <>
+                <div style={{ padding: "4px 8px", display: "flex", gap: 8 }}>
+                  <Button
+                    size="small"
+                    type="link"
+                    style={{ padding: 0 }}
+                    onClick={() => setSelectedChannels(channels)}
+                  >
+                    Select All
+                  </Button>
+                  <Divider type="vertical" />
+                  <Button
+                    size="small"
+                    type="link"
+                    style={{ padding: 0 }}
+                    onClick={() => setSelectedChannels([])}
+                  >
+                    Unselect All
+                  </Button>
+                </div>
+                <Divider style={{ margin: "4px 0" }} />
+                {menu}
+              </>
+            )}
+          />
+          <Button
+            icon={<DownloadOutlined />}
+            onClick={exportToExcel}
+            disabled={loading || !dataWithTotal.length}
+            type="primary"
+          >
+            Export to Excel
+          </Button>
+        </div>
       </div>
 
       {loading && <Skeleton active paragraph={{ rows: 10 }} style={{ marginBottom: 20 }} />}
 
-      <Tabs
-        activeKey={selectedProduct?.code}
-        onChange={(key) => {
-          const prod = productOptions.find((p) => p.code === key);
-          if (prod) setSelectedProduct(prod);
-        }}
-        style={{ marginBottom: 20 }}
-      >
-        {productTabs.map((tab) => (
-          <Tabs.TabPane tab={tab.label} key={tab.key} />
-        ))}
-      </Tabs>
-
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
-        <Button
-          icon={<DownloadOutlined />}
-          onClick={exportToExcel}
-          disabled={loading || !dataWithTotal.length}
-          type="primary"
-        >
-          Export to Excel
-        </Button>
-      </div>
 
       <Table
         columns={columns}
-        dataSource={dataWithTotal}
+        dataSource={branchRows}
         bordered
         size="middle"
         scroll={{ x: "max-content", y: "60vh" }}
         pagination={false}
-        rowClassName={(record) => (record.isTotal ? "grand-total-row" : "")}
         style={{ background: "#fff", borderRadius: 8 }}
+        summary={() => {
+          if (!grandTotals) return null;
+          const canCollapse = dayColumns.length > DEFAULT_RECENT_DAYS;
+          const visibleDayColumns = (showAllDays || !canCollapse)
+            ? dayColumns
+            : dayColumns.slice(-DEFAULT_RECENT_DAYS);
+          let idx = 0;
+          const cell = (content, opts = {}) => (
+            <Table.Summary.Cell
+              key={idx}
+              index={idx++}
+              align={opts.align || "right"}
+            >
+              {content}
+            </Table.Summary.Cell>
+          );
+          const fmt = (v) => {
+            if (v == null || v === 0) return "-";
+            return Math.round(v).toLocaleString();
+          };
+          const pctCell = (v) =>
+            v ? (
+              <b style={{ color: v >= 100 ? "green" : "red" }}>
+                {v.toFixed(2)}%
+              </b>
+            ) : "-";
+          return (
+            <Table.Summary fixed>
+              <Table.Summary.Row className="grand-total-row">
+                {cell(<b>GRAND TOTAL</b>, { align: "left" })}
+                {canCollapse && cell(<span style={{ color: "#CBD5E1" }}>·</span>, { align: "center" })}
+                {visibleDayColumns.map((d) => cell(<b style={{ color: "#000" }}>{fmt(grandTotals[d.key])}</b>))}
+                {cell(<b style={{ color: "#3B82F6" }}>{fmt(grandTotals.total)}</b>)}
+                {cell(<b style={{ color: "#F59E0B" }}>{fmt(grandTotals.remaining)}</b>)}
+                {cell(<b style={{ color: "#000" }}>{fmt(grandTotals.target)}</b>)}
+                {cell(pctCell(grandTotals.achievement))}
+                {cell(pctCell(grandTotals.dailyAch))}
+              </Table.Summary.Row>
+            </Table.Summary>
+          );
+        }}
       />
 
       {/* ── Customer Breakdown Modal ───────────────────────── */}

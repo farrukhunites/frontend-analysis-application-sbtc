@@ -1,6 +1,30 @@
-.daily-sales-report .grand-total-row {
-  background-color: rgba(245, 158, 11, 0.12) !important;
-  font-weight: 700;
+.daily-sales-report .grand-total-row > td.ant-table-cell {
+  background-color: #FEF3C7 !important;
+  font-weight: 700 !important;
+  border-right: 1px solid #f0f0f0 !important;
+  border-top: 1px solid #f0f0f0 !important;
+  padding: 5px 8px !important;
+  white-space: nowrap;
+  overflow: visible;
+}
+
+/* Keep the summary row aligned with the body when a vertical scrollbar
+   would normally reserve space; we hid the bar but Ant's layout can still
+   clip the rightmost cell. */
+.daily-sales-report .ant-table-summary {
+  z-index: 3;
+}
+
+/* Hide the vertical scrollbar on the body but keep scrolling functional so
+   the sticky grand-total row stays pinned without a visible scrollbar. */
+.daily-sales-report .ant-table-body {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.daily-sales-report .ant-table-body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 .daily-sales-report
