@@ -11,29 +11,6 @@
   z-index: 3;
 }
 
-/* When scroll.y is set, Ant renders a scrollbar-spacer cell in the header
-   and summary rows. We've hidden the actual scrollbar via CSS, so the body
-   cells no longer respect that spacer — killing the spacer keeps the
-   header/summary/body column widths aligned. */
-.daily-sales-report .ant-table-cell-scrollbar,
-.daily-sales-report col.ant-table-cell-scrollbar {
-  display: none !important;
-  width: 0 !important;
-  min-width: 0 !important;
-}
-
-/* Hide the vertical scrollbar on the body but keep scrolling functional so
-   the sticky grand-total row stays pinned without a visible scrollbar. */
-.daily-sales-report .ant-table-body {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.daily-sales-report .ant-table-body::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  display: none;
-}
-
 .daily-sales-report
   .ant-table-tbody
   > tr:not(.grand-total-row):hover
