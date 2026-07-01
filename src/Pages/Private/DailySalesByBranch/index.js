@@ -359,12 +359,19 @@ const DailySalesByBranch = () => {
     total.target = salesData.reduce((sum, r) => sum + (r.target || 0), 0);
     total.remaining = total.target - total.total;
     total.achievement = total.target ? (total.total / total.target) * 100 : 0;
-    const lastDayKey = dayColumns[dayColumns.length - 1].key;
-    total.dailyAch = total.target
-      ? (total[lastDayKey] / (total.target / salesData.length)) * 100
+    const year = parseInt(selectedMonth.slice(0, 4), 10);
+    const month = parseInt(selectedMonth.slice(4), 10);
+    const totalDaysInMonth = new Date(year, month, 0).getDate();
+    const dayToday = parseInt(
+      dayColumns[dayColumns.length - 1].title,
+      10,
+    );
+    const expectedByToday = (dayToday / totalDaysInMonth) * total.target;
+    total.dailyAch = expectedByToday
+      ? (total.total / expectedByToday) * 100
       : 0;
     return total;
-  }, [salesData, dayColumns]);
+  }, [salesData, dayColumns, selectedMonth]);
 
   const branchRows = useMemo(
     () =>
