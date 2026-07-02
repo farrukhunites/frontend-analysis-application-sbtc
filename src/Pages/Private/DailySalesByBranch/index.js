@@ -23,6 +23,7 @@ import { getAllProducts } from "../../../API/Products";
 import {
   getDailyBranchSales,
   getDailyCustomerBreakdown,
+  getDailyProductBreakdown,
 } from "../../../API/Daily STT Report";
 import { openSalesmanAnalysis } from "../Reports/reportUtils";
 import RiyalIcon from "../../../Utils/RiyalIcon";
@@ -67,7 +68,7 @@ const DailySalesByBranch = () => {
   const [showAllDays, setShowAllDays] = useState(false);
   const DEFAULT_RECENT_DAYS = 7;
 
-  // Drill-down modal state
+  // Drill-down modal state (customer breakdown for a cell/product)
   const [drillModal, setDrillModal] = useState({
     open: false,
     loading: false,
@@ -75,6 +76,24 @@ const DailySalesByBranch = () => {
     data: [],
     total: 0,
     branchCode: "",
+    productCode: "",
+    productName: "",
+  });
+
+  // Product breakdown modal — shown when a cell is clicked while
+  // "All Products" is active. Clicking a row here opens `drillModal`
+  // for that specific product's customers.
+  const [productModal, setProductModal] = useState({
+    open: false,
+    loading: false,
+    title: "",
+    data: [],
+    total: 0,
+    branchCode: "",
+    branchName: "",
+    date: "",
+    dayLabel: "",
+    channels: [],
   });
 
   // ------------------------------
@@ -406,34 +425,35 @@ const DailySalesByBranch = () => {
     [branchRows, grandTotals],
   );
 
-  const handleCellClick = async (row, dayMeta) => {
-    if (!row.branchCode || row.isTotal) return;
-    const dayNum = parseInt(dayMeta.title, 10);
-    const year = parseInt(selectedMonth.slice(0, 4), 10);
-    const month = parseInt(selectedMonth.slice(4), 10);
-    const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
-    const productCodes = selectedProduct?.code || "";
-
-    const drillChannels = row.isChannel ? [row.channel] : selectedChannels;
-    const titlePrefix = row.isChannel
-      ? `${row.channel} (channel) — ${dayMeta.title} ${dayMeta.shortDay}`
-      : `${row.branch} — ${dayMeta.title} ${dayMeta.shortDay}`;
+  const openCustomerBreakdown = async ({
+    branchCode,
+    branchLabel,
+    date,
+    dayLabel,
+    channels,
+    productCode,
+    productName,
+  }) => {
+    const titleParts = [branchLabel, dayLabel];
+    if (productName) titleParts.push(productName);
     setDrillModal({
       open: true,
       loading: true,
-      title: titlePrefix,
+      title: titleParts.join(" — "),
       data: [],
       total: 0,
-      branchCode: row.branchCode,
+      branchCode,
+      productCode: productCode || "",
+      productName: productName || "",
     });
 
     const res = await getDailyCustomerBreakdown({
-      branchCode: row.branchCode,
-      date: dateStr,
-      productCodes,
+      branchCode,
+      date,
+      productCodes: productCode,
       unitType: effectiveUnitType,
       valueType,
-      channels: drillChannels,
+      channels,
     });
 
     if (res?.error) {
@@ -447,6 +467,69 @@ const DailySalesByBranch = () => {
         total: res.total || 0,
       }));
     }
+  };
+
+  const handleCellClick = async (row, dayMeta) => {
+    if (!row.branchCode || row.isTotal) return;
+    const dayNum = parseInt(dayMeta.title, 10);
+    const year = parseInt(selectedMonth.slice(0, 4), 10);
+    const month = parseInt(selectedMonth.slice(4), 10);
+    const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
+
+    const drillChannels = row.isChannel ? [row.channel] : selectedChannels;
+    const branchLabel = row.isChannel
+      ? `${row.channel} (channel)`
+      : row.branch;
+    const dayLabel = `${dayMeta.title} ${dayMeta.shortDay}`;
+
+    // When "All Products" is selected, first show the per-product breakdown.
+    // Clicking a row inside that modal then opens the customer breakdown
+    // filtered to that specific product.
+    if (useAllProducts) {
+      setProductModal({
+        open: true,
+        loading: true,
+        title: `${branchLabel} — ${dayLabel}`,
+        data: [],
+        total: 0,
+        branchCode: row.branchCode,
+        branchName: branchLabel,
+        date: dateStr,
+        dayLabel,
+        channels: drillChannels,
+      });
+
+      const res = await getDailyProductBreakdown({
+        branchCode: row.branchCode,
+        date: dateStr,
+        unitType: effectiveUnitType,
+        valueType,
+        channels: drillChannels,
+      });
+
+      if (res?.error) {
+        message.error("Failed to load product breakdown");
+        setProductModal((p) => ({ ...p, loading: false }));
+      } else {
+        setProductModal((p) => ({
+          ...p,
+          loading: false,
+          data: res.results || [],
+          total: res.total || 0,
+        }));
+      }
+      return;
+    }
+
+    await openCustomerBreakdown({
+      branchCode: row.branchCode,
+      branchLabel,
+      date: dateStr,
+      dayLabel,
+      channels: drillChannels,
+      productCode: selectedProduct?.code || "",
+      productName: "",
+    });
   };
 
   const exportToExcel = async () => {
@@ -950,12 +1033,14 @@ const DailySalesByBranch = () => {
                 key: "customer_name",
                 ellipsis: true,
                 render: (v, r) => {
+                  const activeProductCode =
+                    drillModal.productCode || selectedProduct?.code;
                   const params = new URLSearchParams({
                     customer_code: r.customer_code,
                     branch_code: drillModal.branchCode,
                     channel_code: r.channel,
-                    ...(selectedProduct?.code && {
-                      product_code: selectedProduct.code,
+                    ...(activeProductCode && {
+                      product_code: activeProductCode,
                     }),
                   });
                   return (
@@ -1011,7 +1096,8 @@ const DailySalesByBranch = () => {
                         openSalesmanAnalysis({
                           salesmanCode: r.salesman_code,
                           branchCode: drillModal.branchCode,
-                          productCode: selectedProduct?.code,
+                          productCode:
+                            drillModal.productCode || selectedProduct?.code,
                         })
                       }
                       style={{ cursor: "pointer" }}
@@ -1090,6 +1176,193 @@ const DailySalesByBranch = () => {
                 <Table.Summary.Cell index={4} align="right">
                   <b style={{ color: "var(--color-primary)" }}>
                     {drillModal.total?.toLocaleString()}
+                  </b>
+                </Table.Summary.Cell>
+              </Table.Summary.Row>
+            )}
+          />
+        )}
+      </Modal>
+
+      {/* ── Product Breakdown Modal (All Products drill-down) ─── */}
+      <Modal
+        title={
+          <div>
+            <div
+              style={{
+                fontWeight: 700,
+                fontSize: 15,
+                color: "var(--color-text-primary)",
+              }}
+            >
+              {productModal.title}
+            </div>
+            {!productModal.loading && (
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "var(--color-text-secondary)",
+                  marginTop: 2,
+                }}
+              >
+                {productModal.data.length} product
+                {productModal.data.length !== 1 ? "s" : ""}
+                {" · "}Total:{" "}
+                <b style={{ color: "var(--color-primary)" }}>
+                  {productModal.total?.toLocaleString()}
+                </b>{" "}
+                {isValueMode ? (
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      verticalAlign: "-2px",
+                    }}
+                  >
+                    <RiyalIcon
+                      width={12}
+                      height={12}
+                      color="var(--color-primary)"
+                    />
+                  </span>
+                ) : (
+                  unitType?.toUpperCase()
+                )}
+              </div>
+            )}
+          </div>
+        }
+        open={productModal.open}
+        onCancel={() => setProductModal((p) => ({ ...p, open: false }))}
+        footer={null}
+        width={720}
+        styles={{ body: { padding: "12px 0 0" } }}
+      >
+        {productModal.loading ? (
+          <div style={{ textAlign: "center", padding: 48 }}>
+            <Spin size="large" />
+          </div>
+        ) : (
+          <Table
+            size="small"
+            bordered
+            pagination={{ pageSize: 15, showSizeChanger: false, size: "small" }}
+            dataSource={productModal.data.map((r, i) => ({ ...r, key: i }))}
+            columns={[
+              {
+                title: "#",
+                width: 40,
+                align: "center",
+                render: (_, __, i) => (
+                  <span
+                    style={{
+                      color: "var(--color-text-secondary)",
+                      fontSize: 11,
+                    }}
+                  >
+                    {i + 1}
+                  </span>
+                ),
+              },
+              {
+                title: "Product",
+                dataIndex: "product_name",
+                key: "product_name",
+                ellipsis: true,
+                render: (v, r) => (
+                  <div
+                    onClick={() =>
+                      openCustomerBreakdown({
+                        branchCode: productModal.branchCode,
+                        branchLabel: productModal.branchName,
+                        date: productModal.date,
+                        dayLabel: productModal.dayLabel,
+                        channels: productModal.channels,
+                        productCode: r.product_code,
+                        productName: v,
+                      })
+                    }
+                    style={{ cursor: "pointer" }}
+                    title="View customer breakdown for this product"
+                  >
+                    <div
+                      style={{
+                        fontWeight: 500,
+                        fontSize: 12,
+                        color: "var(--color-accent)",
+                      }}
+                    >
+                      {v}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "var(--color-text-secondary)",
+                      }}
+                    >
+                      {r.product_code}
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                title: isValueMode ? (
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                      justifyContent: "flex-end",
+                    }}
+                  >
+                    Sales (<RiyalIcon width={11} height={11} color="#FFFFFF" />)
+                  </span>
+                ) : (
+                  `Sales (${unitType?.toUpperCase()})`
+                ),
+                dataIndex: "sales",
+                key: "sales",
+                width: 140,
+                align: "right",
+                render: (v, r) => (
+                  <b
+                    onClick={() =>
+                      openCustomerBreakdown({
+                        branchCode: productModal.branchCode,
+                        branchLabel: productModal.branchName,
+                        date: productModal.date,
+                        dayLabel: productModal.dayLabel,
+                        channels: productModal.channels,
+                        productCode: r.product_code,
+                        productName: r.product_name,
+                      })
+                    }
+                    style={{
+                      color: "var(--color-primary)",
+                      cursor: "pointer",
+                    }}
+                    title="View customer breakdown for this product"
+                  >
+                    {v?.toLocaleString()}
+                  </b>
+                ),
+              },
+            ]}
+            summary={() => (
+              <Table.Summary.Row>
+                <Table.Summary.Cell index={0} colSpan={2}>
+                  <b
+                    style={{
+                      color: "var(--color-text-secondary)",
+                      fontSize: 12,
+                    }}
+                  >
+                    Total
+                  </b>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={2} align="right">
+                  <b style={{ color: "var(--color-primary)" }}>
+                    {productModal.total?.toLocaleString()}
                   </b>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
