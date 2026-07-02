@@ -119,18 +119,18 @@ const DailySalesByBranch = () => {
   useEffect(() => {
     const fetchSales = async () => {
       if (!useAllProducts && !selectedProduct) return;
-      if (useAllProducts && !productOptions.length) return;
+      if (useAllProducts && !userData?.allowed_products?.length) return;
       setLoading(true);
       try {
-        // "All Products" is a page-local virtual option — expand to every
-        // non-virtual product code so the backend aggregates across the full
-        // catalog. Keeps ProductContext untouched so the navbar's Product
-        // select doesn't show a fake "All Products" entry.
+        // "All Products" is a page-local virtual option — expand to the
+        // user's allowed product codes so the backend aggregates only across
+        // what they can see. Keeps ProductContext untouched so the navbar's
+        // Product select doesn't show a fake "All Products" entry.
+        const allowedCodes = Array.isArray(userData?.allowed_products)
+          ? userData.allowed_products
+          : [];
         const codeParam = useAllProducts
-          ? productOptions
-              .filter((p) => p.code && !p.code.startsWith("99999"))
-              .map((p) => p.code)
-              .join(",")
+          ? allowedCodes.filter((c) => c && !c.startsWith("99999")).join(",")
           : selectedProduct.code;
 
         const res = await getDailyBranchSales(
@@ -160,7 +160,7 @@ const DailySalesByBranch = () => {
   }, [
     selectedProduct,
     useAllProducts,
-    productOptions,
+    userData,
     effectiveUnitType,
     valueType,
     selectedMonth,
