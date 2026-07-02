@@ -1,8 +1,8 @@
 import { lazy, Suspense, useContext, useMemo, useState } from "react";
 import { Tabs, Skeleton, Empty } from "antd";
-import { CalendarOutlined, AimOutlined, TrophyOutlined, RiseOutlined, AppstoreOutlined, TeamOutlined, DatabaseOutlined, BulbOutlined } from "@ant-design/icons";
+import { CalendarOutlined, AimOutlined, TrophyOutlined, RiseOutlined, AppstoreOutlined, TeamOutlined, DatabaseOutlined, BulbOutlined, UsergroupAddOutlined } from "@ant-design/icons";
 import { UserContext } from "../../../App";
-import { REPORT_KEYS, isReportBlocked } from "../../../Utils/access";
+import { PAGE_KEYS, REPORT_KEYS, isPageBlocked, isReportBlocked } from "../../../Utils/access";
 
 const DailySalesByBranch  = lazy(() => import("../DailySalesByBranch"));
 const DailySTT            = lazy(() => import("../DailySTT"));
@@ -12,6 +12,7 @@ const ChannelAchievement  = lazy(() => import("./ChannelAchievement"));
 const ChannelCoverage     = lazy(() => import("./ChannelCoverage"));
 const TargetFeasibility   = lazy(() => import("./TargetFeasibility"));
 const RawData             = lazy(() => import("./RawData"));
+const PotentialCustomers  = lazy(() => import("../PotentialCustomers"));
 
 const TabLoader = () => (
   <div style={{ padding: "24px 0" }}>
@@ -132,13 +133,32 @@ const TABS = [
       </Suspense>
     ),
   },
+  {
+    key:       "potential-customers",
+    pageKey:   PAGE_KEYS.POTENTIAL_CUSTOMERS,
+    label:     (
+      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <UsergroupAddOutlined /> Potential Customers
+      </span>
+    ),
+    children:  (
+      <Suspense fallback={<TabLoader />}>
+        <PotentialCustomers />
+      </Suspense>
+    ),
+  },
 ];
 
 const Reports = () => {
   const { userData } = useContext(UserContext);
 
   const visibleTabs = useMemo(
-    () => TABS.filter((tab) => !isReportBlocked(userData, tab.reportKey)),
+    () =>
+      TABS.filter((tab) =>
+        tab.pageKey
+          ? !isPageBlocked(userData, tab.pageKey)
+          : !isReportBlocked(userData, tab.reportKey),
+      ),
     [userData]
   );
 

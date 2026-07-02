@@ -3,7 +3,6 @@ import {
   SettingOutlined,
   UserOutlined,
   TeamOutlined,
-  UsergroupAddOutlined,
   LogoutOutlined,
   CalendarOutlined,
   FileTextOutlined,
@@ -25,7 +24,6 @@ const menuItems = [
   { key: "3", icon: <UserOutlined />,           label: "Customer Analysis",   path: "/customer-analysis",    pageKey: PAGE_KEYS.CUSTOMER_ANALYSIS },
   { key: "4", icon: <TeamOutlined />,           label: "Salesman Analysis",   path: "/salesman-analysis",    pageKey: PAGE_KEYS.SALESMAN_ANALYSIS },
   { key: "5", icon: <FileTextOutlined />,       label: "Reports",             path: "/reports",              pageKey: PAGE_KEYS.REPORTS },
-  { key: "7", icon: <UsergroupAddOutlined />,   label: "Potential Customers", path: "/potential-customers",  pageKey: PAGE_KEYS.POTENTIAL_CUSTOMERS },
 ];
 
 const bottomItems = [

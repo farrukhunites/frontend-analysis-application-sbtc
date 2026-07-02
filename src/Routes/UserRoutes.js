@@ -10,7 +10,6 @@ const CustomerAnalysis   = lazy(() => import("../Pages/Private/CustomerAnalysis"
 const SalesmanAnalysis   = lazy(() => import("../Pages/Private/SalesmanAnalysis"));
 const ChannelAnalysis    = lazy(() => import("../Pages/Private/ChannelAnalysis"));
 const Reports            = lazy(() => import("../Pages/Private/Reports"));
-const PotentialCustomers = lazy(() => import("../Pages/Private/PotentialCustomers"));
 const MOR                = lazy(() => import("../Pages/Private/MOR"));
 const Settings           = lazy(() => import("../Pages/Private/Settings"));
 const UserActivity       = lazy(() => import("../Pages/Private/UserActivity"));
@@ -33,7 +32,6 @@ const DEFAULT_ROUTE_ORDER = [
   { path: "/customer-analysis",   pageKey: PAGE_KEYS.CUSTOMER_ANALYSIS },
   { path: "/salesman-analysis",   pageKey: PAGE_KEYS.SALESMAN_ANALYSIS },
   { path: "/reports",             pageKey: PAGE_KEYS.REPORTS },
-  { path: "/potential-customers", pageKey: PAGE_KEYS.POTENTIAL_CUSTOMERS },
   { path: "/mor",                 pageKey: PAGE_KEYS.MOR },
 ];
 
@@ -69,9 +67,7 @@ const UserRoutes = () => (
       } />
       <Route path="daily-stt"           element={<Navigate to="/reports" />} />
       <Route path="daily-sales"         element={<Navigate to="/reports" />} />
-      <Route path="potential-customers" element={
-        <Guarded pageKey={PAGE_KEYS.POTENTIAL_CUSTOMERS}><PotentialCustomers /></Guarded>
-      } />
+      <Route path="potential-customers" element={<Navigate to="/reports" />} />
       <Route path="mor"                 element={
         <Guarded pageKey={PAGE_KEYS.MOR}><MOR /></Guarded>
       } />

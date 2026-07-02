@@ -71,7 +71,9 @@ const PotentialCustomers = () => {
           valueType,
         );
         if (res) {
-          setPotentialCustomers(res);
+          // Drop customers with 0 or negative dry months — they aren't
+          // actually dormant, they've bought within the current cycle.
+          setPotentialCustomers(res.filter((r) => (r?.dry_months ?? 0) > 0));
         }
       } catch (error) {
         message.error(
