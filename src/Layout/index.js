@@ -26,7 +26,7 @@ const AppLayout = ({ userType, contents }) => {
         <Content
           style={{
             margin: "24px 16px",
-            padding: 24,
+            padding: "0 24px 24px",
             minHeight: 280,
             background: "var(--color-bg-layout)",
             borderRadius: borderRadiusLG,

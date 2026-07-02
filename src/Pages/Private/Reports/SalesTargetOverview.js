@@ -140,12 +140,41 @@ const SalesTargetOverview = () => {
   const rowClassName = (selectedCode) => (row) =>
     row.code === selectedCode ? "sto-row-selected" : "";
 
-  const buildColumns = (nameHeader) => [
+  // Compute width from the widest formatted value in a numeric column
+  // (including the total row and header). Char-to-px is calibrated for the
+  // 11px font used across the table. Kept within a min/max so a single huge
+  // outlier doesn't blow up the layout.
+  const numWidth = (rows, total, key, headerText, kind) => {
+    const CHAR_PX  = 7.2;
+    const PADDING  = 20; // cell padding + sort caret room
+    const MIN      = kind === "pct" ? 62 : 70;
+    const MAX      = kind === "pct" ? 90 : 140;
+    const fmt      = kind === "pct"
+      ? (v) => (v == null || !isFinite(v) ? "—" : `${v > 0 && kind === "pct" ? "+" : ""}${v.toFixed(1)}%`)
+      : (v) => fmtNum(v);
+    let widest = String(headerText).length;
+    rows.forEach((r) => { widest = Math.max(widest, String(fmt(r[key])).length); });
+    if (total) widest = Math.max(widest, String(fmt(total[key])).length);
+    return Math.max(MIN, Math.min(MAX, Math.round(widest * CHAR_PX + PADDING)));
+  };
+
+  const nameWidth = (rows, headerText) => {
+    const CHAR_PX = 6.4;
+    const PADDING = 20;
+    const MIN     = 120;
+    const MAX     = 260;
+    let widest = String(headerText).length;
+    rows.forEach((r) => { widest = Math.max(widest, String(r.name || "").length); });
+    return Math.max(MIN, Math.min(MAX, Math.round(widest * CHAR_PX + PADDING)));
+  };
+
+  const buildColumns = (nameHeader, rows, total) => [
     {
       title: nameHeader,
       dataIndex: "name",
       key: "name",
       ellipsis: true,
+      width: nameWidth(rows, nameHeader),
       render: (v) => <span style={{ fontWeight: 500, fontSize: 11 }}>{v}</span>,
     },
     {
@@ -153,7 +182,7 @@ const SalesTargetOverview = () => {
       dataIndex: "this_year",
       key: "this_year",
       align: "right",
-      width: 80,
+      width: numWidth(rows, total, "this_year", "TY (XXX)", "num"),
       render: (v) => <span style={{ fontSize: 11 }}>{fmtNum(v)}</span>,
       sorter: (a, b) => (a.this_year || 0) - (b.this_year || 0),
     },
@@ -162,7 +191,7 @@ const SalesTargetOverview = () => {
       dataIndex: "target",
       key: "target",
       align: "right",
-      width: 80,
+      width: numWidth(rows, total, "target", "Target", "num"),
       render: (v) => <span style={{ fontSize: 11 }}>{fmtNum(v)}</span>,
       sorter: (a, b) => (a.target || 0) - (b.target || 0),
     },
@@ -171,7 +200,7 @@ const SalesTargetOverview = () => {
       dataIndex: "achv_pct",
       key: "achv_pct",
       align: "center",
-      width: 68,
+      width: numWidth(rows, total, "achv_pct", "Achv%", "pct"),
       render: (v) => <PctCell v={v} kind="achv" />,
       sorter: (a, b) => (a.achv_pct ?? -Infinity) - (b.achv_pct ?? -Infinity),
     },
@@ -180,7 +209,7 @@ const SalesTargetOverview = () => {
       dataIndex: "last_year",
       key: "last_year",
       align: "right",
-      width: 80,
+      width: numWidth(rows, total, "last_year", "LY (XXX)", "num"),
       render: (v) => <span style={{ fontSize: 11 }}>{fmtNum(v)}</span>,
       sorter: (a, b) => (a.last_year || 0) - (b.last_year || 0),
     },
@@ -189,7 +218,7 @@ const SalesTargetOverview = () => {
       dataIndex: "grow_pct",
       key: "grow_pct",
       align: "center",
-      width: 68,
+      width: numWidth(rows, total, "grow_pct", "Grow%", "pct"),
       render: (v) => <PctCell v={v} kind="grow" />,
       sorter: (a, b) => (a.grow_pct ?? -Infinity) - (b.grow_pct ?? -Infinity),
     },
@@ -486,7 +515,7 @@ const SalesTargetOverview = () => {
               pagination={false}
               loading={loading}
               dataSource={data?.products || []}
-              columns={buildColumns("Sub Group")}
+              columns={buildColumns("Sub Group", data?.products || [], data?.products_total)}
               onRow={onProductRow}
               rowClassName={rowClassName(selectedProductCode)}
               scroll={{ y: "calc(100vh - 400px)" }}
@@ -520,7 +549,7 @@ const SalesTargetOverview = () => {
               pagination={false}
               loading={loading}
               dataSource={data?.branches || []}
-              columns={buildColumns("SBTC Branch")}
+              columns={buildColumns("SBTC Branch", data?.branches || [], data?.branches_total)}
               onRow={onBranchRow}
               rowClassName={rowClassName(selectedBranchCode)}
               scroll={{ y: "calc(100vh - 400px)" }}
