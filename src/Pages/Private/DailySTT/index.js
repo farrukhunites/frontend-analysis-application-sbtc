@@ -1,5 +1,5 @@
 import { useContext, useEffect, useMemo, useState } from "react";
-import { Table, Select, message, DatePicker, Button, Space } from "antd";
+import { Table, Select, message, DatePicker, Button, Space, Divider } from "antd";
 import { DownloadOutlined, PlusSquareOutlined, MinusSquareOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import "./style.css";
@@ -541,6 +541,7 @@ const DailySTT = () => {
             mode="multiple"
             style={{ flex: 1, minWidth: 200 }}
             showSearch
+            maxTagCount="responsive"
             placeholder="Select products"
             value={selectedProducts?.map((p) => p?.code)}
             onChange={(codes) => {
@@ -551,6 +552,31 @@ const DailySTT = () => {
             filterOption={(input, option) =>
               option?.label?.toLowerCase().includes(input.toLowerCase())
             }
+            dropdownRender={(menu) => (
+              <>
+                <div style={{ padding: "4px 8px", display: "flex", gap: 8 }}>
+                  <Button
+                    size="small"
+                    type="link"
+                    style={{ padding: 0 }}
+                    onClick={() => setSelectedProducts(productOptions)}
+                  >
+                    Select All
+                  </Button>
+                  <Divider type="vertical" />
+                  <Button
+                    size="small"
+                    type="link"
+                    style={{ padding: 0 }}
+                    onClick={() => setSelectedProducts([])}
+                  >
+                    Unselect All
+                  </Button>
+                </div>
+                <Divider style={{ margin: "4px 0" }} />
+                {menu}
+              </>
+            )}
           />
 
           <Space>
