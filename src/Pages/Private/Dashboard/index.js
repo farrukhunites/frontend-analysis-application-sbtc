@@ -5,6 +5,7 @@ import {
   LineChartOutlined,
   SlidersOutlined,
   BoxPlotOutlined,
+  AppstoreOutlined,
 } from "@ant-design/icons";
 import "./style.css";
 import LineChart from "../../../Components/Charts/LineChart";
@@ -35,6 +36,7 @@ const initialDashboardData = {
     "Actual Sales": [],
     "Target Sales": [],
   },
+  all_products_sales_target_graph: { products: [], sales: [], target: [] },
 };
 
 const Dashboard = ({ branchCode = null }) => {
@@ -185,6 +187,7 @@ const Dashboard = ({ branchCode = null }) => {
         <AimOutlined key="2" />,
         <BoxPlotOutlined key="3" />,
         <LineChartOutlined key="4" />,
+        <AppstoreOutlined key="5" />,
       ][index] || <LineChartOutlined key={`default-${index}`} />,
       change: tab?.change,
       positive: tab?.positive,
@@ -194,8 +197,8 @@ const Dashboard = ({ branchCode = null }) => {
       is_value: tab?.is_value,
     })
   );
-  // Pad the array to ensure there are always 5 elements to avoid mapping issues in JSX
-  while (tabs.length < 5) {
+  // Pad the array to ensure there are always 6 elements to avoid mapping issues in JSX
+  while (tabs.length < 6) {
     tabs.push({
       title: "Loading...",
       value: "...",
@@ -325,6 +328,27 @@ const Dashboard = ({ branchCode = null }) => {
                 </div>
               </div>
             ))}
+          </div>
+
+          <div className="row">
+            <div className="graph">
+              <BarChart
+                graphTitle="All Products: Sales vs Target"
+                labels={dashboardData.all_products_sales_target_graph?.products || []}
+                colourTheme={[CHART_COLORS[3], CHART_COLORS[0]]}
+                units={[chartUnit, chartUnit]}
+                series={[
+                  {
+                    name: "Sales",
+                    data: dashboardData.all_products_sales_target_graph?.sales || [],
+                  },
+                  {
+                    name: "Target",
+                    data: dashboardData.all_products_sales_target_graph?.target || [],
+                  },
+                ]}
+              />
+            </div>
           </div>
 
           <div className="row">
