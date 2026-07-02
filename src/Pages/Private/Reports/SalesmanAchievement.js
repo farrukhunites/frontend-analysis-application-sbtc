@@ -1,6 +1,6 @@
 import { useContext, useEffect, useMemo, useState, useCallback } from "react";
 import { Table, Select, Skeleton, message, Button, Divider, Modal, Spin, Tag, Input, Space, Switch, DatePicker } from "antd";
-import { DownloadOutlined, SearchOutlined } from "@ant-design/icons";
+import { DownloadOutlined, SearchOutlined, PlusSquareOutlined, MinusSquareOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
 import { UnitValueContext } from "../../../Contexts/UnitValueContext";
@@ -69,6 +69,20 @@ const VarCell = ({ v }) => {
   );
 };
 
+// Growth % against a prior-year baseline. LY == 0 → dash (undefined ratio).
+const growthPct = (cur, ly) => (!ly ? null : ((cur - ly) / ly) * 100);
+const GrowthCell = ({ cur, ly }) => {
+  const g = growthPct(cur, ly);
+  if (g == null) return <span style={{ color: "#64748B" }}>—</span>;
+  const color = g >= 0 ? "#10B981" : "#EF4444";
+  const bg    = g >= 0 ? "rgba(16,185,129,0.08)" : "rgba(239,68,68,0.08)";
+  return (
+    <span style={{ color, background: bg, padding: "2px 6px", borderRadius: 4, fontWeight: 600, fontSize: 12 }}>
+      {g > 0 ? "+" : ""}{g.toFixed(1)}%
+    </span>
+  );
+};
+
 const SalesmanAchievement = () => {
   const { selectedMonth }   = useDateFilter();
   const { unitType, valueType, effectiveUnitType, mode } = useContext(UnitValueContext);
@@ -90,6 +104,17 @@ const SalesmanAchievement = () => {
   const [rangeMode, setRangeMode] = useState(false);
   const [fromMonth, setFromMonth] = useState(null); // dayjs | null
   const [toMonth,   setToMonth]   = useState(null); // dayjs | null
+
+  // Comparison toggle → adds "Sales LY" + "Growth %" columns per group
+  const [comparison, setComparison] = useState(false);
+
+  // Per-group month expansion (multi-month only). Keys: product name or "__total__".
+  const [expandedCols, setExpandedCols] = useState(() => new Set());
+  const toggleExpand = (key) => setExpandedCols((prev) => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
 
   const fromMonthStr  = fromMonth ? fromMonth.format("YYYYMM") : null;
   const toMonthStr    = toMonth   ? toMonth.format("YYYYMM")   : null;
@@ -139,12 +164,13 @@ const SalesmanAchievement = () => {
       valueType,
       branchCodes:  selectedBranches,
       productCodes: selectedProducts,
+      comparison,
     }).then((res) => {
       if (res?.error) message.error("Failed to load report");
       else setReportData(res);
       setLoading(false);
     });
-  }, [selectedMonth, rangeMode, fromMonthStr, toMonthStr, isRangeActive, effectiveUnitType, valueType, selectedBranches, selectedProducts]);
+  }, [selectedMonth, rangeMode, fromMonthStr, toMonthStr, isRangeActive, effectiveUnitType, valueType, selectedBranches, selectedProducts, comparison]);
 
   // product name → code (from the full product list used by the filter)
   const productNameToCode = useMemo(() => {
@@ -190,39 +216,106 @@ const SalesmanAchievement = () => {
 
   // Dynamic columns
   const columns = useMemo(() => {
-    const { products } = reportData;
+    const { products, months = [] } = reportData;
     if (!products?.length) return [];
 
-    const productCols = products.map((p) => ({
-      title:    <span style={{ fontWeight: 700 }}>{p}</span>,
-      align:    "center",
-      children: [
+    const isMultiMonth = months.length > 1;
+    const ymLabel = (ym) => dayjs(String(ym), "YYYYMM").format("MMM YYYY");
+
+    // Metric sub-columns for a given prefix (e.g. "indomie" or "total", or "indomie_202601").
+    // `productName` is used for the breakdown modal — null → TOTAL group.
+    // `variantSuffix` differentiates per-month sorter/key from the totals.
+    const buildMetrics = (prefix, productName, variantSuffix = "") => {
+      const k = (name) => `${prefix}_${name}${variantSuffix}`;
+      const cells = [
         {
           title:     "Target",
-          dataIndex: `${slug(p)}_target`,
+          dataIndex: `${prefix}_target`,
+          key:       k("target"),
           align:     "right",
           width:     90,
           render:    (v) => <span style={{ color: "#64748B" }}>{fmtNum(v)}</span>,
         },
         {
           title:     isRangeActive ? "Sales" : "MTD",
-          dataIndex: `${slug(p)}_actual`,
+          dataIndex: `${prefix}_actual`,
+          key:       k("actual"),
           align:     "right",
           width:     90,
           render:    (v, r) => (v && !r.isGrandTotal) ? (
-            <b onClick={() => openBreakdown(r, p)} style={{ cursor: "pointer", color: "var(--color-accent)" }}>{fmtNum(v)}</b>
+            <b onClick={() => openBreakdown(r, productName)} style={{ cursor: "pointer", color: "var(--color-accent)" }}>{fmtNum(v)}</b>
           ) : <b>{fmtNum(v)}</b>,
         },
         {
           title:     "+/-",
-          dataIndex: `${slug(p)}_variance`,
+          dataIndex: `${prefix}_variance`,
+          key:       k("variance"),
           align:     "center",
           width:     90,
-          sorter:    pinGrandTotal((a, b) => (a[`${slug(p)}_variance`] || 0) - (b[`${slug(p)}_variance`] || 0)),
+          sorter:    pinGrandTotal((a, b) => (a[`${prefix}_variance`] || 0) - (b[`${prefix}_variance`] || 0)),
           render:    (v) => <VarCell v={v} />,
         },
-      ],
-    }));
+      ];
+      if (comparison) {
+        cells.push({
+          title:     "Sales LY",
+          dataIndex: `${prefix}_actual_ly`,
+          key:       k("actual_ly"),
+          align:     "right",
+          width:     90,
+          sorter:    pinGrandTotal((a, b) => (a[`${prefix}_actual_ly`] || 0) - (b[`${prefix}_actual_ly`] || 0)),
+          render:    (v) => <span style={{ color: "#64748B" }}>{fmtNum(v)}</span>,
+        });
+        cells.push({
+          title:     "Growth %",
+          key:       k("growth"),
+          align:     "center",
+          width:     90,
+          sorter:    pinGrandTotal((a, b) =>
+            (growthPct(a[`${prefix}_actual`], a[`${prefix}_actual_ly`]) ?? -Infinity) -
+            (growthPct(b[`${prefix}_actual`], b[`${prefix}_actual_ly`]) ?? -Infinity)
+          ),
+          render:    (_, r) => <GrowthCell cur={r[`${prefix}_actual`]} ly={r[`${prefix}_actual_ly`]} />,
+        });
+      }
+      return cells;
+    };
+
+    // Header with expand/collapse toggle (only when multi-month).
+    const expandTitle = (key, label) => (
+      <span
+        onClick={(e) => { e.stopPropagation(); toggleExpand(key); }}
+        style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", userSelect: "none", fontWeight: 700 }}
+        title={expandedCols.has(key) ? "Collapse months" : "Expand months"}
+      >
+        {expandedCols.has(key) ? <MinusSquareOutlined /> : <PlusSquareOutlined />}
+        <span>{label}</span>
+      </span>
+    );
+
+    const buildGroup = (key, label, prefix, productName) => {
+      if (!isMultiMonth) {
+        return { title: <span style={{ fontWeight: 700 }}>{label}</span>, align: "center", children: buildMetrics(prefix, productName) };
+      }
+      const expanded = expandedCols.has(key);
+      const titleEl  = expandTitle(key, label);
+      if (!expanded) {
+        return { title: titleEl, align: "center", children: buildMetrics(prefix, productName) };
+      }
+      const monthCols = months.map((ym) => ({
+        title:    <span style={{ fontWeight: 600 }}>{ymLabel(ym)}</span>,
+        align:    "center",
+        children: buildMetrics(`${prefix}_${ym}`, productName, `_${ym}`),
+      }));
+      monthCols.push({
+        title:    <span style={{ fontWeight: 700 }}>Total</span>,
+        align:    "center",
+        children: buildMetrics(prefix, productName, "_total"),
+      });
+      return { title: titleEl, align: "center", children: monthCols };
+    };
+
+    const productCols = products.map((p) => buildGroup(p, p, slug(p), p));
 
     return [
       {
@@ -264,41 +357,9 @@ const SalesmanAchievement = () => {
         render:    (v, r) => r.isGrandTotal ? "" : <span style={{ fontSize: 12 }}>{v}</span>,
       },
       ...productCols,
-      {
-        title:    <span style={{ fontWeight: 700 }}>TOTAL</span>,
-        align:    "center",
-        children: [
-          {
-            title:     "Target",
-            dataIndex: "total_target",
-            align:     "right",
-            width:     100,
-            sorter:    pinGrandTotal((a, b) => (a.total_target || 0) - (b.total_target || 0)),
-            render:    (v) => <span style={{ color: "#64748B" }}>{fmtNum(v)}</span>,
-          },
-          {
-            title:     isRangeActive ? "Sales" : "MTD",
-            dataIndex: "total_actual",
-            align:     "right",
-            width:     100,
-            sorter:    pinGrandTotal((a, b) => (a.total_actual || 0) - (b.total_actual || 0)),
-            render:    (v, r) => (v && !r.isGrandTotal) ? (
-              <b onClick={() => openBreakdown(r, null)} style={{ cursor: "pointer", color: "var(--color-accent)" }}>{fmtNum(v)}</b>
-            ) : <b style={{ color: "var(--color-primary)" }}>{fmtNum(v)}</b>,
-          },
-          {
-            title:     "+/-",
-            dataIndex: "total_variance",
-            align:     "center",
-            width:     100,
-            defaultSortOrder: "ascend",
-            sorter:    pinGrandTotal((a, b) => (a.total_variance || 0) - (b.total_variance || 0)),
-            render:    (v) => <VarCell v={v} />,
-          },
-        ],
-      },
+      buildGroup("__total__", "TOTAL", "total", null),
     ];
-  }, [reportData, openBreakdown]);
+  }, [reportData, openBreakdown, comparison, isRangeActive, selectedProducts, expandedCols]);
 
   const dataSource = useMemo(() => {
     const { results } = reportData;
@@ -309,7 +370,7 @@ const SalesmanAchievement = () => {
   // Sticky grand-total — rendered via Table.summary so it stays visible
   // regardless of pagination/scroll.
   const grandTotals = useMemo(() => {
-    const { products: prods, results } = reportData;
+    const { products: prods, results, months = [] } = reportData;
     if (!results?.length) return null;
     const sum = (field) => results.reduce((acc, r) => acc + (r[field] || 0), 0);
     const gt = { isGrandTotal: true };
@@ -318,12 +379,26 @@ const SalesmanAchievement = () => {
       gt[`${s}_target`]   = sum(`${s}_target`);
       gt[`${s}_actual`]   = sum(`${s}_actual`);
       gt[`${s}_variance`] = sum(`${s}_variance`);
+      if (comparison) gt[`${s}_actual_ly`] = sum(`${s}_actual_ly`);
+      months.forEach((ym) => {
+        gt[`${s}_${ym}_target`]   = sum(`${s}_${ym}_target`);
+        gt[`${s}_${ym}_actual`]   = sum(`${s}_${ym}_actual`);
+        gt[`${s}_${ym}_variance`] = sum(`${s}_${ym}_variance`);
+        if (comparison) gt[`${s}_${ym}_actual_ly`] = sum(`${s}_${ym}_actual_ly`);
+      });
     });
     gt.total_target   = sum("total_target");
     gt.total_actual   = sum("total_actual");
     gt.total_variance = sum("total_variance");
+    if (comparison) gt.total_actual_ly = sum("total_actual_ly");
+    months.forEach((ym) => {
+      gt[`total_${ym}_target`]   = sum(`total_${ym}_target`);
+      gt[`total_${ym}_actual`]   = sum(`total_${ym}_actual`);
+      gt[`total_${ym}_variance`] = sum(`total_${ym}_variance`);
+      if (comparison) gt[`total_${ym}_actual_ly`] = sum(`total_${ym}_actual_ly`);
+    });
     return gt;
-  }, [reportData]);
+  }, [reportData, comparison]);
 
   const exportToExcel = async () => {
     const { products, results } = reportData;
@@ -351,6 +426,13 @@ const SalesmanAchievement = () => {
     });
 
     const numFmt = '_(* #,##0_);[Red]_(* (#,##0);_(* "-"_);_(@_)';
+    const pctFmt = '0.0"%";[Red]-0.0"%";"—"';
+
+    // Group column count grows when Comparison is on (Target/MTD/+/- ± Sales LY/Growth %).
+    const groupCols  = comparison ? 5 : 3;
+    const subHeaders = comparison
+      ? ["Target", isRangeActive ? "Sales" : "MTD", "+/-", "Sales LY", "Growth %"]
+      : ["Target", isRangeActive ? "Sales" : "MTD", "+/-"];
 
     // Row 1: product group headers
     const r1 = ws.getRow(1); r1.height = 22;
@@ -367,25 +449,25 @@ const SalesmanAchievement = () => {
     products.forEach((p) => {
       r1.getCell(col).value = p.toUpperCase();
       r1.getCell(col).style = hdr(NAV);
-      ws.mergeCells(1, col, 1, col + 2);
-      col += 3;
+      ws.mergeCells(1, col, 1, col + groupCols - 1);
+      col += groupCols;
     });
     // Total group
     r1.getCell(col).value = "TOTAL";
     r1.getCell(col).style = hdr(NAV2);
-    ws.mergeCells(1, col, 1, col + 2);
+    ws.mergeCells(1, col, 1, col + groupCols - 1);
 
     // Row 2: sub-headers
     const r2 = ws.getRow(2); r2.height = 18;
     col = 4;
     products.forEach(() => {
-      ["Target", isRangeActive ? "Sales" : "MTD", "+/-"].forEach((lbl, i) => {
+      subHeaders.forEach((lbl, i) => {
         r2.getCell(col + i).value = lbl;
         r2.getCell(col + i).style = hdr(NAV);
       });
-      col += 3;
+      col += groupCols;
     });
-    ["Target", isRangeActive ? "Sales" : "MTD", "+/-"].forEach((lbl, i) => {
+    subHeaders.forEach((lbl, i) => {
       r2.getCell(col + i).value = lbl;
       r2.getCell(col + i).style = hdr(NAV2);
     });
@@ -394,7 +476,7 @@ const SalesmanAchievement = () => {
     ws.getColumn(1).width = 5;
     ws.getColumn(2).width = 30;
     ws.getColumn(3).width = 14;
-    for (let c = 4; c <= 4 + products.length * 3 + 2; c++) ws.getColumn(c).width = 12;
+    for (let c = 4; c <= 4 + products.length * groupCols + groupCols - 1; c++) ws.getColumn(c).width = 12;
 
     // Data rows
     results.forEach((row, idx) => {
@@ -416,40 +498,61 @@ const SalesmanAchievement = () => {
       dr.getCell(3).value = row.branch;
       dr.getCell(3).style = cellStyle({ font: { size: 10 } });
 
+      // Growth % as a fraction (0.15 = 15%). Excel formats via pctFmt.
+      const growthFrac = (cur, ly) => (!ly ? null : (cur - ly) / ly * 100);
+
       let c = 4;
       products.forEach((p) => {
         const s = slug(p);
-        [row[`${s}_target`], row[`${s}_actual`], row[`${s}_variance`]].forEach((val, i) => {
+        const cur = row[`${s}_actual`];
+        const ly  = row[`${s}_actual_ly`];
+        const vals = comparison
+          ? [row[`${s}_target`], cur, row[`${s}_variance`], ly, growthFrac(cur, ly)]
+          : [row[`${s}_target`], cur, row[`${s}_variance`]];
+        vals.forEach((val, i) => {
           const cell = dr.getCell(c + i);
-          cell.value  = val || null;
-          const isVar = i === 2;
-          const varBg = isVar && val < 0 ? "FFFFC7CE"
-                      : isVar && val > 0 ? "FFC6EFCE" : bg;
+          cell.value  = (val === null || val === undefined) ? null : (val || null);
+          const isVar    = i === 2;
+          const isGrowth = comparison && i === 4;
+          const isLy     = comparison && i === 3;
+          const posNeg   = (isVar || isGrowth) && val != null ? (val < 0 ? -1 : val > 0 ? 1 : 0) : 0;
+          const varBg = posNeg < 0 ? "FFFFC7CE"
+                      : posNeg > 0 ? "FFC6EFCE" : bg;
           cell.style = {
-            numFmt,
+            numFmt: isGrowth ? pctFmt : numFmt,
             font:      { size: 10, bold: i === 1,
-                         color: { argb: isVar && val < 0 ? "FF9C0006"
-                                       : isVar && val > 0 ? "FF276221" : "FF1E293B" } },
+                         color: { argb: posNeg < 0 ? "FF9C0006"
+                                       : posNeg > 0 ? "FF276221"
+                                       : isLy ? "FF64748B" : "FF1E293B" } },
             fill:      { type: "pattern", pattern: "solid", fgColor: { argb: varBg } },
             alignment: { horizontal: "right", vertical: "middle" },
             border:    bdr,
           };
         });
-        c += 3;
+        c += groupCols;
       });
 
       // Total columns
-      [row.total_target, row.total_actual, row.total_variance].forEach((val, i) => {
+      const tCur = row.total_actual;
+      const tLy  = row.total_actual_ly;
+      const totalVals = comparison
+        ? [row.total_target, tCur, row.total_variance, tLy, growthFrac(tCur, tLy)]
+        : [row.total_target, tCur, row.total_variance];
+      totalVals.forEach((val, i) => {
         const cell = dr.getCell(c + i);
-        cell.value  = val || null;
-        const isVar = i === 2;
-        const varBg = isVar && val < 0 ? "FFFFC7CE"
-                    : isVar && val > 0 ? "FFC6EFCE" : bg;
+        cell.value  = (val === null || val === undefined) ? null : (val || null);
+        const isVar    = i === 2;
+        const isGrowth = comparison && i === 4;
+        const isLy     = comparison && i === 3;
+        const posNeg   = (isVar || isGrowth) && val != null ? (val < 0 ? -1 : val > 0 ? 1 : 0) : 0;
+        const varBg = posNeg < 0 ? "FFFFC7CE"
+                    : posNeg > 0 ? "FFC6EFCE" : bg;
         cell.style = {
-          numFmt,
+          numFmt: isGrowth ? pctFmt : numFmt,
           font:      { size: 10, bold: true,
-                       color: { argb: isVar && val < 0 ? "FF9C0006"
-                                     : isVar && val > 0 ? "FF276221" : "FF002060" } },
+                       color: { argb: posNeg < 0 ? "FF9C0006"
+                                     : posNeg > 0 ? "FF276221"
+                                     : isLy ? "FF64748B" : "FF002060" } },
           fill:      { type: "pattern", pattern: "solid", fgColor: { argb: varBg } },
           alignment: { horizontal: "right", vertical: "middle" },
           border:    bdr,
@@ -477,31 +580,51 @@ const SalesmanAchievement = () => {
     gtr.getCell(3).value = "";
     gtr.getCell(3).style = gtStyle();
 
-    const gtCol = (cell, val, isVar, isTotalGroup) => {
-      cell.value = Math.round(val) || null;
+    const gtCol = (cell, val, kind, isTotalGroup) => {
+      // kind: "num" | "var" | "ly" | "growth"
+      const isVar    = kind === "var";
+      const isGrowth = kind === "growth";
+      const isLy     = kind === "ly";
+      const posNeg   = (isVar || isGrowth) && val != null ? (val < 0 ? -1 : val > 0 ? 1 : 0) : 0;
+      cell.value = val == null ? null : (isGrowth ? val : Math.round(val) || null);
       cell.style = gtStyle({
-        numFmt,
+        numFmt: isGrowth ? pctFmt : numFmt,
         alignment: { horizontal: "right", vertical: "middle" },
         font: {
           bold: true, size: 10,
-          color: { argb: isVar && val < 0 ? "FF9C0006"
-                       : isVar && val > 0 ? "FF276221"
+          color: { argb: posNeg < 0 ? "FF9C0006"
+                       : posNeg > 0 ? "FF276221"
+                       : isLy ? "FF64748B"
                        : isTotalGroup ? "FF002060" : "FF1E293B" },
         },
       });
     };
 
+    const gtGrowth = (cur, ly) => (!ly ? null : (cur - ly) / ly * 100);
+
     let gc = 4;
     products.forEach((p) => {
       const s = slug(p);
-      gtCol(gtr.getCell(gc),     sumField(`${s}_target`),   false, false);
-      gtCol(gtr.getCell(gc + 1), sumField(`${s}_actual`),   false, false);
-      gtCol(gtr.getCell(gc + 2), sumField(`${s}_variance`), true,  false);
-      gc += 3;
+      const cur = sumField(`${s}_actual`);
+      const ly  = comparison ? sumField(`${s}_actual_ly`) : 0;
+      gtCol(gtr.getCell(gc),     sumField(`${s}_target`),   "num", false);
+      gtCol(gtr.getCell(gc + 1), cur,                       "num", false);
+      gtCol(gtr.getCell(gc + 2), sumField(`${s}_variance`), "var", false);
+      if (comparison) {
+        gtCol(gtr.getCell(gc + 3), ly,                     "ly",     false);
+        gtCol(gtr.getCell(gc + 4), gtGrowth(cur, ly),      "growth", false);
+      }
+      gc += groupCols;
     });
-    gtCol(gtr.getCell(gc),     sumField("total_target"),   false, true);
-    gtCol(gtr.getCell(gc + 1), sumField("total_actual"),   false, true);
-    gtCol(gtr.getCell(gc + 2), sumField("total_variance"), true,  true);
+    const tCur = sumField("total_actual");
+    const tLy  = comparison ? sumField("total_actual_ly") : 0;
+    gtCol(gtr.getCell(gc),     sumField("total_target"),   "num", true);
+    gtCol(gtr.getCell(gc + 1), tCur,                       "num", true);
+    gtCol(gtr.getCell(gc + 2), sumField("total_variance"), "var", true);
+    if (comparison) {
+      gtCol(gtr.getCell(gc + 3), tLy,                "ly",     true);
+      gtCol(gtr.getCell(gc + 4), gtGrowth(tCur, tLy), "growth", true);
+    }
 
     const buf  = await wb.xlsx.writeBuffer();
     const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
@@ -584,6 +707,11 @@ const SalesmanAchievement = () => {
           <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500 }}>Multi-month</span>
         </div>
 
+        <div style={{ display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
+          <Switch size="small" checked={comparison} onChange={setComparison} />
+          <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500 }}>Comparison</span>
+        </div>
+
         {rangeMode && (
           <>
             <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500, whiteSpace: "nowrap" }}>From:</span>
@@ -633,7 +761,8 @@ const SalesmanAchievement = () => {
           rowClassName={(r) => (r.isGrandTotal ? "report-grand-total-row" : "")}
           summary={() => {
             if (!grandTotals) return null;
-            const { products: prods } = reportData;
+            const { products: prods, months = [] } = reportData;
+            const isMultiMonth = months.length > 1;
             let idx = 0;
             const cell = (content, opts = {}) => (
               <Table.Summary.Cell
@@ -645,22 +774,38 @@ const SalesmanAchievement = () => {
                 {content}
               </Table.Summary.Cell>
             );
+            // Render metric cells for a given prefix (product slug or "total").
+            const metricCells = (prefix, isTotalGroup) => {
+              const cells = [
+                cell(<span style={{ color: "#64748B" }}>{fmtNum(grandTotals[`${prefix}_target`])}</span>),
+                cell(isTotalGroup
+                  ? <b style={{ color: "var(--color-primary)" }}>{fmtNum(grandTotals[`${prefix}_actual`])}</b>
+                  : <b>{fmtNum(grandTotals[`${prefix}_actual`])}</b>),
+                cell(<VarCell v={grandTotals[`${prefix}_variance`]} />, { align: "center" }),
+              ];
+              if (comparison) {
+                cells.push(cell(<span style={{ color: "#64748B" }}>{fmtNum(grandTotals[`${prefix}_actual_ly`])}</span>));
+                cells.push(cell(<GrowthCell cur={grandTotals[`${prefix}_actual`]} ly={grandTotals[`${prefix}_actual_ly`]} />, { align: "center" }));
+              }
+              return cells;
+            };
+            // Group cells: expanded → per-month metric cells + total; collapsed → just totals.
+            const groupCells = (key, prefix, isTotalGroup) => {
+              if (isMultiMonth && expandedCols.has(key)) {
+                return [
+                  ...months.flatMap((ym) => metricCells(`${prefix}_${ym}`, isTotalGroup)),
+                  ...metricCells(prefix, isTotalGroup),
+                ];
+              }
+              return metricCells(prefix, isTotalGroup);
+            };
             return (
               <Table.Summary fixed>
                 <Table.Summary.Row className="report-grand-total-row">
                   {cell("", { align: "center" })}
                   {cell(<b>GRAND TOTAL</b>, { colSpan: 2, align: "left" })}
-                  {prods.flatMap((p) => {
-                    const s = slug(p);
-                    return [
-                      cell(<span style={{ color: "#64748B" }}>{fmtNum(grandTotals[`${s}_target`])}</span>),
-                      cell(<b>{fmtNum(grandTotals[`${s}_actual`])}</b>),
-                      cell(<VarCell v={grandTotals[`${s}_variance`]} />, { align: "center" }),
-                    ];
-                  })}
-                  {cell(<span style={{ color: "#64748B" }}>{fmtNum(grandTotals.total_target)}</span>)}
-                  {cell(<b style={{ color: "var(--color-primary)" }}>{fmtNum(grandTotals.total_actual)}</b>)}
-                  {cell(<VarCell v={grandTotals.total_variance} />, { align: "center" })}
+                  {prods.flatMap((p) => groupCells(p, slug(p), false))}
+                  {groupCells("__total__", "total", true)}
                 </Table.Summary.Row>
               </Table.Summary>
             );

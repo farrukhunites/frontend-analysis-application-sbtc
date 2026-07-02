@@ -1,7 +1,7 @@
 import axios from "axios";
 import { getToken } from "../../Utils/UpdateUserState";
 
-export const getSalesmanAchievement = ({ month, fromMonth, toMonth, unitType, valueType, branchCodes, productCodes }) =>
+export const getSalesmanAchievement = ({ month, fromMonth, toMonth, unitType, valueType, branchCodes, productCodes, comparison }) =>
   axios
     .get(`${process.env.REACT_APP_BACKEND_URL}reports/salesman-achievement/`, {
       headers: { Authorization: `Bearer ${getToken()}` },
@@ -14,6 +14,7 @@ export const getSalesmanAchievement = ({ month, fromMonth, toMonth, unitType, va
         value_type:       valueType,
         "branch_codes[]":  branchCodes,
         "product_codes[]": productCodes?.length ? productCodes : undefined,
+        ...(comparison && { comparison: "true" }),
       },
     })
     .then((r) => r.data)
