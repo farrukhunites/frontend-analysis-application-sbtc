@@ -1,6 +1,29 @@
 import axios from "axios";
 import { getToken } from "../../Utils/UpdateUserState";
 
+export const getSalesTargetOverview = ({
+  month, fromMonth, toMonth, unitType, valueType,
+  branchCodes, productCodes,
+  selectedBranchCode, selectedProductCode,
+}) =>
+  axios
+    .get(`${process.env.REACT_APP_BACKEND_URL}reports/sales-target-overview/`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+      params: {
+        ...(fromMonth && toMonth
+          ? { from_month: fromMonth, to_month: toMonth }
+          : { month }),
+        unit_type:         unitType,
+        value_type:        valueType,
+        "branch_codes[]":  branchCodes,
+        "product_codes[]": productCodes?.length ? productCodes : undefined,
+        selected_branch_code:  selectedBranchCode  || undefined,
+        selected_product_code: selectedProductCode || undefined,
+      },
+    })
+    .then((r) => r.data)
+    .catch((err) => ({ error: err.response?.data || err.message }));
+
 export const getSalesmanAchievement = ({ month, fromMonth, toMonth, unitType, valueType, branchCodes, productCodes, comparison }) =>
   axios
     .get(`${process.env.REACT_APP_BACKEND_URL}reports/salesman-achievement/`, {

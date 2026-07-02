@@ -1,9 +1,10 @@
 import { lazy, Suspense, useContext, useMemo, useState } from "react";
 import { Tabs, Skeleton, Empty } from "antd";
-import { CalendarOutlined, AimOutlined, TrophyOutlined, RiseOutlined, AppstoreOutlined, TeamOutlined, DatabaseOutlined, BulbOutlined, UsergroupAddOutlined } from "@ant-design/icons";
+import { CalendarOutlined, AimOutlined, TrophyOutlined, RiseOutlined, AppstoreOutlined, TeamOutlined, DatabaseOutlined, BulbOutlined, UsergroupAddOutlined, PieChartOutlined } from "@ant-design/icons";
 import { UserContext } from "../../../App";
 import { PAGE_KEYS, REPORT_KEYS, isPageBlocked, isReportBlocked } from "../../../Utils/access";
 
+const SalesTargetOverview = lazy(() => import("./SalesTargetOverview"));
 const DailySalesByBranch  = lazy(() => import("../DailySalesByBranch"));
 const DailySTT            = lazy(() => import("../DailySTT"));
 const SalesmanAchievement = lazy(() => import("./SalesmanAchievement"));
@@ -21,6 +22,20 @@ const TabLoader = () => (
 );
 
 const TABS = [
+  {
+    key:       "sales-target-overview",
+    reportKey: REPORT_KEYS.SALES_TARGET_OVERVIEW,
+    label:     (
+      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <PieChartOutlined /> Sales Target Overview
+      </span>
+    ),
+    children:  (
+      <Suspense fallback={<TabLoader />}>
+        <SalesTargetOverview />
+      </Suspense>
+    ),
+  },
   {
     key:       "daily-sales",
     reportKey: REPORT_KEYS.DAILY_SALES,

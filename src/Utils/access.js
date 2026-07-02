@@ -13,6 +13,7 @@ export const PAGE_KEYS = {
 };
 
 export const REPORT_KEYS = {
+  SALES_TARGET_OVERVIEW:"sales_target_overview",
   DAILY_SALES:          "daily_sales",
   MONTHLY_SALES:        "monthly_sales",
   SALESMAN_ACHIEVEMENT: "salesman_achievement",

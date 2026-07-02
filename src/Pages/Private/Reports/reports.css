@@ -33,3 +33,33 @@
   border-radius: 6px;
   overflow: hidden;
 }
+
+.grand-total-row td {
+  background: #FEF3C7 !important;
+  font-weight: 700 !important;
+}
+.sto-row-selected td {
+  background: #DBEAFE !important;
+}
+.sto-row-selected:hover td {
+  background: #BFDBFE !important;
+}
+
+/* Compact sizing for the Sales Target Overview two-table layout.
+   Only touches font-size/padding — leaves theme colours to Ant Design. */
+.sto-table .ant-table-thead > tr > th {
+  font-size: 11px !important;
+  padding: 6px 6px !important;
+  line-height: 1.2 !important;
+  white-space: nowrap;
+}
+.sto-table .ant-table-tbody > tr > td {
+  padding: 4px 6px !important;
+  line-height: 1.3 !important;
+}
+.sto-table .ant-table-cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
