@@ -15,6 +15,6 @@
   .ant-table-tbody
   > tr:not(.grand-total-row):hover
   > td {
-  background-color: rgba(59, 130, 246, 0.06) !important;
+  background-color: #F3F7FE !important;
   font-weight: 500;
 }

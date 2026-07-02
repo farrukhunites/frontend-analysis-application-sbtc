@@ -35,3 +35,40 @@ body {
 .ant-table-thead > tr > th.ant-table-column-has-sorters.ant-table-column-sort:hover {
   background: var(--color-primary) !important;
 }
+
+/* Frozen (fixed) column cells sit above the row-hover overlay so they
+   stay visible when a row is hovered. They also need an opaque background
+   — Ant Design defaults them to `inherit` which lets scrolled rows bleed
+   through when the sticky column overlaps them. */
+.ant-table-tbody > tr > td.ant-table-cell-fix-left,
+.ant-table-tbody > tr > td.ant-table-cell-fix-right {
+  z-index: 3 !important;
+  background: #ffffff !important;
+}
+.ant-table-thead > tr > th.ant-table-cell-fix-left,
+.ant-table-thead > tr > th.ant-table-cell-fix-right {
+  z-index: 4 !important;
+}
+.ant-table-summary .ant-table-cell-fix-left,
+.ant-table-summary .ant-table-cell-fix-right {
+  z-index: 4 !important;
+  background: #ffffff !important;
+}
+
+/* Match the row-hover tint on fixed cells so the frozen column stays
+   opaque and doesn't visually detach from its row on hover. The double
+   `.ant-table-cell-fix-*` boosts specificity above per-page hover rules
+   that use rgba() colors — those would otherwise leave the frozen cell
+   transparent and let scrolled columns bleed through. */
+.ant-table-wrapper .ant-table-tbody > tr:hover > td.ant-table-cell-fix-left.ant-table-cell-fix-left,
+.ant-table-wrapper .ant-table-tbody > tr:hover > td.ant-table-cell-fix-right.ant-table-cell-fix-right,
+.ant-table-wrapper .ant-table-tbody > tr.ant-table-row-hover > td.ant-table-cell-fix-left.ant-table-cell-fix-left,
+.ant-table-wrapper .ant-table-tbody > tr.ant-table-row-hover > td.ant-table-cell-fix-right.ant-table-cell-fix-right {
+  background: #F3F7FE !important;
+}
+
+/* Grand-total / summary row keeps its amber tint on the fixed cell too. */
+.ant-table-tbody > tr.grand-total-row > td.ant-table-cell-fix-left,
+.ant-table-summary tr.grand-total-row > td.ant-table-cell-fix-left {
+  background: #FEF3C7 !important;
+}

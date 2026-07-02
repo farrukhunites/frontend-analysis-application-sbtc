@@ -20,6 +20,6 @@
   .ant-table-tbody
   > tr:not(.subtotal-row):not(.grandtotal-row):hover
   > td {
-  background-color: rgba(59, 130, 246, 0.06) !important;
+  background-color: #F3F7FE !important;
   font-weight: 500;
 }
