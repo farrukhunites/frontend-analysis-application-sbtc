@@ -6,7 +6,6 @@ export const PAGE_KEYS = {
   CUSTOMER_ANALYSIS:   "customer_analysis",
   SALESMAN_ANALYSIS:   "salesman_analysis",
   REPORTS:             "reports",
-  POTENTIAL_CUSTOMERS: "potential_customers",
   MOR:                 "mor",
   USER_ACTIVITY:       "user_activity",
   SETTINGS:            "settings",
@@ -22,6 +21,7 @@ export const REPORT_KEYS = {
   CHANNEL_COVERAGE:     "channel_coverage",
   TARGET_FEASIBILITY:   "target_feasibility",
   RAW_DATA:             "raw_data",
+  POTENTIAL_CUSTOMERS:  "potential_customers",
 };
 
 export const isPageBlocked = (userData, pageKey) =>

@@ -2,7 +2,7 @@ import { lazy, Suspense, useContext, useMemo, useState } from "react";
 import { Tabs, Skeleton, Empty } from "antd";
 import { CalendarOutlined, AimOutlined, TrophyOutlined, RiseOutlined, AppstoreOutlined, TeamOutlined, DatabaseOutlined, BulbOutlined, UsergroupAddOutlined, PieChartOutlined } from "@ant-design/icons";
 import { UserContext } from "../../../App";
-import { PAGE_KEYS, REPORT_KEYS, isPageBlocked, isReportBlocked } from "../../../Utils/access";
+import { REPORT_KEYS, isReportBlocked } from "../../../Utils/access";
 
 const SalesTargetOverview = lazy(() => import("./SalesTargetOverview"));
 const DailySalesByBranch  = lazy(() => import("../DailySalesByBranch"));
@@ -150,7 +150,7 @@ const TABS = [
   },
   {
     key:       "potential-customers",
-    pageKey:   PAGE_KEYS.POTENTIAL_CUSTOMERS,
+    reportKey: REPORT_KEYS.POTENTIAL_CUSTOMERS,
     label:     (
       <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <UsergroupAddOutlined /> Potential Customers
@@ -168,12 +168,7 @@ const Reports = () => {
   const { userData } = useContext(UserContext);
 
   const visibleTabs = useMemo(
-    () =>
-      TABS.filter((tab) =>
-        tab.pageKey
-          ? !isPageBlocked(userData, tab.pageKey)
-          : !isReportBlocked(userData, tab.reportKey),
-      ),
+    () => TABS.filter((tab) => !isReportBlocked(userData, tab.reportKey)),
     [userData]
   );
 
