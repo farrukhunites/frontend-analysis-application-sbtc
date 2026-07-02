@@ -61,5 +61,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Sticky total row — highlight so it stands out from body when scrolled */
+.sto-table .sto-total-row > td,
+.sto-table .ant-table-summary > tr > td {
+  background: #FEF3C7 !important;
+  font-weight: 700 !important;
+  border-top: 1px solid #D4D4D8 !important;
+  padding: 5px 6px !important;
+  font-size: 11px !important;
+}
 
 
