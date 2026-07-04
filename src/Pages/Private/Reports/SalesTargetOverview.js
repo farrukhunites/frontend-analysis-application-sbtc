@@ -6,7 +6,6 @@ import {
   Button,
   Tag,
   Space,
-  DatePicker,
 } from "antd";
 import { CloseCircleFilled, DownloadOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -15,6 +14,7 @@ import { UnitValueContext } from "../../../Contexts/UnitValueContext";
 import { getAllBranches } from "../../../API/Branches";
 import { getAllProducts } from "../../../API/Products";
 import { getSalesTargetOverview } from "../../../API/Reports";
+import MonthRangePicker from "../../../Components/MonthRangePicker";
 import RiyalIcon from "../../../Utils/RiyalIcon";
 import "./reports.css";
 
@@ -407,31 +407,12 @@ const SalesTargetOverview = () => {
       >
         <Space>
           <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500 }}>From – To:</span>
-          <DatePicker.RangePicker
-            picker="month"
+          <MonthRangePicker
             value={[fromMonth, toMonth]}
-            onChange={(v) => {
-              if (v && v[0] && v[1]) {
-                setFromMonth(v[0]);
-                setToMonth(v[1]);
-              }
+            onChange={([from, to]) => {
+              setFromMonth(from);
+              setToMonth(to);
             }}
-            format="MMM YYYY"
-            allowClear={false}
-            placeholder={["From month", "To month"]}
-            presets={[
-              { label: "This month",     value: [dayjs().startOf("month"), dayjs().startOf("month")] },
-              { label: "Last month",     value: [dayjs().subtract(1, "month").startOf("month"),
-                                                 dayjs().subtract(1, "month").startOf("month")] },
-              { label: "Last 3 months",  value: [dayjs().subtract(2, "month").startOf("month"),
-                                                 dayjs().startOf("month")] },
-              { label: "Last 6 months",  value: [dayjs().subtract(5, "month").startOf("month"),
-                                                 dayjs().startOf("month")] },
-              { label: "YTD",            value: [dayjs().startOf("year"),
-                                                 dayjs().startOf("month")] },
-              { label: "Last year",      value: [dayjs().subtract(1, "year").startOf("year"),
-                                                 dayjs().subtract(1, "year").endOf("year").startOf("month")] },
-            ]}
           />
         </Space>
         <div style={{ flex: 1 }} />

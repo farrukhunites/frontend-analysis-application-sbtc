@@ -1,5 +1,6 @@
 import { useContext, useEffect, useMemo, useState, useCallback } from "react";
-import { Table, Select, Skeleton, message, Button, Divider, Modal, Spin, Tag, Input, Space, Switch, DatePicker } from "antd";
+import { Table, Select, Skeleton, message, Button, Divider, Modal, Spin, Tag, Input, Space, Switch } from "antd";
+import MonthRangePicker from "../../../Components/MonthRangePicker";
 import { DownloadOutlined, SearchOutlined, PlusSquareOutlined, MinusSquareOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
@@ -714,25 +715,13 @@ const SalesmanAchievement = () => {
 
         {rangeMode && (
           <>
-            <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500, whiteSpace: "nowrap" }}>From:</span>
-            <DatePicker
-              picker="month"
-              value={fromMonth}
-              onChange={setFromMonth}
-              format="MMM YYYY"
-              allowClear={false}
-              style={{ minWidth: 130 }}
-              disabledDate={(d) => toMonth && d && d.isAfter(toMonth, "month")}
-            />
-            <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500, whiteSpace: "nowrap" }}>To:</span>
-            <DatePicker
-              picker="month"
-              value={toMonth}
-              onChange={setToMonth}
-              format="MMM YYYY"
-              allowClear={false}
-              style={{ minWidth: 130 }}
-              disabledDate={(d) => fromMonth && d && d.isBefore(fromMonth, "month")}
+            <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500, whiteSpace: "nowrap" }}>From – To:</span>
+            <MonthRangePicker
+              value={[fromMonth, toMonth]}
+              onChange={([from, to]) => {
+                setFromMonth(from);
+                setToMonth(to);
+              }}
             />
           </>
         )}

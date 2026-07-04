@@ -1,5 +1,6 @@
 import { useContext, useEffect, useMemo, useState } from "react";
-import { Table, Select, message, DatePicker, Button, Space, Divider } from "antd";
+import { Table, Select, message, Button, Space, Divider } from "antd";
+import MonthRangePicker from "../../../Components/MonthRangePicker";
 import { DownloadOutlined, PlusSquareOutlined, MinusSquareOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import "./style.css";
@@ -580,20 +581,16 @@ const DailySTT = () => {
           />
 
           <Space>
-            <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500 }}>From:</span>
-            <DatePicker
-              picker="month"
-              value={fromMonth ? dayjs(fromMonth, "YYYYMM") : null}
-              onChange={(v) => v && setFromMonth(v.format("YYYYMM"))}
-              allowClear={false}
-            />
-            <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500 }}>To:</span>
-            <DatePicker
-              picker="month"
-              value={toMonth ? dayjs(toMonth, "YYYYMM") : null}
-              disabledDate={(d) => fromMonth && d.isBefore(dayjs(fromMonth, "YYYYMM"), "month")}
-              onChange={(v) => v && setToMonth(v.format("YYYYMM"))}
-              allowClear={false}
+            <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500 }}>From – To:</span>
+            <MonthRangePicker
+              value={[
+                fromMonth ? dayjs(fromMonth, "YYYYMM") : null,
+                toMonth ? dayjs(toMonth, "YYYYMM") : null,
+              ]}
+              onChange={([from, to]) => {
+                setFromMonth(from.format("YYYYMM"));
+                setToMonth(to.format("YYYYMM"));
+              }}
             />
           </Space>
 

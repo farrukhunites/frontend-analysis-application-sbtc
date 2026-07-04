@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   Table,
   Select,
@@ -8,9 +8,9 @@ import {
   Divider,
   Input,
   Space,
-  DatePicker,
   Segmented,
 } from "antd";
+import MonthRangePicker from "../../../Components/MonthRangePicker";
 import { DownloadOutlined, SearchOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
@@ -54,7 +54,7 @@ const PctCell = ({ v, allCount }) => {
   );
 };
 
-const nameSearchProps = (getName) => ({
+const nameSearchProps = (getName, placeholder = "Search branch") => ({
   filterDropdown: ({
     setSelectedKeys,
     selectedKeys,
@@ -64,7 +64,7 @@ const nameSearchProps = (getName) => ({
     <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()}>
       <Input
         autoFocus
-        placeholder="Search branch"
+        placeholder={placeholder}
         value={selectedKeys[0]}
         onChange={(e) =>
           setSelectedKeys(e.target.value ? [e.target.value] : [])
@@ -124,8 +124,19 @@ const ChannelCoverage = () => {
   const [branches, setBranches] = useState([]);
   const [selectedBranches, setSelectedBranches] = useState([]);
   const [selectedChannels, setSelectedChannels] = useState([]);
-  const [datePreset, setDatePreset] = useState("YTD");
-  const [customRange, setCustomRange] = useState({ from: null, to: null });
+  // Date range: default to YTD (Jan of anchor month → anchor month). The
+  // anchor is the navbar's selectedMonth (or current month if unset).
+  const anchorMonth = selectedMonth
+    ? dayjs(`${selectedMonth.slice(0, 4)}-${selectedMonth.slice(4)}-01`)
+    : dayjs().startOf("month");
+  const [fromMonth, setFromMonth] = useState(anchorMonth.startOf("year"));
+  const [toMonth, setToMonth] = useState(anchorMonth);
+  // "byBranch" = rows are branches (default); "byChannel" = transposed:
+  // rows are channels, columns are branches. Default flips to byChannel when
+  // the user has access to fewer than 4 branches — the transposed layout is
+  // easier to read when there are only 1-2 branch columns.
+  const [viewOrientation, setViewOrientation] = useState("byBranch");
+  const orientationLockedByUser = useRef(false);
   const [loading, setLoading] = useState(false);
   const [reportData, setReportData] = useState({
     channels: [],
@@ -148,43 +159,13 @@ const ChannelCoverage = () => {
     return map;
   }, [branches]);
 
-  // Resolve the active date range from preset + selectedMonth anchor.
-  // Anchor month is the "to" month for relative presets; YTD spans Jan(anchor) -> anchor.
-  const { fromMonth, toMonth } = useMemo(() => {
-    const fmt = (d) => d.format("YYYYMM");
-    const anchor = selectedMonth
-      ? dayjs(`${selectedMonth.slice(0, 4)}-${selectedMonth.slice(4)}-01`)
-      : dayjs();
-    if (datePreset === "Custom") {
-      if (customRange.from && customRange.to) {
-        const a = customRange.from.isAfter(customRange.to)
-          ? customRange.to
-          : customRange.from;
-        const b = customRange.from.isAfter(customRange.to)
-          ? customRange.from
-          : customRange.to;
-        return { fromMonth: fmt(a), toMonth: fmt(b) };
-      }
-      return { fromMonth: null, toMonth: null };
-    }
-    const monthsBack =
-      { "3M": 2, "6M": 5, "12M": 11 }[datePreset] ?? null;
-    if (monthsBack != null) {
-      return {
-        fromMonth: fmt(anchor.subtract(monthsBack, "month")),
-        toMonth:   fmt(anchor),
-      };
-    }
-    // YTD
-    return {
-      fromMonth: fmt(anchor.startOf("year")),
-      toMonth:   fmt(anchor),
-    };
-  }, [datePreset, customRange, selectedMonth]);
+  const fromMonthStr = fromMonth ? fromMonth.format("YYYYMM") : null;
+  const toMonthStr = toMonth ? toMonth.format("YYYYMM") : null;
 
-  const openDrill = ({ row, channel, useProductFilter, mode }) => {
+  const openDrill = ({ row, channel, branchName, useProductFilter, mode }) => {
     if (row.isGrandTotal) return;
-    const branchCode = branchCodeByName[row.branch_name];
+    const bName = branchName || row.branch_name;
+    const branchCode = branchCodeByName[bName];
     if (!branchCode) return;
     const drillProducts = useProductFilter ? productCodes : [];
     // When drilling on the TOTAL column, restrict the backend to the channels
@@ -194,7 +175,7 @@ const ChannelCoverage = () => {
       open: true,
       loading: true,
       data: null,
-      branchName: row.branch_name,
+      branchName: bName,
       channel: channel || null,
       channels: drillChannels || null,
       hasProductFilter: useProductFilter && productCodes.length > 0,
@@ -203,8 +184,8 @@ const ChannelCoverage = () => {
     });
     getChannelCoverageCustomers({
       month: selectedMonth,
-      fromMonth,
-      toMonth,
+      fromMonth: fromMonthStr,
+      toMonth: toMonthStr,
       branchCode,
       channel: channel || undefined,
       channels: drillChannels,
@@ -230,15 +211,18 @@ const ChannelCoverage = () => {
       const list = res?.results || [];
       setBranches(list);
       setSelectedBranches(list.map((b) => b.code));
+      if (!orientationLockedByUser.current) {
+        setViewOrientation(list.length > 0 && list.length < 4 ? "byChannel" : "byBranch");
+      }
     });
   }, []);
 
   useEffect(() => {
-    if (!fromMonth || !toMonth || !selectedBranches.length) return;
+    if (!fromMonthStr || !toMonthStr || !selectedBranches.length) return;
     setLoading(true);
     getChannelCoverage({
-      fromMonth,
-      toMonth,
+      fromMonth: fromMonthStr,
+      toMonth: toMonthStr,
       unitType: effectiveUnitType,
       valueType,
       branchCodes: selectedBranches,
@@ -248,7 +232,7 @@ const ChannelCoverage = () => {
       else setReportData(res);
       setLoading(false);
     });
-  }, [fromMonth, toMonth, effectiveUnitType, valueType, selectedBranches, productCodes]);
+  }, [fromMonthStr, toMonthStr, effectiveUnitType, valueType, selectedBranches, productCodes]);
 
   // Channels ranked lower in importance — kept in the report but pushed to the
   // end of every ordering (columns, picker, default selection).
@@ -563,8 +547,8 @@ const ChannelCoverage = () => {
     hasFilter,
     branchCodeByName,
     productCodes,
-    fromMonth,
-    toMonth,
+    fromMonthStr,
+    toMonthStr,
     effectiveUnitType,
     valueType,
     selectedProduct,
@@ -621,7 +605,672 @@ const ChannelCoverage = () => {
     return gt;
   }, [dataSource, visibleChannels, hasFilter]);
 
+  // Transposed view: rows are channels, columns are the branches present in
+  // reportData.results. Each row exposes `${branch_slug}_all/selected/…` fields
+  // built from the corresponding channel/branch cell in the byBranch dataset.
+  const branchColsFromRows = useMemo(() => {
+    const rows = reportData.results || [];
+    return rows
+      .filter((r) => !r.isGrandTotal)
+      .map((r) => ({ branch: r.branch, branchName: r.branch_name }));
+  }, [reportData.results]);
+
+  const transposedDataSource = useMemo(() => {
+    if (viewOrientation !== "byChannel") return [];
+    const channels = visibleChannels;
+    const rows = reportData.results || [];
+    if (!channels.length || !rows.length) return [];
+    const pct = (s, a) => (a ? Math.round((s / a) * 1000) / 10 : 0);
+
+    return channels.map((ch, i) => {
+      const cs = slug(ch);
+      const out = { key: i, channel: ch };
+      let totAll = 0, totSel = 0;
+      rows.forEach((br) => {
+        if (br.isGrandTotal) return;
+        const bs = slug(br.branch);
+        const a = br[`${cs}_all`] || 0;
+        const sel = br[`${cs}_selected`] || 0;
+        out[`${bs}_all`] = a;
+        out[`${bs}_selected`] = sel;
+        out[`${bs}_pct`] = pct(sel, a);
+        if (hasFilter) out[`${bs}_remaining`] = Math.max(0, a - sel);
+        totAll += a;
+        totSel += sel;
+      });
+      out.total_all = totAll;
+      out.total_selected = totSel;
+      out.total_pct = pct(totSel, totAll);
+      if (hasFilter) out.total_remaining = Math.max(0, totAll - totSel);
+      return out;
+    });
+  }, [viewOrientation, visibleChannels, reportData.results, hasFilter]);
+
+  const transposedColumns = useMemo(() => {
+    if (viewOrientation !== "byChannel") return [];
+    const branchInfos = branchColsFromRows;
+    if (!branchInfos.length) return [];
+
+    const branchCols = branchInfos.map(({ branch, branchName }) => {
+      const s = slug(branch);
+      const drillCell = ({ v, row, useProductFilter, mode, accent, bold }) => {
+        if (!v || row.isGrandTotal) {
+          const Tag = bold ? "b" : "span";
+          return <Tag style={{ color: accent || "#1E293B" }}>{fmtNum(v)}</Tag>;
+        }
+        const Tag = bold ? "b" : "span";
+        return (
+          <Tag
+            className="report-clickable-name"
+            style={{ color: accent || "#1E293B", display: "inline-block" }}
+            onClick={() =>
+              openDrill({
+                row,
+                channel: row.channel,
+                branchName,
+                useProductFilter,
+                mode,
+              })
+            }
+            title={
+              mode === "remaining"
+                ? "Open remaining-customer list"
+                : "Open coverage drill-down"
+            }
+          >
+            {fmtNum(v)}
+          </Tag>
+        );
+      };
+
+      const children = hasFilter
+        ? [
+            {
+              title: "All SBTC",
+              dataIndex: `${s}_all`,
+              align: "right",
+              width: 80,
+              render: (v, r) =>
+                drillCell({
+                  v,
+                  row: r,
+                  useProductFilter: false,
+                  accent: "#64748B",
+                }),
+            },
+            {
+              title: "Selected",
+              dataIndex: `${s}_selected`,
+              align: "right",
+              width: 90,
+              sorter: pinGrandTotal(
+                (a, b) => (a[`${s}_selected`] || 0) - (b[`${s}_selected`] || 0),
+              ),
+              render: (v, r) =>
+                drillCell({
+                  v,
+                  row: r,
+                  useProductFilter: true,
+                  accent: "var(--color-accent)",
+                  bold: true,
+                }),
+            },
+            {
+              title: "Remaining",
+              dataIndex: `${s}_remaining`,
+              align: "right",
+              width: 95,
+              sorter: pinGrandTotal(
+                (a, b) =>
+                  (a[`${s}_remaining`] || 0) - (b[`${s}_remaining`] || 0),
+              ),
+              render: (v, r) =>
+                drillCell({
+                  v,
+                  row: r,
+                  useProductFilter: true,
+                  mode: "remaining",
+                  accent: "#B91C1C",
+                  bold: true,
+                }),
+            },
+            {
+              title: "(%)",
+              dataIndex: `${s}_pct`,
+              align: "center",
+              width: 80,
+              sorter: pinGrandTotal(
+                (a, b) => (a[`${s}_pct`] || 0) - (b[`${s}_pct`] || 0),
+              ),
+              render: (v, r) => <PctCell v={v} allCount={r[`${s}_all`]} />,
+            },
+          ]
+        : [
+            {
+              title: "Customers",
+              dataIndex: `${s}_all`,
+              align: "right",
+              width: 100,
+              sorter: pinGrandTotal(
+                (a, b) => (a[`${s}_all`] || 0) - (b[`${s}_all`] || 0),
+              ),
+              render: (v, r) =>
+                drillCell({
+                  v,
+                  row: r,
+                  useProductFilter: false,
+                  accent: "var(--color-accent)",
+                  bold: true,
+                }),
+            },
+          ];
+
+      return {
+        title: <span style={{ fontWeight: 700 }}>{branch}</span>,
+        align: "center",
+        children,
+      };
+    });
+
+    // TOTAL column in transposed view: sum across all branches for the row's
+    // channel. Drill would need a "no branch filter" query which the modal
+    // doesn't support, so leave these cells non-clickable.
+    const totalStatic = ({ v, accent, bold }) => {
+      const Tag = bold ? "b" : "span";
+      return <Tag style={{ color: accent || "#1E293B" }}>{fmtNum(v)}</Tag>;
+    };
+    const totalChildren = hasFilter
+      ? [
+          {
+            title: "All",
+            dataIndex: "total_all",
+            align: "right",
+            width: 100,
+            sorter: pinGrandTotal(
+              (a, b) => (a.total_all || 0) - (b.total_all || 0),
+            ),
+            render: (v) => totalStatic({ v, accent: "#64748B" }),
+          },
+          {
+            title: "Selected",
+            dataIndex: "total_selected",
+            align: "right",
+            width: 110,
+            sorter: pinGrandTotal(
+              (a, b) => (a.total_selected || 0) - (b.total_selected || 0),
+            ),
+            render: (v) =>
+              totalStatic({ v, accent: "var(--color-primary)", bold: true }),
+          },
+          {
+            title: "Remaining",
+            dataIndex: "total_remaining",
+            align: "right",
+            width: 110,
+            sorter: pinGrandTotal(
+              (a, b) => (a.total_remaining || 0) - (b.total_remaining || 0),
+            ),
+            render: (v) => totalStatic({ v, accent: "#B91C1C", bold: true }),
+          },
+          {
+            title: "(%)",
+            dataIndex: "total_pct",
+            align: "center",
+            width: 100,
+            defaultSortOrder: "ascend",
+            sorter: pinGrandTotal(
+              (a, b) => (a.total_pct || 0) - (b.total_pct || 0),
+            ),
+            render: (v, r) => <PctCell v={v} allCount={r.total_all} />,
+          },
+        ]
+      : [
+          {
+            title: "Customers",
+            dataIndex: "total_all",
+            align: "right",
+            width: 110,
+            defaultSortOrder: "descend",
+            sorter: pinGrandTotal(
+              (a, b) => (a.total_all || 0) - (b.total_all || 0),
+            ),
+            render: (v) =>
+              totalStatic({ v, accent: "var(--color-primary)", bold: true }),
+          },
+        ];
+
+    return [
+      {
+        title: "#",
+        width: 44,
+        align: "center",
+        fixed: "left",
+        render: (_, r, i) =>
+          r.isGrandTotal ? (
+            ""
+          ) : (
+            <span style={{ color: "#64748B", fontSize: 11 }}>{i + 1}</span>
+          ),
+      },
+      {
+        title: "Channel",
+        fixed: "left",
+        width: 160,
+        ...nameSearchProps((r) => r.channel, "Search channel"),
+        render: (_, r) =>
+          r.isGrandTotal ? (
+            <b>GRAND TOTAL</b>
+          ) : (
+            <span style={{ fontWeight: 600, fontSize: 12 }}>{r.channel}</span>
+          ),
+      },
+      ...branchCols,
+      {
+        title: <span style={{ fontWeight: 700 }}>TOTAL</span>,
+        align: "center",
+        children: totalChildren,
+      },
+    ];
+  }, [
+    viewOrientation,
+    branchColsFromRows,
+    hasFilter,
+    branchCodeByName,
+    productCodes,
+    fromMonthStr,
+    toMonthStr,
+    effectiveUnitType,
+    valueType,
+    selectedProduct,
+  ]);
+
+  const transposedGrandTotals = useMemo(() => {
+    if (viewOrientation !== "byChannel") return null;
+    const rows = transposedDataSource;
+    if (!rows.length) return null;
+    const pct = (s, a) => (a ? Math.round((s / a) * 1000) / 10 : 0);
+    const sumField = (f) => rows.reduce((acc, r) => acc + (r[f] || 0), 0);
+    const gt = {};
+    branchColsFromRows.forEach(({ branch }) => {
+      const s = slug(branch);
+      const a = sumField(`${s}_all`);
+      const sel = sumField(`${s}_selected`);
+      gt[`${s}_all`] = a;
+      gt[`${s}_selected`] = sel;
+      gt[`${s}_pct`] = pct(sel, a);
+      if (hasFilter) gt[`${s}_remaining`] = Math.max(0, a - sel);
+    });
+    gt.total_all = sumField("total_all");
+    gt.total_selected = sumField("total_selected");
+    gt.total_pct = pct(gt.total_selected, gt.total_all);
+    if (hasFilter)
+      gt.total_remaining = Math.max(0, gt.total_all - gt.total_selected);
+    return gt;
+  }, [viewOrientation, transposedDataSource, branchColsFromRows, hasFilter]);
+
+  const exportTransposedToExcel = async () => {
+    const branchInfos = branchColsFromRows;
+    const results = transposedDataSource;
+    if (!branchInfos.length || !results.length) {
+      message.warning("No data to export");
+      return;
+    }
+
+    const ExcelJS = (await import("exceljs")).default;
+    const wb = new ExcelJS.Workbook();
+    wb.creator = "Wazalytics";
+    const ws = wb.addWorksheet("Coverage Report", {
+      views: [{ state: "frozen", xSplit: 2, ySplit: 2 }],
+    });
+
+    const NAV = "002060";
+    const NAV2 = "1E3A5F";
+    const LGRAY = "F1F5F9";
+    const AGOLD = "FEF3C7";
+    const PCT_GOOD = "D1FAE5";
+    const PCT_BAD = "FEE2E2";
+    const PCT_GOOD_TXT = "FF15803D";
+    const PCT_BAD_TXT = "FFB91C1C";
+    const WHITE = "FFFFFFFF";
+    const thin = (a = "FFE2E8F0") => ({ style: "thin", color: { argb: a } });
+    const bdr = { top: thin(), bottom: thin(), left: thin(), right: thin() };
+
+    const hdr = (bg) => ({
+      font: { bold: true, size: 10, color: { argb: WHITE } },
+      fill: { type: "pattern", pattern: "solid", fgColor: { argb: `FF${bg}` } },
+      alignment: { horizontal: "center", vertical: "middle", wrapText: true },
+      border: bdr,
+    });
+
+    const numFmt = '_(* #,##0_);[Red]_(* (#,##0);_(* "-"_);_(@_)';
+    const pctFmt = '0.0"%"';
+    const subHeaders = hasFilter
+      ? ["All", "Selected", "Remaining", "(%)"]
+      : ["Customers"];
+    const stride = subHeaders.length;
+
+    const r1 = ws.getRow(1);
+    r1.height = 22;
+    ws.mergeCells(1, 1, 2, 1);
+    ws.mergeCells(1, 2, 2, 2);
+    r1.getCell(1).value = "#";
+    r1.getCell(1).style = hdr(NAV);
+    r1.getCell(2).value = "Channel";
+    r1.getCell(2).style = hdr(NAV);
+
+    let col = 3;
+    branchInfos.forEach(({ branch }) => {
+      r1.getCell(col).value = branch;
+      r1.getCell(col).style = hdr(NAV);
+      if (stride > 1) ws.mergeCells(1, col, 1, col + stride - 1);
+      col += stride;
+    });
+    r1.getCell(col).value = "TOTAL";
+    r1.getCell(col).style = hdr(NAV2);
+    if (stride > 1) ws.mergeCells(1, col, 1, col + stride - 1);
+
+    const r2 = ws.getRow(2);
+    r2.height = 18;
+    col = 3;
+    branchInfos.forEach(() => {
+      subHeaders.forEach((lbl, i) => {
+        r2.getCell(col + i).value = lbl;
+        r2.getCell(col + i).style = hdr(NAV);
+      });
+      col += stride;
+    });
+    subHeaders.forEach((lbl, i) => {
+      r2.getCell(col + i).value = lbl;
+      r2.getCell(col + i).style = hdr(NAV2);
+    });
+
+    ws.getColumn(1).width = 5;
+    ws.getColumn(2).width = 22;
+    for (let c = 3; c <= 3 + branchInfos.length * stride + stride - 1; c++) {
+      ws.getColumn(c).width = stride === 1 ? 14 : 11;
+    }
+
+    const pctStyleFactory = (bg) => (val, allCount) => {
+      if (allCount == null || allCount === 0) {
+        return {
+          numFmt: '"-"',
+          font: { size: 10, color: { argb: "FF64748B" } },
+          fill: { type: "pattern", pattern: "solid", fgColor: { argb: bg } },
+          alignment: { horizontal: "center", vertical: "middle" },
+          border: bdr,
+        };
+      }
+      const good = val >= 80;
+      return {
+        numFmt: pctFmt,
+        font: {
+          size: 10,
+          bold: true,
+          color: { argb: good ? PCT_GOOD_TXT : PCT_BAD_TXT },
+        },
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: `FF${good ? PCT_GOOD : PCT_BAD}` },
+        },
+        alignment: { horizontal: "center", vertical: "middle" },
+        border: bdr,
+      };
+    };
+
+    results.forEach((row, idx) => {
+      const dr = ws.addRow({});
+      dr.height = 17;
+      const isEven = idx % 2 === 0;
+      const bg = isEven ? WHITE : `FF${LGRAY}`;
+      const pctStyle = pctStyleFactory(bg);
+
+      const cellStyle = (extra = {}) => ({
+        fill: { type: "pattern", pattern: "solid", fgColor: { argb: bg } },
+        alignment: { vertical: "middle" },
+        border: bdr,
+        ...extra,
+      });
+
+      dr.getCell(1).value = idx + 1;
+      dr.getCell(1).style = cellStyle({
+        alignment: { horizontal: "center", vertical: "middle" },
+        numFmt,
+      });
+      dr.getCell(2).value = row.channel;
+      dr.getCell(2).style = cellStyle({ font: { size: 10, bold: true } });
+
+      let c = 3;
+      branchInfos.forEach(({ branch }) => {
+        const s = slug(branch);
+        if (hasFilter) {
+          const a = row[`${s}_all`];
+          const sel = row[`${s}_selected`];
+          const rem = row[`${s}_remaining`];
+          const p = row[`${s}_pct`];
+          dr.getCell(c).value = a || null;
+          dr.getCell(c).style = {
+            numFmt,
+            font: { size: 10, color: { argb: "FF1E293B" } },
+            fill: { type: "pattern", pattern: "solid", fgColor: { argb: bg } },
+            alignment: { horizontal: "right", vertical: "middle" },
+            border: bdr,
+          };
+          dr.getCell(c + 1).value = sel || null;
+          dr.getCell(c + 1).style = {
+            numFmt,
+            font: { size: 10, bold: true, color: { argb: "FF1E293B" } },
+            fill: { type: "pattern", pattern: "solid", fgColor: { argb: bg } },
+            alignment: { horizontal: "right", vertical: "middle" },
+            border: bdr,
+          };
+          dr.getCell(c + 2).value = rem || null;
+          dr.getCell(c + 2).style = {
+            numFmt,
+            font: { size: 10, bold: true, color: { argb: "FFB91C1C" } },
+            fill: { type: "pattern", pattern: "solid", fgColor: { argb: bg } },
+            alignment: { horizontal: "right", vertical: "middle" },
+            border: bdr,
+          };
+          dr.getCell(c + 3).value = a ? p : null;
+          dr.getCell(c + 3).style = {
+            ...pctStyle(p, a),
+            numFmt: a ? '0.0"%"' : '"-"',
+          };
+        } else {
+          dr.getCell(c).value = row[`${s}_all`] || null;
+          dr.getCell(c).style = {
+            numFmt,
+            font: { size: 10, color: { argb: "FF1E293B" } },
+            fill: { type: "pattern", pattern: "solid", fgColor: { argb: bg } },
+            alignment: { horizontal: "right", vertical: "middle" },
+            border: bdr,
+          };
+        }
+        c += stride;
+      });
+
+      if (hasFilter) {
+        const a = row.total_all;
+        const sel = row.total_selected;
+        const rem = row.total_remaining;
+        const p = row.total_pct;
+        dr.getCell(c).value = a || null;
+        dr.getCell(c).style = {
+          numFmt,
+          font: { size: 10, bold: true, color: { argb: "FF002060" } },
+          fill: { type: "pattern", pattern: "solid", fgColor: { argb: bg } },
+          alignment: { horizontal: "right", vertical: "middle" },
+          border: bdr,
+        };
+        dr.getCell(c + 1).value = sel || null;
+        dr.getCell(c + 1).style = {
+          numFmt,
+          font: { size: 10, bold: true, color: { argb: "FF002060" } },
+          fill: { type: "pattern", pattern: "solid", fgColor: { argb: bg } },
+          alignment: { horizontal: "right", vertical: "middle" },
+          border: bdr,
+        };
+        dr.getCell(c + 2).value = rem || null;
+        dr.getCell(c + 2).style = {
+          numFmt,
+          font: { size: 10, bold: true, color: { argb: "FFB91C1C" } },
+          fill: { type: "pattern", pattern: "solid", fgColor: { argb: bg } },
+          alignment: { horizontal: "right", vertical: "middle" },
+          border: bdr,
+        };
+        dr.getCell(c + 3).value = a ? p : null;
+        dr.getCell(c + 3).style = pctStyle(p, a);
+      } else {
+        dr.getCell(c).value = row.total_all || null;
+        dr.getCell(c).style = {
+          numFmt,
+          font: { size: 10, bold: true, color: { argb: "FF002060" } },
+          fill: { type: "pattern", pattern: "solid", fgColor: { argb: bg } },
+          alignment: { horizontal: "right", vertical: "middle" },
+          border: bdr,
+        };
+      }
+    });
+
+    const sumField = (f) => results.reduce((acc, r) => acc + (r[f] || 0), 0);
+    const GT_BG = `FF${AGOLD}`;
+    const gtr = ws.addRow({});
+    gtr.height = 18;
+
+    const gtStyle = (extra = {}) => ({
+      fill: { type: "pattern", pattern: "solid", fgColor: { argb: GT_BG } },
+      font: { bold: true, size: 10, color: { argb: "FF1E293B" } },
+      alignment: { vertical: "middle" },
+      border: bdr,
+      ...extra,
+    });
+
+    gtr.getCell(1).value = "";
+    gtr.getCell(1).style = gtStyle();
+    gtr.getCell(2).value = "GRAND TOTAL";
+    gtr.getCell(2).style = gtStyle();
+
+    const pctOf = (s, a) => (a ? Math.round((s / a) * 1000) / 10 : 0);
+
+    let gc = 3;
+    branchInfos.forEach(({ branch }) => {
+      const s = slug(branch);
+      if (hasFilter) {
+        const a = sumField(`${s}_all`);
+        const sel = sumField(`${s}_selected`);
+        const rem = Math.max(0, a - sel);
+        const p = pctOf(sel, a);
+        const good = p >= 80;
+        gtr.getCell(gc).value = a || null;
+        gtr.getCell(gc).style = gtStyle({
+          numFmt,
+          alignment: { horizontal: "right", vertical: "middle" },
+        });
+        gtr.getCell(gc + 1).value = sel || null;
+        gtr.getCell(gc + 1).style = gtStyle({
+          numFmt,
+          alignment: { horizontal: "right", vertical: "middle" },
+        });
+        gtr.getCell(gc + 2).value = rem || null;
+        gtr.getCell(gc + 2).style = gtStyle({
+          numFmt,
+          alignment: { horizontal: "right", vertical: "middle" },
+          font: { bold: true, size: 10, color: { argb: "FFB91C1C" } },
+        });
+        gtr.getCell(gc + 3).value = a ? p : null;
+        gtr.getCell(gc + 3).style = {
+          numFmt: a ? pctFmt : '"-"',
+          font: {
+            bold: true,
+            size: 10,
+            color: {
+              argb: a ? (good ? PCT_GOOD_TXT : PCT_BAD_TXT) : "FF64748B",
+            },
+          },
+          fill: {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: a ? `FF${good ? PCT_GOOD : PCT_BAD}` : GT_BG },
+          },
+          alignment: { horizontal: "center", vertical: "middle" },
+          border: bdr,
+        };
+      } else {
+        gtr.getCell(gc).value = sumField(`${s}_all`) || null;
+        gtr.getCell(gc).style = gtStyle({
+          numFmt,
+          alignment: { horizontal: "right", vertical: "middle" },
+        });
+      }
+      gc += stride;
+    });
+    if (hasFilter) {
+      const a = sumField("total_all");
+      const sel = sumField("total_selected");
+      const rem = Math.max(0, a - sel);
+      const p = pctOf(sel, a);
+      const good = p >= 80;
+      gtr.getCell(gc).value = a || null;
+      gtr.getCell(gc).style = gtStyle({
+        numFmt,
+        alignment: { horizontal: "right", vertical: "middle" },
+        font: { bold: true, size: 10, color: { argb: "FF002060" } },
+      });
+      gtr.getCell(gc + 1).value = sel || null;
+      gtr.getCell(gc + 1).style = gtStyle({
+        numFmt,
+        alignment: { horizontal: "right", vertical: "middle" },
+        font: { bold: true, size: 10, color: { argb: "FF002060" } },
+      });
+      gtr.getCell(gc + 2).value = rem || null;
+      gtr.getCell(gc + 2).style = gtStyle({
+        numFmt,
+        alignment: { horizontal: "right", vertical: "middle" },
+        font: { bold: true, size: 10, color: { argb: "FFB91C1C" } },
+      });
+      gtr.getCell(gc + 3).value = a ? p : null;
+      gtr.getCell(gc + 3).style = {
+        numFmt: a ? pctFmt : '"-"',
+        font: {
+          bold: true,
+          size: 10,
+          color: { argb: a ? (good ? PCT_GOOD_TXT : PCT_BAD_TXT) : "FF64748B" },
+        },
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: a ? `FF${good ? PCT_GOOD : PCT_BAD}` : GT_BG },
+        },
+        alignment: { horizontal: "center", vertical: "middle" },
+        border: bdr,
+      };
+    } else {
+      gtr.getCell(gc).value = sumField("total_all") || null;
+      gtr.getCell(gc).style = gtStyle({
+        numFmt,
+        alignment: { horizontal: "right", vertical: "middle" },
+        font: { bold: true, size: 10, color: { argb: "FF002060" } },
+      });
+    }
+
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Coverage_Report_Transposed_${fromMonthStr}_${toMonthStr}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const exportToExcel = async () => {
+    if (viewOrientation === "byChannel") {
+      await exportTransposedToExcel();
+      return;
+    }
     const channels = visibleChannels;
     // Pull the data rows out of the rendered dataSource — they already carry
     // per-row totals recomputed against the visible-channel subset.
@@ -978,7 +1627,7 @@ const ChannelCoverage = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `Coverage_Report_${fromMonth}_${toMonth}.xlsx`;
+    a.download = `Coverage_Report_${fromMonthStr}_${toMonthStr}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -1002,49 +1651,15 @@ const ChannelCoverage = () => {
             whiteSpace: "nowrap",
           }}
         >
-          Range:
+          From – To:
         </span>
-        <Segmented
-          value={datePreset}
-          onChange={setDatePreset}
-          options={[
-            { label: "YTD",    value: "YTD" },
-            { label: "3 M",    value: "3M" },
-            { label: "6 M",    value: "6M" },
-            { label: "12 M",   value: "12M" },
-            { label: "Custom", value: "Custom" },
-          ]}
+        <MonthRangePicker
+          value={[fromMonth, toMonth]}
+          onChange={([from, to]) => {
+            setFromMonth(from);
+            setToMonth(to);
+          }}
         />
-        {datePreset === "Custom" && (
-          <>
-            <DatePicker
-              picker="month"
-              placeholder="From month"
-              value={customRange.from}
-              onChange={(v) => setCustomRange((s) => ({ ...s, from: v }))}
-              format="MMM YYYY"
-              allowClear={false}
-              style={{ minWidth: 140 }}
-            />
-            <span style={{ color: "#64748B" }}>→</span>
-            <DatePicker
-              picker="month"
-              placeholder="To month"
-              value={customRange.to}
-              onChange={(v) => setCustomRange((s) => ({ ...s, to: v }))}
-              format="MMM YYYY"
-              allowClear={false}
-              style={{ minWidth: 140 }}
-            />
-          </>
-        )}
-        {fromMonth && toMonth && datePreset !== "Custom" && (
-          <span style={{ color: "#64748B", fontSize: 12 }}>
-            {dayjs(`${fromMonth.slice(0,4)}-${fromMonth.slice(4)}-01`).format("MMM YYYY")}
-            {" – "}
-            {dayjs(`${toMonth.slice(0,4)}-${toMonth.slice(4)}-01`).format("MMM YYYY")}
-          </span>
-        )}
 
         <Divider type="vertical" style={{ height: 24 }} />
 
@@ -1145,6 +1760,30 @@ const ChannelCoverage = () => {
           )}
         />
 
+        <Divider type="vertical" style={{ height: 24 }} />
+
+        <span
+          style={{
+            color: "#64748B",
+            fontSize: 13,
+            fontWeight: 500,
+            whiteSpace: "nowrap",
+          }}
+        >
+          View:
+        </span>
+        <Segmented
+          value={viewOrientation}
+          onChange={(v) => {
+            orientationLockedByUser.current = true;
+            setViewOrientation(v);
+          }}
+          options={[
+            { label: "Branch × Channel", value: "byBranch" },
+            { label: "Channel × Branch", value: "byChannel" },
+          ]}
+        />
+
         <Button
           type="primary"
           icon={<DownloadOutlined />}
@@ -1161,8 +1800,12 @@ const ChannelCoverage = () => {
         <Table
           bordered
           size="small"
-          dataSource={dataSource}
-          columns={columns}
+          dataSource={
+            viewOrientation === "byChannel" ? transposedDataSource : dataSource
+          }
+          columns={
+            viewOrientation === "byChannel" ? transposedColumns : columns
+          }
           pagination={{ pageSize: 25, showSizeChanger: false, size: "small" }}
           scroll={{ x: "max-content", y: "55vh" }}
           locale={{
@@ -1170,8 +1813,12 @@ const ChannelCoverage = () => {
           }}
           rowClassName={(r) => (r.isGrandTotal ? "report-grand-total-row" : "")}
           summary={() => {
-            if (!grandTotals) return null;
-            const channels = visibleChannels;
+            const isTx = viewOrientation === "byChannel";
+            const gt = isTx ? transposedGrandTotals : grandTotals;
+            if (!gt) return null;
+            const groupKeys = isTx
+              ? branchColsFromRows.map((b) => b.branch)
+              : visibleChannels;
             let i = 0;
             const cell = (content, opts = {}) => (
               <Table.Summary.Cell
@@ -1186,24 +1833,24 @@ const ChannelCoverage = () => {
             const cells = [];
             cells.push(cell("", { align: "center" }));
             cells.push(cell(<b>GRAND TOTAL</b>, { align: "left" }));
-            channels.forEach((ch) => {
-              const s = slug(ch);
+            groupKeys.forEach((name) => {
+              const s = slug(name);
               if (hasFilter) {
-                cells.push(cell(<span style={{ color: "#64748B" }}>{fmtNum(grandTotals[`${s}_all`])}</span>));
-                cells.push(cell(<b style={{ color: "var(--color-accent)" }}>{fmtNum(grandTotals[`${s}_selected`])}</b>));
-                cells.push(cell(<b style={{ color: "#B91C1C" }}>{fmtNum(grandTotals[`${s}_remaining`])}</b>));
-                cells.push(cell(<PctCell v={grandTotals[`${s}_pct`]} allCount={grandTotals[`${s}_all`]} />, { align: "center" }));
+                cells.push(cell(<span style={{ color: "#64748B" }}>{fmtNum(gt[`${s}_all`])}</span>));
+                cells.push(cell(<b style={{ color: "var(--color-accent)" }}>{fmtNum(gt[`${s}_selected`])}</b>));
+                cells.push(cell(<b style={{ color: "#B91C1C" }}>{fmtNum(gt[`${s}_remaining`])}</b>));
+                cells.push(cell(<PctCell v={gt[`${s}_pct`]} allCount={gt[`${s}_all`]} />, { align: "center" }));
               } else {
-                cells.push(cell(<b style={{ color: "var(--color-accent)" }}>{fmtNum(grandTotals[`${s}_all`])}</b>));
+                cells.push(cell(<b style={{ color: "var(--color-accent)" }}>{fmtNum(gt[`${s}_all`])}</b>));
               }
             });
             if (hasFilter) {
-              cells.push(cell(<b>{fmtNum(grandTotals.total_all)}</b>));
-              cells.push(cell(<b style={{ color: "var(--color-primary)" }}>{fmtNum(grandTotals.total_selected)}</b>));
-              cells.push(cell(<b style={{ color: "#B91C1C" }}>{fmtNum(grandTotals.total_remaining)}</b>));
-              cells.push(cell(<PctCell v={grandTotals.total_pct} allCount={grandTotals.total_all} />, { align: "center" }));
+              cells.push(cell(<b>{fmtNum(gt.total_all)}</b>));
+              cells.push(cell(<b style={{ color: "var(--color-primary)" }}>{fmtNum(gt.total_selected)}</b>));
+              cells.push(cell(<b style={{ color: "#B91C1C" }}>{fmtNum(gt.total_remaining)}</b>));
+              cells.push(cell(<PctCell v={gt.total_pct} allCount={gt.total_all} />, { align: "center" }));
             } else {
-              cells.push(cell(<b style={{ color: "var(--color-primary)" }}>{fmtNum(grandTotals.total_all)}</b>));
+              cells.push(cell(<b style={{ color: "var(--color-primary)" }}>{fmtNum(gt.total_all)}</b>));
             }
             return (
               <Table.Summary fixed>
