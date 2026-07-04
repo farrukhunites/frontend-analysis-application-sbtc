@@ -250,27 +250,45 @@ const ChannelCoverage = () => {
     });
   }, [fromMonth, toMonth, effectiveUnitType, valueType, selectedBranches, productCodes]);
 
-  // Seed the channel selector once per dataset: all channels EXCEPT the
-  // default-hidden set (BRN, CSM, CFC). Keep the user's choice on subsequent
-  // loads if every selected channel still exists in the new response.
-  useEffect(() => {
+  // Channels ranked lower in importance — kept in the report but pushed to the
+  // end of every ordering (columns, picker, default selection).
+  const DEPRIORITIZED_CHANNELS = useMemo(
+    () => new Set(["BRN", "CSM", "CFC"]),
+    [],
+  );
+
+  // Reorder channels so priority channels come first, deprioritized ones last,
+  // each group preserving the backend's original order.
+  const orderedChannels = useMemo(() => {
     const apiChannels = reportData.channels || [];
-    if (!apiChannels.length) return;
-    const HIDDEN_BY_DEFAULT = new Set(["BRN", "CSM", "CFC"]);
+    const priority = apiChannels.filter(
+      (c) => !DEPRIORITIZED_CHANNELS.has(c.toUpperCase()),
+    );
+    const rest = apiChannels.filter((c) =>
+      DEPRIORITIZED_CHANNELS.has(c.toUpperCase()),
+    );
+    return [...priority, ...rest];
+  }, [reportData.channels, DEPRIORITIZED_CHANNELS]);
+
+  // Seed the channel selector once per dataset: select ALL channels (priority
+  // first, deprioritized last). Preserve the user's choice on later loads if
+  // every selected channel still exists in the new response.
+  useEffect(() => {
+    if (!orderedChannels.length) return;
     setSelectedChannels((prev) => {
-      const stillValid = prev.length && prev.every((c) => apiChannels.includes(c));
+      const stillValid =
+        prev.length && prev.every((c) => orderedChannels.includes(c));
       if (stillValid) return prev;
-      return apiChannels.filter((c) => !HIDDEN_BY_DEFAULT.has(c.toUpperCase()));
+      return orderedChannels;
     });
-  }, [reportData.channels]);
+  }, [orderedChannels]);
 
   const hasFilter = reportData.has_product_filter;
 
   const visibleChannels = useMemo(() => {
-    const apiChannels = reportData.channels || [];
     const picked = new Set(selectedChannels);
-    return apiChannels.filter((c) => picked.has(c));
-  }, [reportData.channels, selectedChannels]);
+    return orderedChannels.filter((c) => picked.has(c));
+  }, [orderedChannels, selectedChannels]);
 
   const columns = useMemo(() => {
     const channels = visibleChannels;
@@ -1098,8 +1116,8 @@ const ChannelCoverage = () => {
           value={selectedChannels}
           onChange={setSelectedChannels}
           maxTagCount="responsive"
-          disabled={!reportData.channels?.length}
-          options={(reportData.channels || []).map((c) => ({ value: c, label: c }))}
+          disabled={!orderedChannels.length}
+          options={orderedChannels.map((c) => ({ value: c, label: c }))}
           dropdownRender={(menu) => (
             <>
               <div style={{ padding: "4px 8px", display: "flex", gap: 8 }}>
@@ -1107,9 +1125,7 @@ const ChannelCoverage = () => {
                   size="small"
                   type="link"
                   style={{ padding: 0 }}
-                  onClick={() =>
-                    setSelectedChannels(reportData.channels || [])
-                  }
+                  onClick={() => setSelectedChannels(orderedChannels)}
                 >
                   Select All
                 </Button>
