@@ -23,6 +23,38 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Suppress keyboard focus rings app-wide on non-input surfaces (buttons,
+   table wrappers, links, etc.). Text inputs, selects, textareas, and date
+   pickers keep their focus indicator so form editing still reads clearly. */
+:focus,
+:focus-visible {
+  outline: none !important;
+}
+button:focus,
+button:focus-visible,
+.ant-btn:focus,
+.ant-btn:focus-visible,
+.ant-table-wrapper:focus,
+.ant-table-wrapper:focus-visible,
+.ant-table:focus,
+.ant-table:focus-visible,
+a:focus,
+a:focus-visible,
+[role="button"]:focus,
+[role="button"]:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+/* Preserve focus indicators on form fields for accessibility. */
+input:focus-visible,
+textarea:focus-visible,
+.ant-input:focus-visible,
+.ant-input-affix-wrapper:focus-visible,
+.ant-select-focused .ant-select-selector,
+.ant-picker-focused {
+  outline: revert !important;
+}
+
 /* Compact table cells */
 .ant-table-cell {
   padding: 5px !important;

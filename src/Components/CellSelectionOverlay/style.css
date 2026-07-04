@@ -1,0 +1,95 @@
+/* Cell highlight — painted via an OPAQUE inset box-shadow.
+   Reason: box-shadow renders above the cell's own background but below the
+   cell content, so antd's row hover background (CSS :hover or the
+   JS-toggled .ant-table-cell-row-hover class on fixed columns) is
+   completely masked — no translucency means no color shift on hover.
+   The `9999px` spread guarantees full-cell coverage. #DBEAFE is antd's
+   Blue-100, light enough that all text and value colors remain readable. */
+/* Selector is intentionally over-specified so it beats any equal-priority
+   `!important` rule antd's runtime CSS-in-JS might inject. */
+.ant-table-wrapper .ant-table-container .ant-table-content .ant-table-tbody > tr > td.ant-table-cell.cell-selected,
+.ant-table-wrapper .ant-table-container .ant-table-body .ant-table-tbody > tr > td.ant-table-cell.cell-selected,
+.ant-table-wrapper .ant-table-tbody > tr > td.ant-table-cell.cell-selected,
+.ant-table-cell.cell-selected {
+  box-shadow: inset 0 0 0 9999px #DBEAFE !important;
+  outline: 1px solid rgba(59, 130, 246, 0.6) !important;
+  outline-offset: -1px;
+  user-select: none;
+}
+
+/* Floating stats badge in bottom-right — deliberately quiet: light surface,
+   soft border, tiny type. Meant to feel like a subtle info strip, not a UI
+   element demanding attention. */
+.cell-selection-badge {
+  position: fixed;
+  bottom: 14px;
+  right: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(6px);
+  color: #475569;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 1.2;
+  z-index: 9999;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  opacity: 0.85;
+  transition: opacity 0.15s;
+}
+.cell-selection-badge:hover {
+  opacity: 1;
+}
+.cell-selection-badge .csb-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.cell-selection-badge .csb-label {
+  color: #94A3B8;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-weight: 500;
+}
+.cell-selection-badge b {
+  font-weight: 600;
+  color: #334155;
+  font-size: 11px;
+}
+.cell-selection-badge .csb-sep {
+  width: 1px;
+  height: 10px;
+  background: #E2E8F0;
+}
+.cell-selection-badge .csb-hint {
+  color: #94A3B8;
+  font-size: 10px;
+  font-style: italic;
+}
+.cell-selection-badge .csb-close {
+  background: transparent;
+  border: none;
+  color: #94A3B8;
+  cursor: pointer;
+  padding: 0 2px;
+  border-radius: 3px;
+  font-size: 11px;
+  line-height: 1;
+  margin-left: 2px;
+  transition: color 0.15s;
+}
+.cell-selection-badge .csb-close:hover {
+  color: #475569;
+}
+
+/* Prevent native text selection while drag-selecting cells */
+.ant-table-tbody {
+  user-select: none;
+}
+
+

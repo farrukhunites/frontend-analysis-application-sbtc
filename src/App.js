@@ -11,6 +11,7 @@ import { decryptText, encryptText } from "./Utils/Encryption";
 import axios from "axios";
 import { Spin, ConfigProvider } from "antd";
 import AppRoutes from "./Routes/AppRoutes";
+import CellSelectionOverlay from "./Components/CellSelectionOverlay";
 
 const appTheme = {
   token: {
@@ -155,7 +156,10 @@ function App() {
                   <Spin size="large" />
                 </div>
               ) : (
-                <AppRoutes />
+                <>
+                  <AppRoutes />
+                  <CellSelectionOverlay />
+                </>
               )}
             </UserContext.Provider>
           </ProductProvider>
