@@ -100,11 +100,14 @@ const SalesmanAchievement = () => {
   const [reportData, setReportData]             = useState({ products: [], results: [] });
   const [breakdown, setBreakdown]               = useState({ open: false, loading: false, title: "", subtitle: "", data: [], total: 0 });
 
-  // Optional multi-month range. Off by default → single-month behaviour
-  // driven by navbar's selectedMonth (unchanged).
-  const [rangeMode, setRangeMode] = useState(false);
-  const [fromMonth, setFromMonth] = useState(null); // dayjs | null
-  const [toMonth,   setToMonth]   = useState(null); // dayjs | null
+  // Month range drives the report. Default = navbar's selectedMonth (or the
+  // current month if unset) for both bounds → single-month behaviour by default.
+  const [fromMonth, setFromMonth] = useState(() =>
+    selectedMonth ? dayjs(selectedMonth, "YYYYMM") : dayjs().startOf("month"),
+  );
+  const [toMonth, setToMonth] = useState(() =>
+    selectedMonth ? dayjs(selectedMonth, "YYYYMM") : dayjs().startOf("month"),
+  );
 
   // Comparison toggle → adds "Sales LY" + "Growth %" columns per group
   const [comparison, setComparison] = useState(false);
@@ -117,12 +120,9 @@ const SalesmanAchievement = () => {
     return next;
   });
 
-  const fromMonthStr  = fromMonth ? fromMonth.format("YYYYMM") : null;
-  const toMonthStr    = toMonth   ? toMonth.format("YYYYMM")   : null;
-  const isRangeActive = rangeMode && fromMonthStr && toMonthStr;
-  const periodLabel   = isRangeActive
-    ? `${fromMonth.format("MMM YYYY")} → ${toMonth.format("MMM YYYY")}`
-    : (selectedMonth ? dayjs(selectedMonth, "YYYYMM").format("MMM YYYY") : "");
+  const fromMonthStr = fromMonth ? fromMonth.format("YYYYMM") : null;
+  const toMonthStr   = toMonth   ? toMonth.format("YYYYMM")   : null;
+  const isMultiMonth = !!(fromMonthStr && toMonthStr && fromMonthStr !== toMonthStr);
 
   // Load branches + products once
   useEffect(() => {
@@ -150,17 +150,11 @@ const SalesmanAchievement = () => {
   // Fetch report when filters change
   useEffect(() => {
     if (!selectedBranches.length || !selectedProducts.length) return;
-    // Range mode requires both bounds; single mode requires selectedMonth.
-    if (rangeMode) {
-      if (!isRangeActive) return;
-    } else if (!selectedMonth) {
-      return;
-    }
+    if (!fromMonthStr || !toMonthStr) return;
     setLoading(true);
     getSalesmanAchievement({
-      ...(isRangeActive
-        ? { fromMonth: fromMonthStr, toMonth: toMonthStr }
-        : { month: selectedMonth }),
+      fromMonth:    fromMonthStr,
+      toMonth:      toMonthStr,
       unitType:     effectiveUnitType,
       valueType,
       branchCodes:  selectedBranches,
@@ -171,7 +165,7 @@ const SalesmanAchievement = () => {
       else setReportData(res);
       setLoading(false);
     });
-  }, [selectedMonth, rangeMode, fromMonthStr, toMonthStr, isRangeActive, effectiveUnitType, valueType, selectedBranches, selectedProducts, comparison]);
+  }, [fromMonthStr, toMonthStr, effectiveUnitType, valueType, selectedBranches, selectedProducts, comparison]);
 
   // product name → code (from the full product list used by the filter)
   const productNameToCode = useMemo(() => {
@@ -198,9 +192,8 @@ const SalesmanAchievement = () => {
 
     const res = await getSalesmanCustomerBreakdown({
       salesmanCd:  row.salesman_code,
-      ...(isRangeActive
-        ? { fromMonth: fromMonthStr, toMonth: toMonthStr }
-        : { month: selectedMonth }),
+      fromMonth:   fromMonthStr,
+      toMonth:     toMonthStr,
       productCodes,
       unitType:    effectiveUnitType,
       valueType,
@@ -213,7 +206,7 @@ const SalesmanAchievement = () => {
     } else {
       setBreakdown((p) => ({ ...p, loading: false, data: res.results || [], total: res.total || 0 }));
     }
-  }, [selectedMonth, isRangeActive, fromMonthStr, toMonthStr, effectiveUnitType, valueType, selectedProducts, selectedBranches, productNameToCode]);
+  }, [fromMonthStr, toMonthStr, effectiveUnitType, valueType, selectedProducts, selectedBranches, productNameToCode]);
 
   // Dynamic columns
   const columns = useMemo(() => {
@@ -238,7 +231,7 @@ const SalesmanAchievement = () => {
           render:    (v) => <span style={{ color: "#64748B" }}>{fmtNum(v)}</span>,
         },
         {
-          title:     isRangeActive ? "Sales" : "MTD",
+          title:     isMultiMonth ? "Sales" : "MTD",
           dataIndex: `${prefix}_actual`,
           key:       k("actual"),
           align:     "right",
@@ -360,7 +353,7 @@ const SalesmanAchievement = () => {
       ...productCols,
       buildGroup("__total__", "TOTAL", "total", null),
     ];
-  }, [reportData, openBreakdown, comparison, isRangeActive, selectedProducts, expandedCols]);
+  }, [reportData, openBreakdown, comparison, selectedProducts, expandedCols]);
 
   const dataSource = useMemo(() => {
     const { results } = reportData;
@@ -432,8 +425,8 @@ const SalesmanAchievement = () => {
     // Group column count grows when Comparison is on (Target/MTD/+/- ± Sales LY/Growth %).
     const groupCols  = comparison ? 5 : 3;
     const subHeaders = comparison
-      ? ["Target", isRangeActive ? "Sales" : "MTD", "+/-", "Sales LY", "Growth %"]
-      : ["Target", isRangeActive ? "Sales" : "MTD", "+/-"];
+      ? ["Target", isMultiMonth ? "Sales" : "MTD", "+/-", "Sales LY", "Growth %"]
+      : ["Target", isMultiMonth ? "Sales" : "MTD", "+/-"];
 
     // Row 1: product group headers
     const r1 = ws.getRow(1); r1.height = 22;
@@ -632,9 +625,9 @@ const SalesmanAchievement = () => {
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
     a.href = url;
-    a.download = isRangeActive
+    a.download = isMultiMonth
       ? `Salesman_Achievement_${fromMonthStr}_to_${toMonthStr}.xlsx`
-      : `Salesman_Achievement_${selectedMonth}.xlsx`;
+      : `Salesman_Achievement_${fromMonthStr}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -691,40 +684,19 @@ const SalesmanAchievement = () => {
           )}
         />
 
-        <div style={{ display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
-          <Switch
-            size="small"
-            checked={rangeMode}
-            onChange={(v) => {
-              setRangeMode(v);
-              if (!v) { setFromMonth(null); setToMonth(null); }
-              else if (selectedMonth) {
-                const m = dayjs(selectedMonth, "YYYYMM");
-                setFromMonth((prev) => prev || m);
-                setToMonth((prev) => prev || m);
-              }
-            }}
-          />
-          <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500 }}>Multi-month</span>
-        </div>
+        <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500, whiteSpace: "nowrap" }}>From – To:</span>
+        <MonthRangePicker
+          value={[fromMonth, toMonth]}
+          onChange={([from, to]) => {
+            setFromMonth(from);
+            setToMonth(to);
+          }}
+        />
 
         <div style={{ display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
           <Switch size="small" checked={comparison} onChange={setComparison} />
           <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500 }}>Comparison</span>
         </div>
-
-        {rangeMode && (
-          <>
-            <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500, whiteSpace: "nowrap" }}>From – To:</span>
-            <MonthRangePicker
-              value={[fromMonth, toMonth]}
-              onChange={([from, to]) => {
-                setFromMonth(from);
-                setToMonth(to);
-              }}
-            />
-          </>
-        )}
 
         <Button
           type="primary"
