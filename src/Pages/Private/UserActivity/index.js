@@ -53,18 +53,26 @@ const statusColor = (s) => {
   return "green";
 };
 
-const StatCard = ({ icon, label, value, accent, display, hint }) => (
-  <div className="activity-stat-card">
-    <div className="activity-stat-icon" style={{ background: `${accent}1A`, color: accent }}>
-      {icon}
+const StatCard = ({ icon, label, value, accent, display, hint, onClick, tooltip }) => {
+  const card = (
+    <div
+      className={`activity-stat-card${onClick ? " activity-stat-card-clickable" : ""}`}
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+    >
+      <div className="activity-stat-icon" style={{ background: `${accent}1A`, color: accent }}>
+        {icon}
+      </div>
+      <div>
+        <div className="activity-stat-label">{label}</div>
+        <div className="activity-stat-value">{display ?? fmtNum(value)}</div>
+        {hint ? <div className="activity-stat-hint">{hint}</div> : null}
+      </div>
     </div>
-    <div>
-      <div className="activity-stat-label">{label}</div>
-      <div className="activity-stat-value">{display ?? fmtNum(value)}</div>
-      {hint ? <div className="activity-stat-hint">{hint}</div> : null}
-    </div>
-  </div>
-);
+  );
+  return tooltip ? <Tooltip title={tooltip} placement="top">{card}</Tooltip> : card;
+};
 
 const TopBar = ({ items, getLabel, getCount, colorFor, formatCount }) => {
   const max = Math.max(...items.map(getCount), 1);
@@ -104,6 +112,7 @@ const UserActivity = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const [allUsersModal, setAllUsersModal] = useState({ open: false, scope: "today" });
+  const [slowestCallModalOpen, setSlowestCallModalOpen] = useState(false);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -169,6 +178,7 @@ const UserActivity = () => {
   const topUsers3d    = data?.top_users_3d    || [];
   const topEndpoints = data?.top_endpoints || [];
   const slowestEndpoints = data?.slowest_endpoints || [];
+  const slowestCall = data?.slowest_call_7d || null;
   const recent = data?.recent || { results: [], total: 0 };
 
   const modalUsers = allUsersModal.scope === "today" ? topUsersToday : topUsers3d;
@@ -230,7 +240,16 @@ const UserActivity = () => {
               label="Slowest Call (7d)"
               display={fmtMs(summary.max_ms_7d)}
               accent={durationColor(summary.max_ms_7d)}
-              hint="Single slowest request observed"
+              hint={slowestCall ? "Click for details" : "Single slowest request observed"}
+              onClick={slowestCall ? () => setSlowestCallModalOpen(true) : undefined}
+              tooltip={slowestCall ? (
+                <div style={{ fontSize: 12, lineHeight: 1.5 }}>
+                  <div><b>{slowestCall.method}</b> <code>{slowestCall.path}</code></div>
+                  <div>User: {slowestCall.username || "anonymous"}</div>
+                  <div>When: {fmtTs(slowestCall.timestamp)}</div>
+                  <div style={{ opacity: 0.75, marginTop: 2 }}>Click for full details</div>
+                </div>
+              ) : null}
             />
           </div>
 
@@ -403,6 +422,74 @@ const UserActivity = () => {
               scroll={{ x: "max-content", y: "50vh" }}
             />
           </Card>
+
+          <Modal
+            open={slowestCallModalOpen}
+            onCancel={() => setSlowestCallModalOpen(false)}
+            footer={null}
+            width={560}
+            title={
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 600 }}>
+                  <ThunderboltOutlined /> Slowest Call (Last 7 Days)
+                </div>
+                <div style={{ fontSize: 12, color: "#64748B", fontWeight: 400 }}>
+                  Single slowest request observed · login excluded
+                </div>
+              </div>
+            }
+            destroyOnClose
+          >
+            {slowestCall ? (
+              <div className="slowest-call-details">
+                <div className="slowest-call-hero">
+                  <div
+                    className="slowest-call-duration"
+                    style={{ color: durationColor(slowestCall.duration_ms) }}
+                  >
+                    {fmtMs(slowestCall.duration_ms)}
+                  </div>
+                  <div className="slowest-call-duration-label">Duration</div>
+                </div>
+                <div className="slowest-call-grid">
+                  <div className="slowest-call-row">
+                    <span className="slowest-call-key">Method</span>
+                    <Tag color={methodColor(slowestCall.method)} style={{ margin: 0, fontWeight: 600 }}>
+                      {slowestCall.method}
+                    </Tag>
+                  </div>
+                  <div className="slowest-call-row">
+                    <span className="slowest-call-key">Endpoint</span>
+                    <code style={{ fontSize: 12 }}>{slowestCall.path}</code>
+                  </div>
+                  <div className="slowest-call-row">
+                    <span className="slowest-call-key">Status</span>
+                    <Tag color={statusColor(slowestCall.status_code)} style={{ margin: 0 }}>
+                      {slowestCall.status_code}
+                    </Tag>
+                  </div>
+                  <div className="slowest-call-row">
+                    <span className="slowest-call-key">User</span>
+                    <span style={{ fontWeight: 600, fontSize: 12 }}>
+                      {slowestCall.username || <span style={{ color: "#CBD5E1" }}>anonymous</span>}
+                    </span>
+                  </div>
+                  <div className="slowest-call-row">
+                    <span className="slowest-call-key">IP</span>
+                    {slowestCall.ip
+                      ? <code style={{ fontSize: 12 }}>{slowestCall.ip}</code>
+                      : <span style={{ color: "#CBD5E1" }}>-</span>}
+                  </div>
+                  <div className="slowest-call-row">
+                    <span className="slowest-call-key">When</span>
+                    <span style={{ fontSize: 12, color: "#475569" }}>{fmtTs(slowestCall.timestamp)}</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No data" />
+            )}
+          </Modal>
 
           <Modal
             open={allUsersModal.open}
