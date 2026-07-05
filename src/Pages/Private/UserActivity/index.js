@@ -4,6 +4,7 @@ import {
 } from "antd";
 import {
   UserOutlined, LoginOutlined, ApiOutlined, TeamOutlined, SearchOutlined,
+  ThunderboltOutlined, ClockCircleOutlined, DashboardOutlined, HourglassOutlined,
 } from "@ant-design/icons";
 import { Navigate } from "react-router-dom";
 import { UserContext } from "../../../App";
@@ -12,6 +13,26 @@ import "./style.css";
 
 const fmtNum = (v) =>
   v == null ? "-" : Number(v).toLocaleString("en-US", { maximumFractionDigits: 0 });
+
+// Human-friendly duration formatter — ms for anything under 1 s so tiny
+// endpoints don't read as "0.03 s", seconds thereafter.
+const fmtMs = (v) => {
+  if (v == null) return "-";
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "-";
+  if (n < 1000) return `${Math.round(n)} ms`;
+  return `${(n / 1000).toFixed(n < 10000 ? 2 : 1)} s`;
+};
+
+// Tiered color: green fast, amber medium, red slow. Used by both the
+// duration column and the slowest-endpoints chart bars.
+const durationColor = (ms) => {
+  if (ms == null) return "#64748B";
+  if (ms < 300) return "#10B981";
+  if (ms < 1000) return "#F59E0B";
+  if (ms < 3000) return "#F97316";
+  return "#EF4444";
+};
 
 const fmtTs = (ts) => {
   if (!ts) return "-";
@@ -32,21 +53,23 @@ const statusColor = (s) => {
   return "green";
 };
 
-const StatCard = ({ icon, label, value, accent }) => (
+const StatCard = ({ icon, label, value, accent, display, hint }) => (
   <div className="activity-stat-card">
     <div className="activity-stat-icon" style={{ background: `${accent}1A`, color: accent }}>
       {icon}
     </div>
     <div>
       <div className="activity-stat-label">{label}</div>
-      <div className="activity-stat-value">{fmtNum(value)}</div>
+      <div className="activity-stat-value">{display ?? fmtNum(value)}</div>
+      {hint ? <div className="activity-stat-hint">{hint}</div> : null}
     </div>
   </div>
 );
 
-const TopBar = ({ items, getLabel, getCount, colorFor }) => {
+const TopBar = ({ items, getLabel, getCount, colorFor, formatCount }) => {
   const max = Math.max(...items.map(getCount), 1);
   if (!items.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No data" />;
+  const fmt = formatCount || fmtNum;
   return (
     <div className="activity-bar-list">
       {items.map((it, i) => {
@@ -61,7 +84,7 @@ const TopBar = ({ items, getLabel, getCount, colorFor }) => {
                 style={{ width: `${pct}%`, background: colorFor ? colorFor(it) : "#3B82F6" }}
               />
             </div>
-            <div className="activity-bar-count">{fmtNum(c)}</div>
+            <div className="activity-bar-count">{fmt(c)}</div>
           </div>
         );
       })}
@@ -122,9 +145,20 @@ const UserActivity = () => {
     {
       title: "Duration",
       dataIndex: "duration_ms",
-      width: 100,
+      width: 110,
       align: "right",
-      render: (v) => <span style={{ fontSize: 12, color: "#64748B" }}>{v} ms</span>,
+      sorter: (a, b) => (a.duration_ms || 0) - (b.duration_ms || 0),
+      render: (v) => (
+        <span
+          style={{
+            fontSize: 12,
+            color: durationColor(v),
+            fontWeight: v >= 1000 ? 600 : 500,
+          }}
+        >
+          {fmtMs(v)}
+        </span>
+      ),
     },
   ], []);
 
@@ -134,6 +168,7 @@ const UserActivity = () => {
   const topUsersToday = data?.top_users_today || [];
   const topUsers3d    = data?.top_users_3d    || [];
   const topEndpoints = data?.top_endpoints || [];
+  const slowestEndpoints = data?.slowest_endpoints || [];
   const recent = data?.recent || { results: [], total: 0 };
 
   const modalUsers = allUsersModal.scope === "today" ? topUsersToday : topUsers3d;
@@ -156,6 +191,47 @@ const UserActivity = () => {
             <StatCard icon={<ApiOutlined />}   label="API Calls Today" value={summary.calls_today} accent="#10B981" />
             <StatCard icon={<ApiOutlined />}   label="API Calls (7d)" value={summary.calls_7d} accent="#F59E0B" />
             <StatCard icon={<TeamOutlined />}  label="Active Users (7d)" value={summary.active_users_7d} accent="#EF4444" />
+          </div>
+
+          {/* Latency stats — separate row so the query-count numbers stay
+              visually distinct from the timing metrics. Login endpoint is
+              excluded server-side (password hashing skews the picture). */}
+          <div className="activity-stats-row activity-stats-row-latency">
+            <StatCard
+              icon={<ClockCircleOutlined />}
+              label="Avg Query Time (Today)"
+              display={fmtMs(summary.avg_ms_today)}
+              accent={durationColor(summary.avg_ms_today)}
+              hint="Mean response time across all API calls today"
+            />
+            <StatCard
+              icon={<DashboardOutlined />}
+              label="Avg Query Time (7d)"
+              display={fmtMs(summary.avg_ms_7d)}
+              accent={durationColor(summary.avg_ms_7d)}
+              hint="Rolling 7-day mean"
+            />
+            <StatCard
+              icon={<HourglassOutlined />}
+              label="P95 Latency (7d)"
+              display={fmtMs(summary.p95_ms_7d)}
+              accent={durationColor(summary.p95_ms_7d)}
+              hint="95% of requests finish under this"
+            />
+            <StatCard
+              icon={<HourglassOutlined />}
+              label="P99 Latency (7d)"
+              display={fmtMs(summary.p99_ms_7d)}
+              accent={durationColor(summary.p99_ms_7d)}
+              hint="Tail latency — worst 1% cutoff"
+            />
+            <StatCard
+              icon={<ThunderboltOutlined />}
+              label="Slowest Call (7d)"
+              display={fmtMs(summary.max_ms_7d)}
+              accent={durationColor(summary.max_ms_7d)}
+              hint="Single slowest request observed"
+            />
           </div>
 
           <div className="activity-charts-row">
@@ -201,7 +277,7 @@ const UserActivity = () => {
               <TopBar
                 items={topEndpoints}
                 getLabel={(e) => (
-                  <Tooltip title={e.path}>
+                  <Tooltip title={`${e.path} · avg ${fmtMs(e.avg_ms)}`}>
                     <span>
                       <Tag color={methodColor(e.method)} style={{ marginRight: 6 }}>{e.method}</Tag>
                       <code style={{ fontSize: 11 }}>{e.path.replace(/^\/api\//, "")}</code>
@@ -211,6 +287,61 @@ const UserActivity = () => {
                 getCount={(e) => e.call_count}
                 colorFor={() => "#6366F1"}
               />
+            </Card>
+          </div>
+
+          {/* Latency-focused chart row: ranks endpoints by AVG duration so
+              slow-but-rarely-called routes surface (they'd be invisible in
+              the top-by-count list above). */}
+          <div className="activity-charts-row activity-charts-row-single">
+            <Card
+              title={
+                <span>
+                  <HourglassOutlined /> Slowest Endpoints by Avg Duration (7d)
+                </span>
+              }
+              size="small"
+              className="activity-chart-card"
+              extra={
+                <span style={{ fontSize: 11, color: "#94A3B8" }}>
+                  min 3 calls · login excluded
+                </span>
+              }
+            >
+              {slowestEndpoints.length === 0 ? (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description="No endpoints qualify yet"
+                />
+              ) : (
+                <TopBar
+                  items={slowestEndpoints}
+                  getLabel={(e) => (
+                    <Tooltip
+                      title={
+                        <div>
+                          <div>{e.path}</div>
+                          <div>Avg: {fmtMs(e.avg_ms)}</div>
+                          <div>Max: {fmtMs(e.max_ms)}</div>
+                          <div>Calls: {fmtNum(e.call_count)}</div>
+                        </div>
+                      }
+                    >
+                      <span>
+                        <Tag color={methodColor(e.method)} style={{ marginRight: 6 }}>
+                          {e.method}
+                        </Tag>
+                        <code style={{ fontSize: 11 }}>
+                          {e.path.replace(/^\/api\//, "")}
+                        </code>
+                      </span>
+                    </Tooltip>
+                  )}
+                  getCount={(e) => e.avg_ms}
+                  formatCount={(v) => fmtMs(v)}
+                  colorFor={(e) => durationColor(e.avg_ms)}
+                />
+              )}
             </Card>
           </div>
 
