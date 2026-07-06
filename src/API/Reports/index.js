@@ -3,7 +3,7 @@ import { getToken } from "../../Utils/UpdateUserState";
 
 export const getSalesTargetOverview = ({
   month, fromMonth, toMonth, unitType, valueType,
-  branchCodes, productCodes,
+  branchCodes, productCodes, channels,
   selectedBranchCodes, selectedProductCodes,
 }) =>
   axios
@@ -17,6 +17,7 @@ export const getSalesTargetOverview = ({
         value_type:        valueType,
         "branch_codes[]":  branchCodes,
         "product_codes[]": productCodes?.length ? productCodes : undefined,
+        "channels[]":      channels?.length ? channels : undefined,
         "selected_branch_codes[]":  selectedBranchCodes?.length ? selectedBranchCodes : undefined,
         "selected_product_codes[]": selectedProductCodes?.length ? selectedProductCodes : undefined,
       },

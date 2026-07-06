@@ -6,6 +6,7 @@ import {
   Button,
   Tag,
   Space,
+  Select,
 } from "antd";
 import { CloseCircleFilled, DownloadOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -13,6 +14,7 @@ import { useDateFilter } from "../../../Contexts/DateFilterContext";
 import { UnitValueContext } from "../../../Contexts/UnitValueContext";
 import { getAllBranches } from "../../../API/Branches";
 import { getAllProducts } from "../../../API/Products";
+import { getAllChannels } from "../../../API/Channels";
 import { getSalesTargetOverview } from "../../../API/Reports";
 import MonthRangePicker from "../../../Components/MonthRangePicker";
 import RiyalIcon from "../../../Utils/RiyalIcon";
@@ -70,6 +72,12 @@ const SalesTargetOverview = () => {
 
   const [branches, setBranches] = useState([]);
   const [products, setProducts] = useState([]);
+  const [channels, setChannels] = useState([]);
+  const [selectedChannels, setSelectedChannels] = useState([]);
+  // When channels are selected the backend blanks Target / Achv% because
+  // BranchTarget isn't channel-aware. Frontend reflects this by hiding those
+  // columns entirely so the intent is unambiguous.
+  const channelFilterActive = selectedChannels.length > 0;
 
   // Picker always drives the report — default to selectedMonth (or current
   // calendar month) so the toolbar isn't blank on first render.
@@ -96,6 +104,7 @@ const SalesTargetOverview = () => {
   useEffect(() => {
     getAllBranches().then((r) => setBranches(r?.results || []));
     getAllProducts().then((r) => setProducts(r?.results || []));
+    getAllChannels().then((r) => setChannels(r?.results || []));
   }, []);
 
   useEffect(() => {
@@ -106,6 +115,7 @@ const SalesTargetOverview = () => {
       toMonth:   toMonthStr,
       unitType:  effectiveUnitType,
       valueType,
+      channels:  selectedChannels,
       selectedBranchCodes,
       selectedProductCodes,
     }).then((res) => {
@@ -120,6 +130,7 @@ const SalesTargetOverview = () => {
     toMonthStr,
     effectiveUnitType,
     valueType,
+    selectedChannels,
     selectedBranchCodes,
     selectedProductCodes,
   ]);
@@ -173,61 +184,70 @@ const SalesTargetOverview = () => {
     return Math.max(MIN, Math.min(MAX, Math.round(widest * CHAR_PX + PADDING)));
   };
 
-  const buildColumns = (nameHeader, rows, total) => [
-    {
-      title: nameHeader,
-      dataIndex: "name",
-      key: "name",
-      ellipsis: true,
-      width: nameWidth(rows, nameHeader),
-      render: (v) => <span style={{ fontWeight: 500, fontSize: 11 }}>{v}</span>,
-    },
-    {
-      title: <span>TY ({unitLabel})</span>,
-      dataIndex: "this_year",
-      key: "this_year",
-      align: "right",
-      width: numWidth(rows, total, "this_year", "TY (XXX)", "num"),
-      render: (v) => <span style={{ fontSize: 11 }}>{fmtNum(v)}</span>,
-      sorter: (a, b) => (a.this_year || 0) - (b.this_year || 0),
-    },
-    {
-      title: <span>Target</span>,
-      dataIndex: "target",
-      key: "target",
-      align: "right",
-      width: numWidth(rows, total, "target", "Target", "num"),
-      render: (v) => <span style={{ fontSize: 11 }}>{fmtNum(v)}</span>,
-      sorter: (a, b) => (a.target || 0) - (b.target || 0),
-    },
-    {
-      title: "Achv%",
-      dataIndex: "achv_pct",
-      key: "achv_pct",
-      align: "center",
-      width: numWidth(rows, total, "achv_pct", "Achv%", "pct"),
-      render: (v) => <PctCell v={v} kind="achv" />,
-      sorter: (a, b) => (a.achv_pct ?? -Infinity) - (b.achv_pct ?? -Infinity),
-    },
-    {
-      title: <span>LY ({unitLabel})</span>,
-      dataIndex: "last_year",
-      key: "last_year",
-      align: "right",
-      width: numWidth(rows, total, "last_year", "LY (XXX)", "num"),
-      render: (v) => <span style={{ fontSize: 11 }}>{fmtNum(v)}</span>,
-      sorter: (a, b) => (a.last_year || 0) - (b.last_year || 0),
-    },
-    {
-      title: "Grow%",
-      dataIndex: "grow_pct",
-      key: "grow_pct",
-      align: "center",
-      width: numWidth(rows, total, "grow_pct", "Grow%", "pct"),
-      render: (v) => <PctCell v={v} kind="grow" />,
-      sorter: (a, b) => (a.grow_pct ?? -Infinity) - (b.grow_pct ?? -Infinity),
-    },
-  ];
+  const buildColumns = (nameHeader, rows, total) => {
+    const cols = [
+      {
+        title: nameHeader,
+        dataIndex: "name",
+        key: "name",
+        ellipsis: true,
+        width: nameWidth(rows, nameHeader),
+        render: (v) => <span style={{ fontWeight: 500, fontSize: 11 }}>{v}</span>,
+      },
+      {
+        title: <span>TY ({unitLabel})</span>,
+        dataIndex: "this_year",
+        key: "this_year",
+        align: "right",
+        width: numWidth(rows, total, "this_year", "TY (XXX)", "num"),
+        render: (v) => <span style={{ fontSize: 11 }}>{fmtNum(v)}</span>,
+        sorter: (a, b) => (a.this_year || 0) - (b.this_year || 0),
+      },
+    ];
+    if (!channelFilterActive) {
+      cols.push(
+        {
+          title: <span>Target</span>,
+          dataIndex: "target",
+          key: "target",
+          align: "right",
+          width: numWidth(rows, total, "target", "Target", "num"),
+          render: (v) => <span style={{ fontSize: 11 }}>{fmtNum(v)}</span>,
+          sorter: (a, b) => (a.target || 0) - (b.target || 0),
+        },
+        {
+          title: "Achv%",
+          dataIndex: "achv_pct",
+          key: "achv_pct",
+          align: "center",
+          width: numWidth(rows, total, "achv_pct", "Achv%", "pct"),
+          render: (v) => <PctCell v={v} kind="achv" />,
+          sorter: (a, b) => (a.achv_pct ?? -Infinity) - (b.achv_pct ?? -Infinity),
+        },
+      );
+    }
+    cols.push(
+      {
+        title: <span>LY ({unitLabel})</span>,
+        dataIndex: "last_year",
+        key: "last_year",
+        align: "right",
+        width: numWidth(rows, total, "last_year", "LY (XXX)", "num"),
+        render: (v) => <span style={{ fontSize: 11 }}>{fmtNum(v)}</span>,
+        sorter: (a, b) => (a.last_year || 0) - (b.last_year || 0),
+      },
+      {
+        title: "Grow%",
+        dataIndex: "grow_pct",
+        key: "grow_pct",
+        align: "center",
+        width: numWidth(rows, total, "grow_pct", "Grow%", "pct"),
+        render: (v) => <PctCell v={v} kind="grow" />,
+        sorter: (a, b) => (a.grow_pct ?? -Infinity) - (b.grow_pct ?? -Infinity),
+      },
+    );
+    return cols;
+  };
 
   // Fixed summary row: uses AntD's <Table.Summary fixed> so it stays visible
   // when the body scrolls. Kept out of `dataSource` so it can't be sorted away.
@@ -242,12 +262,16 @@ const SalesTargetOverview = () => {
         <Table.Summary.Cell index={1} align="right">
           {totalNumCell(total?.this_year)}
         </Table.Summary.Cell>
-        <Table.Summary.Cell index={2} align="right">
-          {totalNumCell(total?.target)}
-        </Table.Summary.Cell>
-        <Table.Summary.Cell index={3} align="center">
-          <PctCell v={total?.achv_pct} kind="achv" />
-        </Table.Summary.Cell>
+        {!channelFilterActive && (
+          <>
+            <Table.Summary.Cell index={2} align="right">
+              {totalNumCell(total?.target)}
+            </Table.Summary.Cell>
+            <Table.Summary.Cell index={3} align="center">
+              <PctCell v={total?.achv_pct} kind="achv" />
+            </Table.Summary.Cell>
+          </>
+        )}
         <Table.Summary.Cell index={4} align="right">
           {totalNumCell(total?.last_year)}
         </Table.Summary.Cell>
@@ -273,12 +297,16 @@ const SalesTargetOverview = () => {
             <Table.Summary.Cell index={1} align="right" onClick={onClick} style={rowStyle}>
               <span style={{ fontSize: 11, fontWeight: 600 }}>{fmtNum(r.this_year)}</span>
             </Table.Summary.Cell>
-            <Table.Summary.Cell index={2} align="right" onClick={onClick} style={rowStyle}>
-              <span style={{ fontSize: 11, fontWeight: 600 }}>{fmtNum(r.target)}</span>
-            </Table.Summary.Cell>
-            <Table.Summary.Cell index={3} align="center" onClick={onClick} style={rowStyle}>
-              <PctCell v={r.achv_pct} kind="achv" />
-            </Table.Summary.Cell>
+            {!channelFilterActive && (
+              <>
+                <Table.Summary.Cell index={2} align="right" onClick={onClick} style={rowStyle}>
+                  <span style={{ fontSize: 11, fontWeight: 600 }}>{fmtNum(r.target)}</span>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={3} align="center" onClick={onClick} style={rowStyle}>
+                  <PctCell v={r.achv_pct} kind="achv" />
+                </Table.Summary.Cell>
+              </>
+            )}
             <Table.Summary.Cell index={4} align="right" onClick={onClick} style={rowStyle}>
               <span style={{ fontSize: 11, fontWeight: 600 }}>{fmtNum(r.last_year)}</span>
             </Table.Summary.Cell>
@@ -338,8 +366,11 @@ const SalesTargetOverview = () => {
       const ws = wb.addWorksheet(name, {
         views: [{ state: "frozen", ySplit: 3 }],
       });
+      const channelSuffix = channelFilterActive
+        ? ` · Channels ${selectedChannels.join(", ")}`
+        : "";
       ws.getCell("A1").value =
-        `${groupTitle} · Period ${period} · Unit ${unitLabelStr} · ${valueType.toUpperCase()}`;
+        `${groupTitle} · Period ${period} · Unit ${unitLabelStr} · ${valueType.toUpperCase()}${channelSuffix}`;
       ws.getCell("A1").font = { bold: true, size: 11 };
       ws.mergeCells("A1:F1");
 
@@ -363,8 +394,9 @@ const SalesTargetOverview = () => {
         const row = ws.getRow(4 + idx);
         row.getCell(1).value = r.name;
         row.getCell(2).value = r.this_year || 0;
-        row.getCell(3).value = r.target || 0;
-        row.getCell(4).value = r.achv_pct == null ? null : r.achv_pct;
+        row.getCell(3).value = channelFilterActive ? null : (r.target || 0);
+        row.getCell(4).value =
+          channelFilterActive || r.achv_pct == null ? null : r.achv_pct;
         row.getCell(5).value = r.last_year || 0;
         row.getCell(6).value = r.grow_pct == null ? null : r.grow_pct;
         [2, 3, 5].forEach((i) => {
@@ -381,9 +413,9 @@ const SalesTargetOverview = () => {
       const totalRow = ws.getRow(4 + rows.length);
       totalRow.getCell(1).value = "Total";
       totalRow.getCell(2).value = total?.this_year || 0;
-      totalRow.getCell(3).value = total?.target || 0;
+      totalRow.getCell(3).value = channelFilterActive ? null : (total?.target || 0);
       totalRow.getCell(4).value =
-        total?.achv_pct == null ? null : total.achv_pct;
+        channelFilterActive || total?.achv_pct == null ? null : total.achv_pct;
       totalRow.getCell(5).value = total?.last_year || 0;
       totalRow.getCell(6).value =
         total?.grow_pct == null ? null : total.grow_pct;
@@ -411,8 +443,9 @@ const SalesTargetOverview = () => {
         const row = ws.getRow(rowNum);
         row.getCell(1).value = r.name;
         row.getCell(2).value = r.this_year || 0;
-        row.getCell(3).value = r.target || 0;
-        row.getCell(4).value = r.achv_pct == null ? null : r.achv_pct;
+        row.getCell(3).value = channelFilterActive ? null : (r.target || 0);
+        row.getCell(4).value =
+          channelFilterActive || r.achv_pct == null ? null : r.achv_pct;
         row.getCell(5).value = r.last_year || 0;
         row.getCell(6).value = r.grow_pct == null ? null : r.grow_pct;
         [2, 3, 5].forEach((i) => { row.getCell(i).numFmt = numFmt; });
@@ -486,9 +519,41 @@ const SalesTargetOverview = () => {
             }}
           />
         </Space>
+        <Space>
+          <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500 }}>Channels:</span>
+          <Select
+            mode="multiple"
+            allowClear
+            placeholder="All channels"
+            value={selectedChannels}
+            onChange={setSelectedChannels}
+            style={{ minWidth: 220 }}
+            size="small"
+            maxTagCount="responsive"
+            options={channels.map((c) => ({
+              label: c.name,
+              value: c.name,
+            }))}
+          />
+        </Space>
         <div style={{ flex: 1 }} />
-        {(selectedProductCodes.length > 0 || selectedBranchCodes.length > 0) && (
+        {(selectedProductCodes.length > 0 ||
+          selectedBranchCodes.length > 0 ||
+          selectedChannels.length > 0) && (
           <Space size={4} wrap>
+            {selectedChannels.map((name) => (
+              <Tag
+                key={`c-${name}`}
+                closable
+                onClose={(e) => {
+                  e.preventDefault();
+                  setSelectedChannels((cur) => cur.filter((n) => n !== name));
+                }}
+                color="purple"
+              >
+                Channel: {name}
+              </Tag>
+            ))}
             {selectedProductCodes.map((code) => (
               <Tag
                 key={`p-${code}`}
@@ -521,6 +586,7 @@ const SalesTargetOverview = () => {
               onClick={() => {
                 setSelectedProductCodes([]);
                 setSelectedBranchCodes([]);
+                setSelectedChannels([]);
               }}
             >
               Clear filters
