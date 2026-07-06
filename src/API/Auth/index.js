@@ -74,4 +74,16 @@ const adminSetPassword = async (data) => {
   }
 };
 
-export { login, refresh, changePassword, getAdminUsers, adminSetPassword };
+const getCurrentUser = async () => {
+  try {
+    const res = await axios.get(
+      `${process.env.REACT_APP_BACKEND_URL}auth/me/`,
+      { headers: { Authorization: `Bearer ${getToken()}` } }
+    );
+    return res.data;
+  } catch (error) {
+    return { error: error.response?.data || error.message };
+  }
+};
+
+export { login, refresh, changePassword, getAdminUsers, adminSetPassword, getCurrentUser };

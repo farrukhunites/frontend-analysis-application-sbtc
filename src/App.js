@@ -6,7 +6,7 @@ import updateUserStates, {
   getRefreshToken,
   handleLogout,
 } from "./Utils/UpdateUserState";
-import { refresh } from "./API/Auth";
+import { refresh, getCurrentUser } from "./API/Auth";
 import { decryptText, encryptText } from "./Utils/Encryption";
 import axios from "axios";
 import { Spin, ConfigProvider } from "antd";
@@ -122,6 +122,19 @@ function App() {
       const localToken = getRefreshToken();
       if (localToken) {
         await refreshAccessToken({ refresh: localToken });
+        // Re-fetch access metadata from server so denied_pages / denied_reports
+        // reflect any admin changes made after the last login. Merge with the
+        // localStorage copy so we keep fields the /me endpoint doesn't return.
+        const fresh = await getCurrentUser();
+        if (fresh && !fresh.error) {
+          const stored = updateUserStates(setUserData, setUserToken)?.user || {};
+          const merged = { ...stored, ...fresh };
+          localStorage.setItem(
+            encryptText("user"),
+            encryptText(JSON.stringify(merged)),
+          );
+          setUserData(merged);
+        }
       }
 
       setLoading(false);
