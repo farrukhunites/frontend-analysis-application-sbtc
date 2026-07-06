@@ -71,4 +71,22 @@
   font-size: 11px !important;
 }
 
+/* Rollup rows (Indomie Pillow / Cup) — pinned below the total. Distinct
+   slate tint so it's visually clear they're informational aggregates, not
+   part of the grand total. */
+.sto-table .sto-rollup-row > td {
+  background: #F1F5F9 !important;
+  font-weight: 500 !important;
+  color: #334155 !important;
+  border-top: 1px dashed #CBD5E1 !important;
+  padding: 5px 6px !important;
+  font-size: 11px !important;
+}
+.sto-table .sto-rollup-row:hover > td {
+  background: #E2E8F0 !important;
+}
+.sto-table .sto-rollup-row.sto-row-selected > td {
+  background: #DBEAFE !important;
+}
+
 

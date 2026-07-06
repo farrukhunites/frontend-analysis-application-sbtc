@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import {
   Table,
   Skeleton,
@@ -59,8 +59,10 @@ const SalesTargetOverview = () => {
   const { unitType, valueType, effectiveUnitType, mode } =
     useContext(UnitValueContext);
   const isValueMode = mode === "val";
+  // Column headers use the navy background — white keeps the riyal glyph
+  // legible there. Non-value units are already rendered as plain white text.
   const unitLabel = isValueMode ? (
-    <RiyalIcon width={11} height={11} color="#1E293B" />
+    <RiyalIcon width={11} height={11} color="#FFFFFF" />
   ) : (
     (unitType || "ctn").toUpperCase()
   );
@@ -80,8 +82,13 @@ const SalesTargetOverview = () => {
   const toMonthStr   = toMonth   ? toMonth.format("YYYYMM")   : null;
   const isRangeActive = !!(fromMonthStr && toMonthStr);
 
-  const [selectedProductCode, setSelectedProductCode] = useState(null);
-  const [selectedBranchCode, setSelectedBranchCode] = useState(null);
+  // Multi-select: click a row to toggle its inclusion. Empty arrays mean
+  // "no filter — show everything in scope".
+  const [selectedProductCodes, setSelectedProductCodes] = useState([]);
+  const [selectedBranchCodes, setSelectedBranchCodes] = useState([]);
+
+  const toggleCode = (codes, code) =>
+    codes.includes(code) ? codes.filter((c) => c !== code) : [...codes, code];
 
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
@@ -99,8 +106,8 @@ const SalesTargetOverview = () => {
       toMonth:   toMonthStr,
       unitType:  effectiveUnitType,
       valueType,
-      selectedBranchCode,
-      selectedProductCode,
+      selectedBranchCodes,
+      selectedProductCodes,
     }).then((res) => {
       if (res?.error) {
         message.error("Failed to load report");
@@ -113,32 +120,30 @@ const SalesTargetOverview = () => {
     toMonthStr,
     effectiveUnitType,
     valueType,
-    selectedBranchCode,
-    selectedProductCode,
+    selectedBranchCodes,
+    selectedProductCodes,
   ]);
 
-  const productName = useMemo(
-    () => products.find((p) => p.code === selectedProductCode)?.name,
-    [selectedProductCode, products],
-  );
-  const branchName = useMemo(
-    () => branches.find((b) => b.code === selectedBranchCode)?.name,
-    [selectedBranchCode, branches],
-  );
+  // Names lookup used by both the row-tags and the header labels below.
+  const productLabelFor = (code) => {
+    if (code === "9999901") return "INDOMIE PILLOW (All)";
+    if (code === "9999902") return "INDOMIE CUP (All)";
+    return products.find((p) => p.code === code)?.name || code;
+  };
+  const branchLabelFor = (code) =>
+    branches.find((b) => b.code === code)?.name || code;
 
   const onProductRow = (row) => ({
-    onClick: () =>
-      setSelectedProductCode((cur) => (cur === row.code ? null : row.code)),
+    onClick: () => setSelectedProductCodes((cur) => toggleCode(cur, row.code)),
     style: { cursor: "pointer" },
   });
   const onBranchRow = (row) => ({
-    onClick: () =>
-      setSelectedBranchCode((cur) => (cur === row.code ? null : row.code)),
+    onClick: () => setSelectedBranchCodes((cur) => toggleCode(cur, row.code)),
     style: { cursor: "pointer" },
   });
 
-  const rowClassName = (selectedCode) => (row) =>
-    row.code === selectedCode ? "sto-row-selected" : "";
+  const rowClassName = (selectedCodes) => (row) =>
+    selectedCodes.includes(row.code) ? "sto-row-selected" : "";
 
   // Compute width from the widest formatted value in a numeric column
   // (including the total row and header). Char-to-px is calibrated for the
@@ -226,7 +231,9 @@ const SalesTargetOverview = () => {
 
   // Fixed summary row: uses AntD's <Table.Summary fixed> so it stays visible
   // when the body scrolls. Kept out of `dataSource` so it can't be sorted away.
-  const renderSummary = (total) => () => (
+  // Optional `rollups` render below Total as informational aggregate rows
+  // (e.g. Indomie Pillow/Cup) — they are deliberately excluded from the total.
+  const renderSummary = (total, rollups = []) => () => (
     <Table.Summary fixed>
       <Table.Summary.Row className="sto-total-row">
         <Table.Summary.Cell index={0}>
@@ -248,15 +255,53 @@ const SalesTargetOverview = () => {
           <PctCell v={total?.grow_pct} kind="grow" />
         </Table.Summary.Cell>
       </Table.Summary.Row>
+      {rollups.map((r) => {
+        const isSelected = selectedProductCodes.includes(r.code);
+        const onClick = () =>
+          setSelectedProductCodes((cur) => toggleCode(cur, r.code));
+        const rowStyle = { cursor: "pointer" };
+        return (
+          <Table.Summary.Row
+            key={r.code}
+            className={`sto-rollup-row${isSelected ? " sto-row-selected" : ""}`}
+          >
+            <Table.Summary.Cell index={0} onClick={onClick} style={rowStyle}>
+              <span style={{ fontSize: 11, fontStyle: "italic", fontWeight: 600 }}>
+                {r.name}
+              </span>
+            </Table.Summary.Cell>
+            <Table.Summary.Cell index={1} align="right" onClick={onClick} style={rowStyle}>
+              <span style={{ fontSize: 11, fontWeight: 600 }}>{fmtNum(r.this_year)}</span>
+            </Table.Summary.Cell>
+            <Table.Summary.Cell index={2} align="right" onClick={onClick} style={rowStyle}>
+              <span style={{ fontSize: 11, fontWeight: 600 }}>{fmtNum(r.target)}</span>
+            </Table.Summary.Cell>
+            <Table.Summary.Cell index={3} align="center" onClick={onClick} style={rowStyle}>
+              <PctCell v={r.achv_pct} kind="achv" />
+            </Table.Summary.Cell>
+            <Table.Summary.Cell index={4} align="right" onClick={onClick} style={rowStyle}>
+              <span style={{ fontSize: 11, fontWeight: 600 }}>{fmtNum(r.last_year)}</span>
+            </Table.Summary.Cell>
+            <Table.Summary.Cell index={5} align="center" onClick={onClick} style={rowStyle}>
+              <PctCell v={r.grow_pct} kind="grow" />
+            </Table.Summary.Cell>
+          </Table.Summary.Row>
+        );
+      })}
     </Table.Summary>
   );
 
-  const productHeader = selectedBranchCode
-    ? `Sales Target by Product — ${branchName || selectedBranchCode}`
-    : "Sales Target by Product";
-  const branchHeader = selectedProductCode
-    ? `Sales Target by Branch — ${productName || selectedProductCode}`
-    : "Sales Target by Branch";
+  // Header suffix reflects the filter: single label when one code is selected,
+  // count when multiple, blank otherwise.
+  const scopeSuffix = (codes, labelFor, noun) => {
+    if (!codes.length) return "";
+    if (codes.length === 1) return ` — ${labelFor(codes[0])}`;
+    return ` — ${codes.length} ${noun}`;
+  };
+  const productHeader = "Sales Target by Product"
+    + scopeSuffix(selectedBranchCodes, branchLabelFor, "branches");
+  const branchHeader = "Sales Target by Branch"
+    + scopeSuffix(selectedProductCodes, productLabelFor, "products");
 
   const exportToExcel = async () => {
     if (!data) {
@@ -289,7 +334,7 @@ const SalesTargetOverview = () => {
       ? fromMonthStr
       : `${fromMonthStr} — ${toMonthStr}`;
 
-    const addSheet = (name, rows, total, groupTitle) => {
+    const addSheet = (name, rows, total, groupTitle, rollups = []) => {
       const ws = wb.addWorksheet(name, {
         views: [{ state: "frozen", ySplit: 3 }],
       });
@@ -358,6 +403,31 @@ const SalesTargetOverview = () => {
         c.border = bdr;
       });
 
+      // Rollup rows (Indomie Pillow/Cup) — appended AFTER the total with a
+      // muted slate fill so it's clear they're aggregates, not part of it.
+      const ROLLUP_FILL = "F1F5F9";
+      rollups.forEach((r, idx) => {
+        const rowNum = 4 + rows.length + 1 + idx;
+        const row = ws.getRow(rowNum);
+        row.getCell(1).value = r.name;
+        row.getCell(2).value = r.this_year || 0;
+        row.getCell(3).value = r.target || 0;
+        row.getCell(4).value = r.achv_pct == null ? null : r.achv_pct;
+        row.getCell(5).value = r.last_year || 0;
+        row.getCell(6).value = r.grow_pct == null ? null : r.grow_pct;
+        [2, 3, 5].forEach((i) => { row.getCell(i).numFmt = numFmt; });
+        [4, 6].forEach((i) => { row.getCell(i).numFmt = pctFmt; });
+        row.eachCell((c) => {
+          c.font = { italic: true, bold: true, color: { argb: "FF334155" } };
+          c.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: `FF${ROLLUP_FILL}` },
+          };
+          c.border = bdr;
+        });
+      });
+
       ws.columns = [
         { width: 28 },
         { width: 16 },
@@ -373,6 +443,7 @@ const SalesTargetOverview = () => {
       data.products || [],
       data.products_total,
       productHeader,
+      data.product_rollups || [],
     );
     addSheet(
       "Branches",
@@ -416,38 +487,40 @@ const SalesTargetOverview = () => {
           />
         </Space>
         <div style={{ flex: 1 }} />
-        {(selectedProductCode || selectedBranchCode) && (
-          <Space>
-            {selectedProductCode && (
+        {(selectedProductCodes.length > 0 || selectedBranchCodes.length > 0) && (
+          <Space size={4} wrap>
+            {selectedProductCodes.map((code) => (
               <Tag
+                key={`p-${code}`}
                 closable
                 onClose={(e) => {
                   e.preventDefault();
-                  setSelectedProductCode(null);
+                  setSelectedProductCodes((cur) => cur.filter((c) => c !== code));
                 }}
                 color="blue"
               >
-                Product: {productName || selectedProductCode}
+                Product: {productLabelFor(code)}
               </Tag>
-            )}
-            {selectedBranchCode && (
+            ))}
+            {selectedBranchCodes.map((code) => (
               <Tag
+                key={`b-${code}`}
                 closable
                 onClose={(e) => {
                   e.preventDefault();
-                  setSelectedBranchCode(null);
+                  setSelectedBranchCodes((cur) => cur.filter((c) => c !== code));
                 }}
                 color="geekblue"
               >
-                Branch: {branchName || selectedBranchCode}
+                Branch: {branchLabelFor(code)}
               </Tag>
-            )}
+            ))}
             <Button
               size="small"
               icon={<CloseCircleFilled />}
               onClick={() => {
-                setSelectedProductCode(null);
-                setSelectedBranchCode(null);
+                setSelectedProductCodes([]);
+                setSelectedBranchCodes([]);
               }}
             >
               Clear filters
@@ -498,10 +571,10 @@ const SalesTargetOverview = () => {
               dataSource={data?.products || []}
               columns={buildColumns("Sub Group", data?.products || [], data?.products_total)}
               onRow={onProductRow}
-              rowClassName={rowClassName(selectedProductCode)}
+              rowClassName={rowClassName(selectedProductCodes)}
               scroll={{ y: "calc(100vh - 400px)" }}
               tableLayout="fixed"
-              summary={renderSummary(data?.products_total)}
+              summary={renderSummary(data?.products_total, data?.product_rollups || [])}
               sticky
             />
           </div>
@@ -532,7 +605,7 @@ const SalesTargetOverview = () => {
               dataSource={data?.branches || []}
               columns={buildColumns("SBTC Branch", data?.branches || [], data?.branches_total)}
               onRow={onBranchRow}
-              rowClassName={rowClassName(selectedBranchCode)}
+              rowClassName={rowClassName(selectedBranchCodes)}
               scroll={{ y: "calc(100vh - 400px)" }}
               tableLayout="fixed"
               summary={renderSummary(data?.branches_total)}
