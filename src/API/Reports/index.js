@@ -4,7 +4,7 @@ import { getToken } from "../../Utils/UpdateUserState";
 export const getSalesTargetOverview = ({
   month, fromMonth, toMonth, unitType, valueType,
   branchCodes, productCodes, channels,
-  selectedBranchCodes, selectedProductCodes,
+  selectedBranchCodes, selectedProductCodes, lyMode,
 }) =>
   axios
     .get(`${process.env.REACT_APP_BACKEND_URL}reports/sales-target-overview/`, {
@@ -20,6 +20,7 @@ export const getSalesTargetOverview = ({
         "channels[]":      channels?.length ? channels : undefined,
         "selected_branch_codes[]":  selectedBranchCodes?.length ? selectedBranchCodes : undefined,
         "selected_product_codes[]": selectedProductCodes?.length ? selectedProductCodes : undefined,
+        ly_mode:           lyMode || undefined,
       },
     })
     .then((r) => r.data)

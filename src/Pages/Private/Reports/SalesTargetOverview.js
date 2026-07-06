@@ -7,6 +7,8 @@ import {
   Tag,
   Space,
   Select,
+  Switch,
+  Tooltip,
 } from "antd";
 import { CloseCircleFilled, DownloadOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -95,6 +97,12 @@ const SalesTargetOverview = () => {
   const [selectedProductCodes, setSelectedProductCodes] = useState([]);
   const [selectedBranchCodes, setSelectedBranchCodes] = useState([]);
 
+  // LY comparison mode. "full" = compare against LY full month(s).
+  // "mtd"  = when the report tail is the current calendar month, LY tail is
+  //           day-1..today of last year (uses the daily aggregate on the backend).
+  const [lyMtdMode, setLyMtdMode] = useState(false);
+  const lyMode = lyMtdMode ? "mtd" : "full";
+
   const toggleCode = (codes, code) =>
     codes.includes(code) ? codes.filter((c) => c !== code) : [...codes, code];
 
@@ -118,6 +126,7 @@ const SalesTargetOverview = () => {
       channels:  selectedChannels,
       selectedBranchCodes,
       selectedProductCodes,
+      lyMode,
     }).then((res) => {
       if (res?.error) {
         message.error("Failed to load report");
@@ -133,6 +142,7 @@ const SalesTargetOverview = () => {
     selectedChannels,
     selectedBranchCodes,
     selectedProductCodes,
+    lyMode,
   ]);
 
   // Names lookup used by both the row-tags and the header labels below.
@@ -369,8 +379,11 @@ const SalesTargetOverview = () => {
       const channelSuffix = channelFilterActive
         ? ` · Channels ${selectedChannels.join(", ")}`
         : "";
+      const lySuffix = data?.ly_mtd_active
+        ? ` · LY MTD (day 1–${data.ly_mtd_day})`
+        : "";
       ws.getCell("A1").value =
-        `${groupTitle} · Period ${period} · Unit ${unitLabelStr} · ${valueType.toUpperCase()}${channelSuffix}`;
+        `${groupTitle} · Period ${period} · Unit ${unitLabelStr} · ${valueType.toUpperCase()}${channelSuffix}${lySuffix}`;
       ws.getCell("A1").font = { bold: true, size: 11 };
       ws.mergeCells("A1:F1");
 
@@ -535,6 +548,31 @@ const SalesTargetOverview = () => {
               value: c.name,
             }))}
           />
+        </Space>
+        <Space>
+          <Tooltip
+            title={
+              lyMtdMode
+                ? "LY tail is day 1..today of last year (day-anchored)."
+                : "LY tail is the full same month(s) of last year."
+            }
+          >
+            <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500 }}>
+              LY MTD:
+            </span>
+          </Tooltip>
+          <Switch
+            size="small"
+            checked={lyMtdMode}
+            onChange={setLyMtdMode}
+            checkedChildren="MTD"
+            unCheckedChildren="Full"
+          />
+          {data?.ly_mtd_active && (
+            <Tag color="gold" style={{ fontSize: 11 }}>
+              LY: day 1–{data.ly_mtd_day}
+            </Tag>
+          )}
         </Space>
         <div style={{ flex: 1 }} />
         {(selectedProductCodes.length > 0 ||
