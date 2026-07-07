@@ -62,6 +62,16 @@ function App() {
       myRefreshToken = getRefreshToken();
     }
     const res = await refresh(myRefreshToken);
+    // Backend flags a kicked-out session with code "session_replaced" (see
+    // core/authentication.py). Stash a flag the Login page reads to show a
+    // friendlier notice than a generic "session expired".
+    const errCode =
+      res?.response?.data?.code || res?.data?.code;
+    if (errCode === "session_replaced") {
+      try {
+        localStorage.setItem("auth_notice", "session_replaced");
+      } catch {}
+    }
     if (res?.status === 200) {
       const localStorageItems = localStorage;
       if (localStorageItems.length !== 0) {

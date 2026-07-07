@@ -1,5 +1,5 @@
-import React, { useContext, useState } from "react";
-import { Form, Input, Button, notification } from "antd";
+import React, { useContext, useEffect, useState } from "react";
+import { Alert, Form, Input, Button, notification } from "antd";
 import "./style.css";
 import { useNavigate } from "react-router-dom";
 import { UserContext } from "../../../App";
@@ -10,7 +10,23 @@ import updateUserStates from "../../../Utils/UpdateUserState";
 const Login = () => {
   const { setUserData, setUserToken } = useContext(UserContext);
   const [loading, setLoading] = useState(false);
+  const [authNotice, setAuthNotice] = useState(null);
   const navigate = useNavigate();
+
+  // Surface a friendlier reason when the app forcibly signed the user out.
+  // The flag is set in App.js when a token refresh returns the backend's
+  // "session_replaced" code (see core/authentication.py).
+  useEffect(() => {
+    try {
+      const notice = localStorage.getItem("auth_notice");
+      if (notice === "session_replaced") {
+        setAuthNotice(
+          "Your account was signed in on another device. This session has ended."
+        );
+        localStorage.removeItem("auth_notice");
+      }
+    } catch {}
+  }, []);
 
   const onFinish = async (values) => {
     setLoading(true);
@@ -85,6 +101,16 @@ const Login = () => {
         <div className="title">
           <p>Welcome back</p>
         </div>
+        {authNotice && (
+          <Alert
+            type="warning"
+            showIcon
+            closable
+            message={authNotice}
+            style={{ marginBottom: 16 }}
+            onClose={() => setAuthNotice(null)}
+          />
+        )}
         <Form
           name="login"
           className="login-form"
