@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Table, Skeleton, Space, Select, message, Empty, Segmented, DatePicker, Modal, Tabs, Tag } from "antd";
+import { Table, Skeleton, Space, Select, message, Empty, Segmented, DatePicker, Modal, Tabs, Tag, Button, Divider } from "antd";
+import { DownloadOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
-import MonthRangePicker from "../../../Components/MonthRangePicker";
 import { getAllBranches } from "../../../API/Branches";
+import { useDateFilter } from "../../../Contexts/DateFilterContext";
 import {
   getSalesmanActivity,
   getSalesmanActivityCustomers,
@@ -85,6 +86,31 @@ const NumCell = ({ v, digits = 0 }) => (
   </span>
 );
 
+// Weighted-score cell: colour tone by ratio (v / max) using the same
+// thresholds as PctCell so the whole report reads consistently.
+const ScoreCell = ({ v, max, bold = false }) => {
+  if (v == null || !isFinite(v)) return <span style={{ fontSize: 12, color: "#94A3B8" }}>—</span>;
+  const pct = max ? (v / max) * 100 : 0;
+  const t = pctTone(pct, { good: 90, ok: 70 });
+  return (
+    <span
+      style={{
+        color: t.color,
+        background: t.bg,
+        padding: "2px 8px",
+        borderRadius: 12,
+        fontWeight: bold ? 700 : 600,
+        fontSize: bold ? 12 : 11,
+        display: "inline-block",
+        minWidth: 46,
+        textAlign: "center",
+      }}
+    >
+      {v.toFixed(1)}
+    </span>
+  );
+};
+
 const MinCell = ({ v }) => (
   <span style={{ fontSize: 12 }}>
     {v == null ? "—" : `${v.toFixed(1)} `}<span style={{ color: "#64748B", fontSize: 10 }}>min</span>
@@ -136,15 +162,6 @@ const DurationCell = ({ inIso, outIso }) => {
     </span>
   );
 };
-
-const Legend = () => (
-  <Space size={12} style={{ fontSize: 11, color: "#64748B" }}>
-    <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 4, background: "#10B981", marginRight: 4 }} />≥ Threshold</span>
-    <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 4, background: "#F59E0B", marginRight: 4 }} />Moderate</span>
-    <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 4, background: "#EF4444", marginRight: 4 }} />Below Target</span>
-  </Space>
-);
-
 
 // ── Drill modal for Daily-mode Sales cell ─────────────────────────────────
 const DrillModal = ({ open, onClose, date, salesman, branchScope }) => {
@@ -361,6 +378,7 @@ const METRIC_LABEL = {
   rps_visits:      "RPS Visits",
   non_rps_visits:  "Non-RPS Visits",
   total_visits:    "Total Visits",
+  planned_rps:     "Planned RPS Visits",
 };
 
 const PeriodDrillModal = ({ open, onClose, salesman, metric, fromMonth, toMonth, branchScope }) => {
@@ -389,6 +407,7 @@ const PeriodDrillModal = ({ open, onClose, salesman, metric, fromMonth, toMonth,
 
   // Base metric never shows a visit_count column — the others do.
   const showVisits = metric !== "customer_base";
+  const isPlanned  = metric === "planned_rps";
 
   const columns = [
     {
@@ -407,7 +426,7 @@ const PeriodDrillModal = ({ open, onClose, salesman, metric, fromMonth, toMonth,
       ),
     },
     ...(showVisits ? [{
-      title: "Visits",
+      title: isPlanned ? "Planned" : "Visits",
       dataIndex: "visit_count",
       key: "visit_count",
       width: 90,
@@ -415,6 +434,20 @@ const PeriodDrillModal = ({ open, onClose, salesman, metric, fromMonth, toMonth,
       render: (v) => <NumCell v={v} />,
       sorter: (a, b) => (a.visit_count || 0) - (b.visit_count || 0),
       defaultSortOrder: "descend",
+    }] : []),
+    ...(isPlanned ? [{
+      title: "Actual",
+      dataIndex: "actual_count",
+      key: "actual_count",
+      width: 90,
+      align: "center",
+      render: (v, r) => {
+        const planned = r.visit_count || 0;
+        const missed  = planned - (v || 0);
+        const color = (v || 0) >= planned ? "#059669" : missed > 0 ? "#DC2626" : "#64748B";
+        return <span style={{ fontSize: 12, color, fontWeight: 500 }}>{v || 0}</span>;
+      },
+      sorter: (a, b) => (a.actual_count || 0) - (b.actual_count || 0),
     }] : []),
   ];
 
@@ -587,10 +620,15 @@ const DailyDrillModal = ({ open, onClose, date, salesman, metric, branchScope })
 
 
 const SalesmanActivity = () => {
-  const initialMonth = dayjs().startOf("month");
+  const { selectedMonth } = useDateFilter();
+  // Period mode is driven by the navbar's global month. Fall back to the
+  // current month if the context has no value yet.
+  const navMonth = selectedMonth
+    ? dayjs(selectedMonth, "YYYYMM").startOf("month")
+    : dayjs().startOf("month");
   const [mode, setMode]         = useState("period"); // "period" | "daily"
-  const [fromMonth, setFromMonth] = useState(initialMonth);
-  const [toMonth,   setToMonth]   = useState(initialMonth);
+  const fromMonth = navMonth;
+  const toMonth   = navMonth;
   const [day, setDay]           = useState(dayjs());
   const [branches, setBranches]                 = useState([]);
   const [selectedBranches, setSelectedBranches] = useState([]);
@@ -626,7 +664,7 @@ const SalesmanActivity = () => {
       }
       setLoading(false);
     });
-  }, [mode, fromMonth, toMonth, day, selectedBranches]);
+  }, [mode, selectedMonth, day, selectedBranches]);
 
   // ── Column sets ────────────────────────────────────────────────────────
   const salesmanCol = {
@@ -644,15 +682,31 @@ const SalesmanActivity = () => {
     sorter: (a, b) => (a.salesman_name || "").localeCompare(b.salesman_name || ""),
   };
 
+  const branchCol = {
+    title: "Branch",
+    dataIndex: "branch_name",
+    key: "branch_name",
+    fixed: "left",
+    width: 140,
+    render: (v, r) => (
+      <div style={{ lineHeight: 1.2 }}>
+        <div style={{ fontSize: 12, color: "#1E293B" }}>{v || "—"}</div>
+        <div style={{ fontSize: 10, color: "#64748B" }}>{r.branch_code}</div>
+      </div>
+    ),
+    sorter: (a, b) => (a.branch_name || "").localeCompare(b.branch_name || ""),
+  };
+
   const drillTo = (row, metric) => setPeriodDrill({ salesman: row, metric });
 
   const periodColumns = [
     salesmanCol,
+    branchCol,
     {
       title: <span style={{ fontSize: 11, fontWeight: 700 }}>Customer Base</span>,
       align: "center",
       children: [
-        { title: "Total", dataIndex: "customer_base", key: "customer_base", align: "center", width: 90,
+        { title: "Total", dataIndex: "customer_base", key: "customer_base", align: "center", width: 130,
           render: (v, r) => <ClickableNum v={v} onClick={() => drillTo(r, "customer_base")} />,
           sorter: (a, b) => (a.customer_base || 0) - (b.customer_base || 0) },
       ],
@@ -670,9 +724,18 @@ const SalesmanActivity = () => {
         { title: "Total",   dataIndex: "total_visits",   key: "total_visits",   align: "center", width: 80,
           render: (v, r) => <ClickableNum v={v} onClick={() => drillTo(r, "total_visits")} />,
           sorter: (a, b) => (a.total_visits || 0) - (b.total_visits || 0) },
+        { title: "Planned", dataIndex: "planned_rps",    key: "planned_rps",    align: "center", width: 90,
+          render: (v, r) => <ClickableNum v={v} onClick={() => drillTo(r, "planned_rps")} />,
+          sorter: (a, b) => (a.planned_rps || 0) - (b.planned_rps || 0) },
         { title: "Visit %", dataIndex: "visit_pct",      key: "visit_pct",      align: "center", width: 90,
           render: (v) => <PctCell v={v} thresholds={{ good: 90, ok: 70 }} />,
           sorter: (a, b) => (a.visit_pct ?? -Infinity) - (b.visit_pct ?? -Infinity) },
+        { title: "Total Time in Outlet", dataIndex: "total_time_min", key: "total_time_min", align: "center", width: 130,
+          render: (v) => <HoursMinCell v={v} />,
+          sorter: (a, b) => (a.total_time_min ?? -Infinity) - (b.total_time_min ?? -Infinity) },
+        { title: "Time in Outlet / Day", dataIndex: "time_per_day_min", key: "time_per_day_min", align: "center", width: 140,
+          render: (v) => <HoursMinCell v={v} />,
+          sorter: (a, b) => (a.time_per_day_min ?? -Infinity) - (b.time_per_day_min ?? -Infinity) },
       ],
     },
     {
@@ -696,10 +759,30 @@ const SalesmanActivity = () => {
           sorter: (a, b) => (a.call_pct ?? -Infinity) - (b.call_pct ?? -Infinity) },
       ],
     },
+    {
+      title: <span style={{ fontSize: 11, fontWeight: 700 }}>Score (Out of 100)</span>,
+      align: "center",
+      children: [
+        { title: "RPS (/15)",           dataIndex: "score_rps",   key: "score_rps",   align: "center", width: 90,
+          render: (v) => <ScoreCell v={v} max={15} />,
+          sorter: (a, b) => (a.score_rps ?? -Infinity) - (b.score_rps ?? -Infinity) },
+        { title: "Time in Outlet (/15)", dataIndex: "score_time",  key: "score_time",  align: "center", width: 130,
+          render: (v) => <ScoreCell v={v} max={15} />,
+          sorter: (a, b) => (a.score_time ?? -Infinity) - (b.score_time ?? -Infinity) },
+        { title: "Effective Call (/70)", dataIndex: "score_call",  key: "score_call",  align: "center", width: 130,
+          render: (v) => <ScoreCell v={v} max={70} />,
+          sorter: (a, b) => (a.score_call ?? -Infinity) - (b.score_call ?? -Infinity) },
+        { title: "Total (/100)",         dataIndex: "score_total", key: "score_total", align: "center", width: 110,
+          render: (v) => <ScoreCell v={v} max={100} bold />,
+          sorter: (a, b) => (a.score_total ?? -Infinity) - (b.score_total ?? -Infinity),
+          defaultSortOrder: "descend" },
+      ],
+    },
   ];
 
   const dailyColumns = [
     salesmanCol,
+    branchCol,
     {
       title: <span style={{ fontSize: 11, fontWeight: 700 }}>Visits</span>,
       align: "center",
@@ -776,40 +859,220 @@ const SalesmanActivity = () => {
 
   const columns = mode === "daily" ? dailyColumns : periodColumns;
 
+  // ── Export to Excel ────────────────────────────────────────────────────
+  const exportToExcel = async () => {
+    const rows = data?.salesmen || [];
+    if (!rows.length) { message.warning("No data to export"); return; }
+
+    const ExcelJS = (await import("exceljs")).default;
+    const wb      = new ExcelJS.Workbook();
+    wb.creator    = "Wazalytics";
+
+    const isDaily = mode === "daily";
+    const sheetName = isDaily
+      ? `Daily ${day.format("YYYY-MM-DD")}`
+      : `Period ${fromMonth.format("YYYY-MM")}`;
+    const ws = wb.addWorksheet(sheetName.substring(0, 31), {
+      views: [{ state: "frozen", xSplit: 3, ySplit: 1 }],
+    });
+
+    const NAV   = "002060";
+    const LGRAY = "F1F5F9";
+    const AGOLD = "FEF3C7";
+    const WHITE = "FFFFFFFF";
+    const thin  = (a = "FFE2E8F0") => ({ style: "thin", color: { argb: a } });
+    const bdr   = { top: thin(), bottom: thin(), left: thin(), right: thin() };
+    const numFmt = '_(* #,##0_);[Red]_(* (#,##0);_(* "-"_);_(@_)';
+    const decFmt = '_(* #,##0.0_);[Red]_(* (#,##0.0);_(* "-"_);_(@_)';
+    const pctFmt = '0.0"%";[Red]-0.0"%";"—"';
+
+    const hdrStyle = {
+      font: { bold: true, size: 10, color: { argb: WHITE } },
+      fill: { type: "pattern", pattern: "solid", fgColor: { argb: `FF${NAV}` } },
+      alignment: { horizontal: "center", vertical: "middle", wrapText: true },
+      border: bdr,
+    };
+
+    // Column definitions per mode. Each: { header, key, width, kind }
+    const periodCols = [
+      { header: "#",              key: "idx",              width: 5,  kind: "num" },
+      { header: "Salesman",       key: "salesman",         width: 30, kind: "text" },
+      { header: "Branch",         key: "branch",           width: 20, kind: "text" },
+      { header: "Customer Base",  key: "customer_base",    width: 14, kind: "num" },
+      { header: "RPS Visits",     key: "rps_visits",       width: 12, kind: "num" },
+      { header: "Non-RPS Visits", key: "non_rps_visits",   width: 14, kind: "num" },
+      { header: "Total Visits",   key: "total_visits",     width: 12, kind: "num" },
+      { header: "Planned RPS",    key: "planned_rps",      width: 12, kind: "num" },
+      { header: "Visit %",        key: "visit_pct",        width: 10, kind: "pct" },
+      { header: "Total Time (min)",     key: "total_time_min",   width: 15, kind: "dec" },
+      { header: "Time / Day (min)",     key: "time_per_day_min", width: 15, kind: "dec" },
+      { header: "Avg Time / Visit (min)", key: "avg_time_min",   width: 18, kind: "dec" },
+      { header: "Effective Calls",  key: "effective_calls",  width: 14, kind: "num" },
+      { header: "Call %",         key: "call_pct",         width: 10, kind: "pct" },
+      { header: "Score RPS (/15)",         key: "score_rps",   width: 14, kind: "dec" },
+      { header: "Score Time (/15)",        key: "score_time",  width: 14, kind: "dec" },
+      { header: "Score Eff Call (/70)",    key: "score_call",  width: 16, kind: "dec" },
+      { header: "Score Total (/100)",      key: "score_total", width: 16, kind: "dec" },
+    ];
+    const dailyCols = [
+      { header: "#",              key: "idx",             width: 5,  kind: "num" },
+      { header: "Salesman",       key: "salesman",        width: 30, kind: "text" },
+      { header: "Branch",         key: "branch",          width: 20, kind: "text" },
+      { header: "RPS Visits",     key: "rps_visits",      width: 12, kind: "num" },
+      { header: "Non-RPS Visits", key: "non_rps_visits",  width: 14, kind: "num" },
+      { header: "Total Visits",   key: "total_visits",    width: 12, kind: "num" },
+      { header: "Planned RPS",    key: "planned_rps",     width: 12, kind: "num" },
+      { header: "Visit %",        key: "visit_pct",       width: 10, kind: "pct" },
+      { header: "Total Time (min)", key: "total_time_min", width: 15, kind: "dec" },
+      { header: "Sales Value",    key: "sales_value",     width: 15, kind: "num" },
+      { header: "Collection",     key: "collection",      width: 15, kind: "num" },
+    ];
+    const colDefs = isDaily ? dailyCols : periodCols;
+
+    const hdrRow = ws.getRow(1); hdrRow.height = 22;
+    colDefs.forEach((c, i) => {
+      const cell = hdrRow.getCell(i + 1);
+      cell.value = c.header;
+      cell.style = hdrStyle;
+      ws.getColumn(i + 1).width = c.width;
+    });
+
+    const numFmtFor = (kind) => kind === "pct" ? pctFmt : kind === "dec" ? decFmt : numFmt;
+
+    // Data rows
+    rows.forEach((r, idx) => {
+      const dr = ws.addRow({}); dr.height = 17;
+      const isEven = idx % 2 === 0;
+      const bg = isEven ? WHITE : `FF${LGRAY}`;
+      const rowValues = {
+        idx:              idx + 1,
+        salesman:         `${r.salesman_name} (${r.salesman_code})`,
+        branch:           r.branch_name || r.branch_code || "",
+        customer_base:    r.customer_base,
+        rps_visits:       r.rps_visits,
+        non_rps_visits:   r.non_rps_visits,
+        total_visits:     r.total_visits,
+        planned_rps:      r.planned_rps,
+        visit_pct:        r.visit_pct,
+        total_time_min:   r.total_time_min,
+        time_per_day_min: r.time_per_day_min,
+        avg_time_min:     r.avg_time_min,
+        effective_calls:  r.effective_calls,
+        call_pct:         r.call_pct,
+        score_rps:        r.score_rps,
+        score_time:       r.score_time,
+        score_call:       r.score_call,
+        score_total:      r.score_total,
+        sales_value:      r.sales_value,
+        collection:       r.collection,
+      };
+      colDefs.forEach((c, i) => {
+        const cell = dr.getCell(i + 1);
+        const v = rowValues[c.key];
+        cell.value = (v === undefined || v === null || v === "") ? null : v;
+        cell.style = {
+          fill: { type: "pattern", pattern: "solid", fgColor: { argb: bg } },
+          font: { size: 10 },
+          alignment: { horizontal: c.kind === "text" ? "left" : c.kind === "num" && c.key === "idx" ? "center" : "right", vertical: "middle" },
+          border: bdr,
+          numFmt: c.kind === "text" ? undefined : numFmtFor(c.kind),
+        };
+      });
+    });
+
+    // Grand total row from data.totals
+    const t = data?.totals || {};
+    const gtRow = ws.addRow({}); gtRow.height = 18;
+    const GT_BG = `FF${AGOLD}`;
+    const gtStyle = {
+      fill: { type: "pattern", pattern: "solid", fgColor: { argb: GT_BG } },
+      font: { bold: true, size: 10, color: { argb: "FF1E293B" } },
+      alignment: { vertical: "middle" },
+      border: bdr,
+    };
+    const totalValues = {
+      idx: "",
+      salesman: "TOTAL",
+      branch: "",
+      customer_base:    t.customer_base,
+      rps_visits:       t.rps_visits,
+      non_rps_visits:   t.non_rps_visits,
+      total_visits:     t.total_visits,
+      planned_rps:      t.planned_rps,
+      visit_pct:        t.visit_pct,
+      total_time_min:   t.total_time_min,
+      time_per_day_min: t.time_per_day_min,
+      avg_time_min:     t.avg_time_min,
+      effective_calls:  t.effective_calls,
+      call_pct:         t.call_pct,
+      score_rps:        t.score_rps,
+      score_time:       t.score_time,
+      score_call:       t.score_call,
+      score_total:      t.score_total,
+      sales_value:      t.sales_value,
+      collection:       t.collection,
+    };
+    colDefs.forEach((c, i) => {
+      const cell = gtRow.getCell(i + 1);
+      const v = totalValues[c.key];
+      cell.value = (v === undefined || v === null || v === "") ? null : v;
+      cell.style = {
+        ...gtStyle,
+        alignment: { horizontal: c.kind === "text" ? "left" : "right", vertical: "middle" },
+        numFmt: c.kind === "text" ? undefined : numFmtFor(c.kind),
+      };
+    });
+
+    const buf  = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url;
+    a.download = isDaily
+      ? `Salesman_Activity_Daily_${day.format("YYYY-MM-DD")}.xlsx`
+      : `Salesman_Activity_${fromMonth.format("YYYY-MM")}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const rangeLabel = mode === "daily"
     ? (day ? day.format("ddd, DD MMM YYYY") : "")
-    : (fromMonth && toMonth
-        ? (fromMonth.isSame(toMonth, "month")
-            ? fromMonth.format("MMM YYYY")
-            : `${fromMonth.format("MMM")}–${toMonth.format("MMM YYYY")}`)
-        : "");
+    : (fromMonth ? fromMonth.format("MMM YYYY") : "");
 
   // ── Summary row (mode-aware) ───────────────────────────────────────────
   const summaryRow = data?.totals && (
     <Table.Summary fixed>
       <Table.Summary.Row style={{ background: "#F8FAFC", fontWeight: 700 }}>
         <Table.Summary.Cell index={0}>Total</Table.Summary.Cell>
+        <Table.Summary.Cell index={1} />
         {mode === "period" ? (
           <>
-            <Table.Summary.Cell index={1} align="center"><NumCell v={data.totals.customer_base} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={2} align="center"><NumCell v={data.totals.rps_visits} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={3} align="center"><NumCell v={data.totals.non_rps_visits} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={4} align="center"><NumCell v={data.totals.total_visits} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={5} align="center"><PctCell v={data.totals.visit_pct} thresholds={{ good: 90, ok: 70 }} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={6} align="center"><MinCell v={data.totals.avg_time_min} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={7} align="center"><NumCell v={data.totals.effective_calls} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={8} align="center"><PctCell v={data.totals.call_pct} thresholds={{ good: 10, ok: 5 }} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={2} align="center"><NumCell v={data.totals.customer_base} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={3} align="center"><NumCell v={data.totals.rps_visits} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={4} align="center"><NumCell v={data.totals.non_rps_visits} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={5} align="center"><NumCell v={data.totals.total_visits} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={6} align="center"><NumCell v={data.totals.planned_rps} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={7} align="center"><PctCell v={data.totals.visit_pct} thresholds={{ good: 90, ok: 70 }} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={8} align="center"><HoursMinCell v={data.totals.total_time_min} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={9} align="center"><HoursMinCell v={data.totals.time_per_day_min} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={10} align="center"><MinCell v={data.totals.avg_time_min} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={11} align="center"><NumCell v={data.totals.effective_calls} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={12} align="center"><PctCell v={data.totals.call_pct} thresholds={{ good: 10, ok: 5 }} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={13} align="center"><ScoreCell v={data.totals.score_rps}   max={15} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={14} align="center"><ScoreCell v={data.totals.score_time}  max={15} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={15} align="center"><ScoreCell v={data.totals.score_call}  max={70} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={16} align="center"><ScoreCell v={data.totals.score_total} max={100} bold /></Table.Summary.Cell>
           </>
         ) : (
           <>
-            <Table.Summary.Cell index={1} align="center"><NumCell v={data.totals.rps_visits} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={2} align="center"><NumCell v={data.totals.non_rps_visits} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={3} align="center"><NumCell v={data.totals.total_visits} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={4} align="center"><NumCell v={data.totals.planned_rps} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={5} align="center"><PctCell v={data.totals.visit_pct} thresholds={{ good: 90, ok: 70 }} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={6} align="center"><HoursMinCell v={data.totals.total_time_min} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={7} align="right"><MoneyCell v={data.totals.sales_value} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={8} align="right">
+            <Table.Summary.Cell index={2} align="center"><NumCell v={data.totals.rps_visits} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={3} align="center"><NumCell v={data.totals.non_rps_visits} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={4} align="center"><NumCell v={data.totals.total_visits} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={5} align="center"><NumCell v={data.totals.planned_rps} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={6} align="center"><PctCell v={data.totals.visit_pct} thresholds={{ good: 90, ok: 70 }} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={7} align="center"><HoursMinCell v={data.totals.total_time_min} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={8} align="right"><MoneyCell v={data.totals.sales_value} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={9} align="right">
               {(!data.totals.collection || data.totals.collection === 0)
                 ? <span style={{ fontSize: 12, color: "#94A3B8" }}>—</span>
                 : <SarValue v={data.totals.collection} size={11} color="#0F172A" weight={600} />}
@@ -833,7 +1096,6 @@ const SalesmanActivity = () => {
               : "Averages computed from daily activity records"}
           </div>
         </div>
-        <Legend />
       </div>
 
       {/* Toolbar */}
@@ -849,15 +1111,7 @@ const SalesmanActivity = () => {
             ]}
           />
         </Space>
-        {mode === "period" ? (
-          <Space>
-            <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500 }}>From – To:</span>
-            <MonthRangePicker
-              value={[fromMonth, toMonth]}
-              onChange={([f, t]) => { setFromMonth(f); setToMonth(t); }}
-            />
-          </Space>
-        ) : (
+        {mode === "daily" && (
           <Space>
             <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500 }}>Date:</span>
             <DatePicker
@@ -869,20 +1123,38 @@ const SalesmanActivity = () => {
             />
           </Space>
         )}
-        <Space>
-          <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500 }}>Branches:</span>
-          <Select
-            mode="multiple"
-            allowClear
-            placeholder="All branches"
-            value={selectedBranches}
-            onChange={setSelectedBranches}
-            style={{ minWidth: 260 }}
-            size="small"
-            maxTagCount="responsive"
-            options={branches.map((b) => ({ label: b.name, value: b.code }))}
-          />
-        </Space>
+        <span style={{ color: "#64748B", fontSize: 13, fontWeight: 500, whiteSpace: "nowrap" }}>Branch:</span>
+        <Select
+          mode="multiple"
+          showSearch
+          optionFilterProp="label"
+          placeholder="All branches"
+          value={selectedBranches}
+          onChange={setSelectedBranches}
+          style={{ flex: 1, minWidth: 220 }}
+          maxTagCount="responsive"
+          options={branches.map((b) => ({ label: b.name, value: b.code }))}
+          dropdownRender={(menu) => (
+            <>
+              <div style={{ padding: "4px 8px", display: "flex", gap: 8 }}>
+                <Button size="small" type="link" style={{ padding: 0 }} onClick={() => setSelectedBranches(branches.map((b) => b.code))}>Select All</Button>
+                <Divider type="vertical" />
+                <Button size="small" type="link" style={{ padding: 0 }} onClick={() => setSelectedBranches([])}>Unselect All</Button>
+              </div>
+              <Divider style={{ margin: "4px 0" }} />
+              {menu}
+            </>
+          )}
+        />
+        <Button
+          type="primary"
+          size="small"
+          icon={<DownloadOutlined />}
+          disabled={loading || !data?.salesmen?.length}
+          onClick={exportToExcel}
+        >
+          Export to Excel
+        </Button>
       </div>
 
       {loading && !data ? (
@@ -901,7 +1173,7 @@ const SalesmanActivity = () => {
           loading={loading}
           dataSource={data.salesmen}
           columns={columns}
-          scroll={{ x: 1100, y: "calc(100vh - 340px)" }}
+          scroll={{ x: "max-content", y: "calc(100vh - 340px)" }}
           summary={() => summaryRow}
           sticky
         />
