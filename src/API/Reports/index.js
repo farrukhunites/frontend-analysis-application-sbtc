@@ -228,6 +228,52 @@ export const getTargetFeasibilityCustomers = ({ month, branchCode, salesmanCode,
     .then((r) => r.data)
     .catch((err) => ({ error: err.response?.data || err.message }));
 
+export const getSalesmanActivity = ({ mode, date, startDate, endDate, fromMonth, toMonth, branchCodes, salesmanCodes }) =>
+  axios
+    .get(`${process.env.REACT_APP_BACKEND_URL}reports/salesman-activity/`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+      params: {
+        mode:       mode || undefined,
+        date:       date || undefined,
+        start_date: startDate || undefined,
+        end_date:   endDate   || undefined,
+        from_month: fromMonth || undefined,
+        to_month:   toMonth   || undefined,
+        "branch_codes[]":   branchCodes?.length   ? branchCodes   : undefined,
+        "salesman_codes[]": salesmanCodes?.length ? salesmanCodes : undefined,
+      },
+    })
+    .then((r) => r.data)
+    .catch((err) => ({ error: err.response?.data || err.message }));
+
+export const getSalesmanActivityCustomers = ({ date, salesmanCd, branchCodes }) =>
+  axios
+    .get(`${process.env.REACT_APP_BACKEND_URL}reports/salesman-activity/customers/`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+      params: {
+        date,
+        salesman_cd:       salesmanCd,
+        "branch_codes[]":  branchCodes?.length ? branchCodes : undefined,
+      },
+    })
+    .then((r) => r.data)
+    .catch((err) => ({ error: err.response?.data || err.message }));
+
+export const getSalesmanActivityPeriodCustomers = ({ salesmanCd, fromMonth, toMonth, branchCodes, metric }) =>
+  axios
+    .get(`${process.env.REACT_APP_BACKEND_URL}reports/salesman-activity/period-customers/`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+      params: {
+        salesman_cd:       salesmanCd,
+        from_month:        fromMonth,
+        to_month:          toMonth,
+        metric,
+        "branch_codes[]":  branchCodes?.length ? branchCodes : undefined,
+      },
+    })
+    .then((r) => r.data)
+    .catch((err) => ({ error: err.response?.data || err.message }));
+
 export const getSalesmanCustomerBreakdown = ({ salesmanCd, month, fromMonth, toMonth, productCodes, unitType, valueType, branchCodes }) =>
   axios
     .get(`${process.env.REACT_APP_BACKEND_URL}reports/salesman-customer-breakdown/`, {

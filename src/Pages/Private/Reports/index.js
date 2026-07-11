@@ -1,6 +1,6 @@
 import { lazy, Suspense, useContext, useMemo, useState } from "react";
 import { Tabs, Skeleton, Empty } from "antd";
-import { CalendarOutlined, AimOutlined, TrophyOutlined, RiseOutlined, AppstoreOutlined, TeamOutlined, DatabaseOutlined, BulbOutlined, UsergroupAddOutlined, PieChartOutlined } from "@ant-design/icons";
+import { CalendarOutlined, AimOutlined, TrophyOutlined, RiseOutlined, AppstoreOutlined, TeamOutlined, DatabaseOutlined, BulbOutlined, UsergroupAddOutlined, PieChartOutlined, EnvironmentOutlined } from "@ant-design/icons";
 import { UserContext } from "../../../App";
 import { REPORT_KEYS, isReportBlocked } from "../../../Utils/access";
 
@@ -14,6 +14,7 @@ const ChannelCoverage     = lazy(() => import("./ChannelCoverage"));
 const TargetFeasibility   = lazy(() => import("./TargetFeasibility"));
 const RawData             = lazy(() => import("./RawData"));
 const PotentialCustomers  = lazy(() => import("../PotentialCustomers"));
+const SalesmanActivity    = lazy(() => import("./SalesmanActivity"));
 
 const TabLoader = () => (
   <div style={{ padding: "24px 0" }}>
@@ -159,6 +160,20 @@ const TABS = [
     children:  (
       <Suspense fallback={<TabLoader />}>
         <PotentialCustomers />
+      </Suspense>
+    ),
+  },
+  {
+    key:       "salesman-activity",
+    reportKey: REPORT_KEYS.SALESMAN_ACTIVITY,
+    label:     (
+      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <EnvironmentOutlined /> Salesman Activity
+      </span>
+    ),
+    children:  (
+      <Suspense fallback={<TabLoader />}>
+        <SalesmanActivity />
       </Suspense>
     ),
   },
