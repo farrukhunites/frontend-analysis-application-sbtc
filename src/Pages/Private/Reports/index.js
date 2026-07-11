@@ -166,7 +166,6 @@ const TABS = [
   {
     key:       "salesman-activity",
     reportKey: REPORT_KEYS.SALESMAN_ACTIVITY,
-    adminOnly: true,
     label:     (
       <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <EnvironmentOutlined /> Salesman Activity
@@ -183,13 +182,9 @@ const TABS = [
 const Reports = () => {
   const { userData } = useContext(UserContext);
 
-  const isAdmin = userData?.role === "admin";
   const visibleTabs = useMemo(
-    () => TABS.filter((tab) => {
-      if (tab.adminOnly && !isAdmin) return false;
-      return !isReportBlocked(userData, tab.reportKey);
-    }),
-    [userData, isAdmin]
+    () => TABS.filter((tab) => !isReportBlocked(userData, tab.reportKey)),
+    [userData]
   );
 
   const [activeTab, setActiveTab] = useState(visibleTabs[0]?.key);
