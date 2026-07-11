@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Table, Skeleton, Space, Select, message, Empty, Segmented, DatePicker, Modal, Tabs, Tag, Button, Divider } from "antd";
-import { DownloadOutlined } from "@ant-design/icons";
+import { DownloadOutlined, EnvironmentOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { getAllBranches } from "../../../API/Branches";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
 import {
@@ -494,6 +496,206 @@ const PeriodDrillModal = ({ open, onClose, salesman, metric, fromMonth, toMonth,
 };
 
 
+// ── Route-map modal (Leaflet) ─────────────────────────────────────────────
+// Simple numbered marker built from an inline SVG — no image assets.
+const buildNumberedIcon = (n, isRps) => {
+  const bg = isRps ? "#2563EB" : "#64748B";
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="42" viewBox="0 0 32 42">
+      <path d="M16 0C7.2 0 0 7.2 0 16c0 11 16 26 16 26s16-15 16-26C32 7.2 24.8 0 16 0z" fill="${bg}" stroke="#fff" stroke-width="2"/>
+      <text x="16" y="21" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" font-weight="700" fill="#fff">${n}</text>
+    </svg>`.trim();
+  return L.divIcon({
+    className: "route-marker",
+    html: svg,
+    iconSize: [32, 42],
+    iconAnchor: [16, 42],
+    popupAnchor: [0, -36],
+  });
+};
+
+const hasGeo = (v) =>
+  v.latitude != null && v.longitude != null &&
+  Math.abs(v.latitude) > 0.001 && Math.abs(v.longitude) > 0.001;
+
+const RouteMapModal = ({ open, onClose, date, salesman, branchScope }) => {
+  const [loading, setLoading] = useState(false);
+  const [data, setData]       = useState(null);
+  const [modalReady, setModalReady] = useState(false);
+  const mapDivRef = useRef(null);
+  const mapObjRef = useRef(null);
+
+  useEffect(() => {
+    if (!open || !salesman || !date) return;
+    setLoading(true);
+    setData(null);
+    getSalesmanActivityCustomers({
+      date:        date.format("YYYY-MM-DD"),
+      salesmanCd:  salesman.salesman_code,
+      branchCodes: branchScope,
+    }).then((res) => {
+      if (res?.error) {
+        message.error("Failed to load route");
+        setData(null);
+      } else {
+        setData(res);
+      }
+      setLoading(false);
+    });
+  }, [open, salesman, date, branchScope]);
+
+  // Reset the "modal has finished opening" flag whenever the modal closes.
+  useEffect(() => {
+    if (!open) setModalReady(false);
+  }, [open]);
+
+  // Build/refresh the Leaflet map once the modal is fully open AND data is in.
+  useEffect(() => {
+    if (!open || !modalReady || !data) return;
+    if (!mapDivRef.current) return;
+
+    // Dispose any prior instance (data refresh, re-open).
+    if (mapObjRef.current) {
+      mapObjRef.current.remove();
+      mapObjRef.current = null;
+    }
+
+    const visits = (data.visited || [])
+      .filter(hasGeo)
+      .sort((a, b) => (a.visit_in_dt || "").localeCompare(b.visit_in_dt || ""));
+
+    const map = L.map(mapDivRef.current, { zoomControl: true });
+    mapObjRef.current = map;
+
+    // Esri World Street Map — single host, HTTPS, usually accepted by corporate
+    // proxies that block map-tile CDNs like OSM/Carto.
+    const tiles = L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+      {
+        maxZoom: 19,
+        crossOrigin: true,
+        attribution: 'Tiles &copy; Esri',
+      }
+    );
+    tiles.on("tileerror", (e) => {
+      console.warn("[RouteMap] tile load error", e?.coords, e?.error);
+    });
+    tiles.addTo(map);
+
+    if (visits.length === 0) {
+      map.setView([24.7136, 46.6753], 6);
+      setTimeout(() => map.invalidateSize(), 50);
+      return;
+    }
+
+    const latlngs = visits.map((v) => [v.latitude, v.longitude]);
+    if (visits.length > 1) {
+      L.polyline(latlngs, { color: "#2563EB", weight: 3, opacity: 0.7, dashArray: "6 6" }).addTo(map);
+    }
+
+    visits.forEach((v, i) => {
+      const dur = durationMin(v.visit_in_dt, v.visit_out_dt);
+      const durTxt = dur == null ? "—" : `${dur.toFixed(0)} min`;
+      const salesQtyTxt = v.sales_qty
+        ? `${Number(v.sales_qty).toLocaleString("en-US", { maximumFractionDigits: 0 })} ctn`
+        : "—";
+      const collectionTxt = v.collection
+        ? `SAR ${Number(v.collection).toLocaleString("en-US", { maximumFractionDigits: 0 })}`
+        : "—";
+      const html = `
+        <div style="font-family:Arial,sans-serif;min-width:200px;">
+          <div style="font-size:13px;font-weight:700;color:#0F172A;line-height:1.2;">
+            ${i + 1}. ${(v.cust_nm || "").replace(/</g, "&lt;")}
+          </div>
+          <div style="font-size:11px;color:#64748B;margin-bottom:6px;">
+            ${v.cust_cd || ""}${v.channel ? " · " + v.channel : ""}
+          </div>
+          <div style="font-size:12px;color:#334155;line-height:1.5;">
+            <div><b>Type:</b> ${v.is_rps ? "RPS" : "Non-RPS"}</div>
+            <div><b>In:</b> ${v.visit_in_dt ? dayjs(v.visit_in_dt).format("HH:mm") : "—"}
+                 &nbsp;<b>Out:</b> ${v.visit_out_dt ? dayjs(v.visit_out_dt).format("HH:mm") : "—"}</div>
+            <div><b>Time in outlet:</b> ${durTxt}</div>
+            <div><b>Sales:</b> ${salesQtyTxt}</div>
+            <div><b>Collection:</b> ${collectionTxt}</div>
+          </div>
+        </div>`;
+      L.marker(latlngs[i], { icon: buildNumberedIcon(i + 1, v.is_rps) })
+        .addTo(map)
+        .bindPopup(html);
+    });
+
+    map.fitBounds(latlngs, { padding: [40, 40], maxZoom: 15 });
+    // Modal animation can leave the container with stale dimensions — force a
+    // re-measure once the DOM settles.
+    setTimeout(() => map.invalidateSize(), 50);
+  }, [open, modalReady, data]);
+
+  // Cleanup on close.
+  useEffect(() => {
+    if (open) return;
+    if (mapObjRef.current) {
+      mapObjRef.current.remove();
+      mapObjRef.current = null;
+    }
+  }, [open]);
+
+  const visited    = data?.visited || [];
+  const withGeo    = visited.filter(hasGeo);
+  const withoutGeo = visited.filter((v) => !hasGeo(v));
+
+  return (
+    <Modal
+      open={open}
+      onCancel={onClose}
+      footer={null}
+      width={1000}
+      destroyOnHidden
+      afterOpenChange={(o) => setModalReady(o)}
+      title={
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700 }}>
+            {salesman?.salesman_name || "—"} · Route Map
+          </div>
+          <div style={{ fontSize: 11, color: "#64748B", fontWeight: 400 }}>
+            {date?.format("ddd, DD MMM YYYY")} · {withGeo.length} plotted
+            {withoutGeo.length ? ` · ${withoutGeo.length} without GPS` : ""}
+          </div>
+        </div>
+      }
+    >
+      {/* Map container is ALWAYS mounted so mapDivRef stays stable. Skeleton is
+          overlaid while loading rather than replacing the container. */}
+      <div style={{ position: "relative" }}>
+        <div
+          ref={mapDivRef}
+          style={{ width: "100%", height: 480, borderRadius: 6, border: "1px solid #E2E8F0", background: "#F1F5F9" }}
+        />
+        {loading && (
+          <div style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,0.85)", padding: 16 }}>
+            <Skeleton active paragraph={{ rows: 8 }} />
+          </div>
+        )}
+      </div>
+      {withoutGeo.length > 0 && (
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "#334155", marginBottom: 6 }}>
+            Visits without GPS ({withoutGeo.length})
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {withoutGeo.map((v) => (
+              <Tag key={`${v.cust_cd}-${v.visit_in_dt || ""}`} style={{ margin: 0 }}>
+                {v.cust_nm} · {v.cust_cd}
+                {v.visit_in_dt && <span style={{ color: "#64748B" }}> · {dayjs(v.visit_in_dt).format("HH:mm")}</span>}
+              </Tag>
+            ))}
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+};
+
+
 // ── Daily-mode drill modal for visit-count cells ──────────────────────────
 const DAILY_METRIC_LABEL = {
   rps_visits:     "RPS Visits",
@@ -637,6 +839,7 @@ const SalesmanActivity = () => {
   const [drill, setDrill]     = useState(null); // salesman row (daily-mode sales)
   const [periodDrill, setPeriodDrill] = useState(null); // { salesman, metric }
   const [dailyDrill, setDailyDrill]   = useState(null); // { salesman, metric }
+  const [routeMap, setRouteMap]       = useState(null); // salesman row for map view
 
   useEffect(() => {
     getAllBranches().then((r) => setBranches(r?.results || []));
@@ -707,7 +910,7 @@ const SalesmanActivity = () => {
       align: "center",
       children: [
         { title: "Total", dataIndex: "customer_base", key: "customer_base", align: "center", width: 130,
-          render: (v, r) => <ClickableNum v={v} onClick={() => drillTo(r, "customer_base")} />,
+          render: (v, r) => <PlainClickableNum v={v} onClick={() => drillTo(r, "customer_base")} />,
           sorter: (a, b) => (a.customer_base || 0) - (b.customer_base || 0) },
       ],
     },
@@ -716,16 +919,16 @@ const SalesmanActivity = () => {
       align: "center",
       children: [
         { title: "RPS",     dataIndex: "rps_visits",     key: "rps_visits",     align: "center", width: 80,
-          render: (v, r) => <ClickableNum v={v} onClick={() => drillTo(r, "rps_visits")} />,
+          render: (v, r) => <PlainClickableNum v={v} onClick={() => drillTo(r, "rps_visits")} />,
           sorter: (a, b) => (a.rps_visits || 0) - (b.rps_visits || 0) },
         { title: "Non-RPS", dataIndex: "non_rps_visits", key: "non_rps_visits", align: "center", width: 90,
-          render: (v, r) => <ClickableNum v={v} onClick={() => drillTo(r, "non_rps_visits")} />,
+          render: (v, r) => <PlainClickableNum v={v} onClick={() => drillTo(r, "non_rps_visits")} />,
           sorter: (a, b) => (a.non_rps_visits || 0) - (b.non_rps_visits || 0) },
         { title: "Total",   dataIndex: "total_visits",   key: "total_visits",   align: "center", width: 80,
-          render: (v, r) => <ClickableNum v={v} onClick={() => drillTo(r, "total_visits")} />,
+          render: (v, r) => <PlainClickableNum v={v} onClick={() => drillTo(r, "total_visits")} />,
           sorter: (a, b) => (a.total_visits || 0) - (b.total_visits || 0) },
         { title: "Planned", dataIndex: "planned_rps",    key: "planned_rps",    align: "center", width: 90,
-          render: (v, r) => <ClickableNum v={v} onClick={() => drillTo(r, "planned_rps")} />,
+          render: (v, r) => <PlainClickableNum v={v} onClick={() => drillTo(r, "planned_rps")} />,
           sorter: (a, b) => (a.planned_rps || 0) - (b.planned_rps || 0) },
         { title: "Visit %", dataIndex: "visit_pct",      key: "visit_pct",      align: "center", width: 90,
           render: (v) => <PctCell v={v} thresholds={{ good: 90, ok: 70 }} />,
@@ -854,6 +1057,22 @@ const SalesmanActivity = () => {
           sorter: (a, b) => (a.collection || 0) - (b.collection || 0),
         },
       ],
+    },
+    {
+      title: "",
+      key: "route_map",
+      align: "center",
+      width: 50,
+      fixed: "right",
+      render: (_, r) => (
+        <Button
+          type="text"
+          size="small"
+          icon={<EnvironmentOutlined style={{ color: "#2563EB" }} />}
+          onClick={() => setRouteMap(r)}
+          title="View route on map"
+        />
+      ),
     },
   ];
 
@@ -1077,6 +1296,7 @@ const SalesmanActivity = () => {
                 ? <span style={{ fontSize: 12, color: "#94A3B8" }}>—</span>
                 : <SarValue v={data.totals.collection} size={11} color="#0F172A" weight={600} />}
             </Table.Summary.Cell>
+            <Table.Summary.Cell index={10} />
           </>
         )}
       </Table.Summary.Row>
@@ -1203,6 +1423,14 @@ const SalesmanActivity = () => {
         date={day}
         salesman={dailyDrill?.salesman}
         metric={dailyDrill?.metric}
+        branchScope={selectedBranches}
+      />
+
+      <RouteMapModal
+        open={!!routeMap}
+        onClose={() => setRouteMap(null)}
+        date={day}
+        salesman={routeMap}
         branchScope={selectedBranches}
       />
     </div>
