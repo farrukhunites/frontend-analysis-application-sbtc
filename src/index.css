@@ -104,3 +104,21 @@ textarea:focus-visible,
 .ant-table-summary tr.grand-total-row > td.ant-table-cell-fix-left {
   background: #FEF3C7 !important;
 }
+
+/* Sort + filter icons on the dark table header need a light tint for
+   contrast. Default AntD colors are near-black which disappears against
+   var(--color-primary). Idle icons sit at 70% white; hover/active goes
+   full white so users can see when a sort/filter is engaged. */
+.ant-table-thead .ant-table-column-sorter,
+.ant-table-thead .ant-table-column-sorter-up,
+.ant-table-thead .ant-table-column-sorter-down,
+.ant-table-thead .ant-table-filter-trigger {
+  color: rgba(255, 255, 255, 0.65) !important;
+}
+.ant-table-thead .ant-table-column-sorter-up.active,
+.ant-table-thead .ant-table-column-sorter-down.active,
+.ant-table-thead .ant-table-filter-trigger.active,
+.ant-table-thead .ant-table-filter-trigger:hover,
+.ant-table-thead > tr > th:hover .ant-table-column-sorter {
+  color: #ffffff !important;
+}

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Table, Skeleton, Space, Select, message, Empty, Segmented, DatePicker, Modal, Tabs, Tag, Button, Divider } from "antd";
-import { DownloadOutlined, EnvironmentOutlined } from "@ant-design/icons";
+import { Table, Skeleton, Space, Select, message, Empty, Segmented, DatePicker, Modal, Tabs, Tag, Button, Divider, Input } from "antd";
+import { DownloadOutlined, EnvironmentOutlined, SearchOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -774,6 +774,20 @@ const DailyDrillModal = ({ open, onClose, date, salesman, metric, branchScope })
         ? <Tag color="green" style={{ margin: 0 }}>Visited</Tag>
         : <Tag color="red" style={{ margin: 0 }}>Missed</Tag>,
     }] : [
+      ...(metric === "total_visits" ? [{
+        title: "Type",
+        key: "_type",
+        width: 90,
+        align: "center",
+        render: (_, r) => r.is_rps
+          ? <Tag color="blue" style={{ margin: 0 }}>RPS</Tag>
+          : <Tag color="orange" style={{ margin: 0 }}>Non-RPS</Tag>,
+        filters: [
+          { text: "RPS",     value: true },
+          { text: "Non-RPS", value: false },
+        ],
+        onFilter: (value, r) => !!r.is_rps === value,
+      }] : []),
       { title: "In",  dataIndex: "visit_in_dt",  key: "in",  width: 70, align: "center",
         render: (v) => <span style={{ fontSize: 12 }}>{fmtTime(v)}</span> },
       { title: "Out", dataIndex: "visit_out_dt", key: "out", width: 70, align: "center",
@@ -882,7 +896,35 @@ const SalesmanActivity = () => {
         <div style={{ fontSize: 10, color: "#64748B" }}>{r.salesman_code}</div>
       </div>
     ),
-    sorter: (a, b) => (a.salesman_name || "").localeCompare(b.salesman_name || ""),
+    filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+      <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()}>
+        <Input
+          autoFocus
+          placeholder="Search name or code"
+          value={selectedKeys[0]}
+          onChange={(e) => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+          onPressEnter={() => confirm()}
+          style={{ marginBottom: 8, display: "block", width: 200 }}
+          allowClear
+        />
+        <Space>
+          <Button type="primary" size="small" icon={<SearchOutlined />} onClick={() => confirm()} style={{ width: 90 }}>
+            Search
+          </Button>
+          <Button size="small" onClick={() => { clearFilters && clearFilters(); confirm(); }} style={{ width: 90 }}>
+            Reset
+          </Button>
+        </Space>
+      </div>
+    ),
+    filterIcon: () => <SearchOutlined />,
+    onFilter: (value, record) => {
+      const q = String(value || "").toLowerCase();
+      return (
+        (record.salesman_name || "").toLowerCase().includes(q) ||
+        (record.salesman_code || "").toLowerCase().includes(q)
+      );
+    },
   };
 
   const branchCol = {
@@ -897,7 +939,35 @@ const SalesmanActivity = () => {
         <div style={{ fontSize: 10, color: "#64748B" }}>{r.branch_code}</div>
       </div>
     ),
-    sorter: (a, b) => (a.branch_name || "").localeCompare(b.branch_name || ""),
+    filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+      <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()}>
+        <Input
+          autoFocus
+          placeholder="Search name or code"
+          value={selectedKeys[0]}
+          onChange={(e) => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+          onPressEnter={() => confirm()}
+          style={{ marginBottom: 8, display: "block", width: 200 }}
+          allowClear
+        />
+        <Space>
+          <Button type="primary" size="small" icon={<SearchOutlined />} onClick={() => confirm()} style={{ width: 90 }}>
+            Search
+          </Button>
+          <Button size="small" onClick={() => { clearFilters && clearFilters(); confirm(); }} style={{ width: 90 }}>
+            Reset
+          </Button>
+        </Space>
+      </div>
+    ),
+    filterIcon: () => <SearchOutlined />,
+    onFilter: (value, record) => {
+      const q = String(value || "").toLowerCase();
+      return (
+        (record.branch_name || "").toLowerCase().includes(q) ||
+        (record.branch_code || "").toLowerCase().includes(q)
+      );
+    },
   };
 
   const drillTo = (row, metric) => setPeriodDrill({ salesman: row, metric });
@@ -930,7 +1000,7 @@ const SalesmanActivity = () => {
         { title: "Planned", dataIndex: "planned_rps",    key: "planned_rps",    align: "center", width: 90,
           render: (v, r) => <PlainClickableNum v={v} onClick={() => drillTo(r, "planned_rps")} />,
           sorter: (a, b) => (a.planned_rps || 0) - (b.planned_rps || 0) },
-        { title: "Visit %", dataIndex: "visit_pct",      key: "visit_pct",      align: "center", width: 90,
+        { title: "RPS Visit %", dataIndex: "visit_pct",      key: "visit_pct",      align: "center", width: 110,
           render: (v) => <PctCell v={v} thresholds={{ good: 90, ok: 70 }} />,
           sorter: (a, b) => (a.visit_pct ?? -Infinity) - (b.visit_pct ?? -Infinity) },
         { title: "Total Time in Outlet", dataIndex: "total_time_min", key: "total_time_min", align: "center", width: 130,
@@ -951,13 +1021,16 @@ const SalesmanActivity = () => {
       ],
     },
     {
-      title: <span style={{ fontSize: 11, fontWeight: 700 }}>Effective Calls (Daily Avg)</span>,
+      title: <span style={{ fontSize: 11, fontWeight: 700 }}>Effective Calls</span>,
       align: "center",
       children: [
-        { title: "Calls",  dataIndex: "effective_daily", key: "effective_daily", align: "center", width: 80,
-          render: (v) => <NumCell v={v} digits={1} />,
-          sorter: (a, b) => (a.effective_daily ?? -Infinity) - (b.effective_daily ?? -Infinity) },
-        { title: "Call %", dataIndex: "call_pct",       key: "call_pct",        align: "center", width: 90,
+        { title: "Total Visits", dataIndex: "total_visits",    key: "eff_total_visits",   align: "center", width: 100,
+          render: (v) => <NumCell v={v} />,
+          sorter: (a, b) => (a.total_visits || 0) - (b.total_visits || 0) },
+        { title: "With Sales",   dataIndex: "effective_calls", key: "effective_calls",    align: "center", width: 100,
+          render: (v) => <NumCell v={v} />,
+          sorter: (a, b) => (a.effective_calls || 0) - (b.effective_calls || 0) },
+        { title: "Effective Call %", dataIndex: "call_pct",    key: "call_pct",           align: "center", width: 130,
           render: (v) => <PctCell v={v} thresholds={{ good: 10, ok: 5 }} />,
           sorter: (a, b) => (a.call_pct ?? -Infinity) - (b.call_pct ?? -Infinity) },
       ],
@@ -999,10 +1072,16 @@ const SalesmanActivity = () => {
         { title: "Total",   dataIndex: "total_visits",   key: "total_visits",   align: "center", width: 80,
           render: (v, r) => <PlainClickableNum v={v} onClick={() => setDailyDrill({ salesman: r, metric: "total_visits" })} />,
           sorter: (a, b) => (a.total_visits || 0) - (b.total_visits || 0) },
+        { title: "With Sales", dataIndex: "effective_calls", key: "effective_calls", align: "center", width: 90,
+          render: (v) => <NumCell v={v} />,
+          sorter: (a, b) => (a.effective_calls || 0) - (b.effective_calls || 0) },
+        { title: "Effective Call %", dataIndex: "call_pct", key: "call_pct",       align: "center", width: 130,
+          render: (v) => <PctCell v={v} thresholds={{ good: 60, ok: 30 }} />,
+          sorter: (a, b) => (a.call_pct ?? -Infinity) - (b.call_pct ?? -Infinity) },
         { title: "Planned", dataIndex: "planned_rps",    key: "planned_rps",    align: "center", width: 80,
           render: (v, r) => <PlainClickableNum v={v} onClick={() => setDailyDrill({ salesman: r, metric: "planned_rps" })} />,
           sorter: (a, b) => (a.planned_rps || 0) - (b.planned_rps || 0) },
-        { title: "Visit %", dataIndex: "visit_pct",      key: "visit_pct",      align: "center", width: 90,
+        { title: "RPS Visit %", dataIndex: "visit_pct",  key: "visit_pct",      align: "center", width: 110,
           render: (v) => <PctCell v={v} thresholds={{ good: 90, ok: 70 }} />,
           sorter: (a, b) => (a.visit_pct ?? -Infinity) - (b.visit_pct ?? -Infinity) },
       ],
@@ -1059,11 +1138,10 @@ const SalesmanActivity = () => {
       ],
     },
     {
-      title: "",
+      title: <span style={{ fontSize: 11, fontWeight: 700 }}>Route Map</span>,
       key: "route_map",
       align: "center",
-      width: 50,
-      fixed: "right",
+      width: 90,
       render: (_, r) => (
         <Button
           type="text"
@@ -1122,12 +1200,12 @@ const SalesmanActivity = () => {
       { header: "Non-RPS Visits", key: "non_rps_visits",   width: 14, kind: "num" },
       { header: "Total Visits",   key: "total_visits",     width: 12, kind: "num" },
       { header: "Planned RPS",    key: "planned_rps",      width: 12, kind: "num" },
-      { header: "Visit %",        key: "visit_pct",        width: 10, kind: "pct" },
+      { header: "RPS Visit %",    key: "visit_pct",        width: 12, kind: "pct" },
       { header: "Total Time (min)",     key: "total_time_min",   width: 15, kind: "dec" },
       { header: "Time / Day (min)",     key: "time_per_day_min", width: 15, kind: "dec" },
       { header: "Avg Time / Visit (min)", key: "avg_time_min",   width: 18, kind: "dec" },
       { header: "Effective Calls",  key: "effective_calls",  width: 14, kind: "num" },
-      { header: "Call %",         key: "call_pct",         width: 10, kind: "pct" },
+      { header: "Effective Call %", key: "call_pct",        width: 14, kind: "pct" },
       { header: "Score RPS (/15)",         key: "score_rps",   width: 14, kind: "dec" },
       { header: "Score Time (/15)",        key: "score_time",  width: 14, kind: "dec" },
       { header: "Score Eff Call (/70)",    key: "score_call",  width: 16, kind: "dec" },
@@ -1140,8 +1218,10 @@ const SalesmanActivity = () => {
       { header: "RPS Visits",     key: "rps_visits",      width: 12, kind: "num" },
       { header: "Non-RPS Visits", key: "non_rps_visits",  width: 14, kind: "num" },
       { header: "Total Visits",   key: "total_visits",    width: 12, kind: "num" },
-      { header: "Planned RPS",    key: "planned_rps",     width: 12, kind: "num" },
-      { header: "Visit %",        key: "visit_pct",       width: 10, kind: "pct" },
+      { header: "With Sales",       key: "effective_calls", width: 12, kind: "num" },
+      { header: "Effective Call %", key: "call_pct",        width: 14, kind: "pct" },
+      { header: "Planned RPS",      key: "planned_rps",     width: 12, kind: "num" },
+      { header: "RPS Visit %",      key: "visit_pct",       width: 12, kind: "pct" },
       { header: "Total Time (min)", key: "total_time_min", width: 15, kind: "dec" },
       { header: "Sales Value",    key: "sales_value",     width: 15, kind: "num" },
       { header: "Collection",     key: "collection",      width: 15, kind: "num" },
@@ -1275,28 +1355,31 @@ const SalesmanActivity = () => {
             <Table.Summary.Cell index={8} align="center"><HoursMinCell v={data.totals.total_time_min} /></Table.Summary.Cell>
             <Table.Summary.Cell index={9} align="center"><HoursMinCell v={data.totals.time_per_day_min} /></Table.Summary.Cell>
             <Table.Summary.Cell index={10} align="center"><MinCell v={data.totals.avg_time_min} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={11} align="center"><NumCell v={data.totals.effective_calls} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={12} align="center"><PctCell v={data.totals.call_pct} thresholds={{ good: 10, ok: 5 }} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={13} align="center"><ScoreCell v={data.totals.score_rps}   max={15} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={14} align="center"><ScoreCell v={data.totals.score_time}  max={15} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={15} align="center"><ScoreCell v={data.totals.score_call}  max={70} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={16} align="center"><ScoreCell v={data.totals.score_total} max={100} bold /></Table.Summary.Cell>
+            <Table.Summary.Cell index={11} align="center"><NumCell v={data.totals.total_visits} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={12} align="center"><NumCell v={data.totals.effective_calls} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={13} align="center"><PctCell v={data.totals.call_pct} thresholds={{ good: 10, ok: 5 }} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={14} align="center"><ScoreCell v={data.totals.score_rps}   max={15} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={15} align="center"><ScoreCell v={data.totals.score_time}  max={15} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={16} align="center"><ScoreCell v={data.totals.score_call}  max={70} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={17} align="center"><ScoreCell v={data.totals.score_total} max={100} bold /></Table.Summary.Cell>
           </>
         ) : (
           <>
             <Table.Summary.Cell index={2} align="center"><NumCell v={data.totals.rps_visits} /></Table.Summary.Cell>
             <Table.Summary.Cell index={3} align="center"><NumCell v={data.totals.non_rps_visits} /></Table.Summary.Cell>
             <Table.Summary.Cell index={4} align="center"><NumCell v={data.totals.total_visits} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={5} align="center"><NumCell v={data.totals.planned_rps} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={6} align="center"><PctCell v={data.totals.visit_pct} thresholds={{ good: 90, ok: 70 }} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={7} align="center"><HoursMinCell v={data.totals.total_time_min} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={8} align="right"><MoneyCell v={data.totals.sales_value} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={9} align="right">
+            <Table.Summary.Cell index={5} align="center"><NumCell v={data.totals.effective_calls} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={6} align="center"><PctCell v={data.totals.call_pct} thresholds={{ good: 60, ok: 30 }} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={7} align="center"><NumCell v={data.totals.planned_rps} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={8} align="center"><PctCell v={data.totals.visit_pct} thresholds={{ good: 90, ok: 70 }} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={9} align="center"><HoursMinCell v={data.totals.total_time_min} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={10} align="right"><MoneyCell v={data.totals.sales_value} /></Table.Summary.Cell>
+            <Table.Summary.Cell index={11} align="right">
               {(!data.totals.collection || data.totals.collection === 0)
                 ? <span style={{ fontSize: 12, color: "#94A3B8" }}>—</span>
                 : <SarValue v={data.totals.collection} size={11} color="#0F172A" weight={600} />}
             </Table.Summary.Cell>
-            <Table.Summary.Cell index={10} />
+            <Table.Summary.Cell index={12} />
           </>
         )}
       </Table.Summary.Row>
