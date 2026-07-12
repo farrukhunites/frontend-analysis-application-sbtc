@@ -518,12 +518,43 @@ const hasGeo = (v) =>
   v.latitude != null && v.longitude != null &&
   Math.abs(v.latitude) > 0.001 && Math.abs(v.longitude) > 0.001;
 
+// Basemap definitions — all served from arcgisonline (single host that passes
+// corporate proxies blocking OSM/Carto/Mapbox). Each entry may include an
+// optional labels overlay drawn on top of the imagery.
+const BASEMAPS = {
+  satellite: {
+    label: "Satellite",
+    base:  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    attribution: "Tiles © Esri, Maxar, Earthstar Geographics",
+    overlay: "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+  },
+  streets: {
+    label: "Streets",
+    base:  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+    attribution: "Tiles © Esri",
+  },
+  topo: {
+    label: "Topo",
+    base:  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
+    attribution: "Tiles © Esri",
+  },
+  dark: {
+    label: "Dark",
+    base:  "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+    attribution: "Tiles © Esri",
+    overlay: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
+  },
+};
+
 const RouteMapModal = ({ open, onClose, date, salesman, branchScope }) => {
   const [loading, setLoading] = useState(false);
   const [data, setData]       = useState(null);
   const [modalReady, setModalReady] = useState(false);
-  const mapDivRef = useRef(null);
-  const mapObjRef = useRef(null);
+  const [basemap, setBasemap] = useState("satellite");
+  const mapDivRef   = useRef(null);
+  const mapObjRef   = useRef(null);
+  const baseRef     = useRef(null);
+  const overlayRef  = useRef(null);
 
   useEffect(() => {
     if (!open || !salesman || !date) return;
@@ -567,20 +598,20 @@ const RouteMapModal = ({ open, onClose, date, salesman, branchScope }) => {
     const map = L.map(mapDivRef.current, { zoomControl: true });
     mapObjRef.current = map;
 
-    // Esri World Street Map — single host, HTTPS, usually accepted by corporate
-    // proxies that block map-tile CDNs like OSM/Carto.
-    const tiles = L.tileLayer(
-      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
-      {
-        maxZoom: 19,
-        crossOrigin: true,
-        attribution: 'Tiles &copy; Esri',
-      }
-    );
+    const spec = BASEMAPS[basemap] || BASEMAPS.satellite;
+    const tiles = L.tileLayer(spec.base, {
+      maxZoom: 19,
+      crossOrigin: true,
+      attribution: spec.attribution,
+    });
     tiles.on("tileerror", (e) => {
       console.warn("[RouteMap] tile load error", e?.coords, e?.error);
     });
     tiles.addTo(map);
+    baseRef.current = tiles;
+    overlayRef.current = spec.overlay
+      ? L.tileLayer(spec.overlay, { maxZoom: 19, crossOrigin: true, pane: "overlayPane" }).addTo(map)
+      : null;
 
     if (visits.length === 0) {
       map.setView([24.7136, 46.6753], 6);
@@ -638,7 +669,26 @@ const RouteMapModal = ({ open, onClose, date, salesman, branchScope }) => {
     // Modal animation can leave the container with stale dimensions — force a
     // re-measure once the DOM settles.
     setTimeout(() => map.invalidateSize(), 50);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, modalReady, data]);
+
+  // Swap only the tile layers when user picks a different basemap. Keeps the
+  // markers/polyline intact so switching doesn't flash or lose viewport.
+  useEffect(() => {
+    const map = mapObjRef.current;
+    if (!map) return;
+    if (baseRef.current)    { map.removeLayer(baseRef.current);    baseRef.current = null; }
+    if (overlayRef.current) { map.removeLayer(overlayRef.current); overlayRef.current = null; }
+    const spec = BASEMAPS[basemap] || BASEMAPS.satellite;
+    baseRef.current = L.tileLayer(spec.base, {
+      maxZoom: 19, crossOrigin: true, attribution: spec.attribution,
+    }).addTo(map);
+    if (spec.overlay) {
+      overlayRef.current = L.tileLayer(spec.overlay, {
+        maxZoom: 19, crossOrigin: true, pane: "overlayPane",
+      }).addTo(map);
+    }
+  }, [basemap]);
 
   // Cleanup on close.
   useEffect(() => {
@@ -647,6 +697,8 @@ const RouteMapModal = ({ open, onClose, date, salesman, branchScope }) => {
       mapObjRef.current.remove();
       mapObjRef.current = null;
     }
+    baseRef.current = null;
+    overlayRef.current = null;
   }, [open]);
 
   const visited    = data?.visited || [];
@@ -662,14 +714,22 @@ const RouteMapModal = ({ open, onClose, date, salesman, branchScope }) => {
       destroyOnHidden
       afterOpenChange={(o) => setModalReady(o)}
       title={
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 700 }}>
-            {salesman?.salesman_name || "—"} · Route Map
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, paddingRight: 24 }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>
+              {salesman?.salesman_name || "—"} · Route Map
+            </div>
+            <div style={{ fontSize: 11, color: "#64748B", fontWeight: 400 }}>
+              {date?.format("ddd, DD MMM YYYY")} · {withGeo.length} plotted
+              {withoutGeo.length ? ` · ${withoutGeo.length} without GPS` : ""}
+            </div>
           </div>
-          <div style={{ fontSize: 11, color: "#64748B", fontWeight: 400 }}>
-            {date?.format("ddd, DD MMM YYYY")} · {withGeo.length} plotted
-            {withoutGeo.length ? ` · ${withoutGeo.length} without GPS` : ""}
-          </div>
+          <Segmented
+            size="small"
+            value={basemap}
+            onChange={setBasemap}
+            options={Object.entries(BASEMAPS).map(([k, v]) => ({ label: v.label, value: k }))}
+          />
         </div>
       }
     >
