@@ -602,6 +602,9 @@ const RouteMapModal = ({ open, onClose, date, salesman, branchScope }) => {
       const collectionTxt = v.collection
         ? `SAR ${Number(v.collection).toLocaleString("en-US", { maximumFractionDigits: 0 })}`
         : "—";
+      const lat = Number(v.latitude).toFixed(5);
+      const lng = Number(v.longitude).toFixed(5);
+      const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
       const html = `
         <div style="font-family:Arial,sans-serif;min-width:200px;">
           <div style="font-size:13px;font-weight:700;color:#0F172A;line-height:1.2;">
@@ -617,6 +620,13 @@ const RouteMapModal = ({ open, onClose, date, salesman, branchScope }) => {
             <div><b>Time in outlet:</b> ${durTxt}</div>
             <div><b>Sales:</b> ${salesQtyTxt}</div>
             <div><b>Collection:</b> ${collectionTxt}</div>
+            <div style="margin-top:4px;padding-top:4px;border-top:1px solid #E2E8F0;">
+              <b>Location:</b>
+              <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer"
+                 style="color:#2563EB;text-decoration:none;margin-left:4px;">
+                ${lat}, ${lng} ↗
+              </a>
+            </div>
           </div>
         </div>`;
       L.marker(latlngs[i], { icon: buildNumberedIcon(i + 1, v.is_rps) })
