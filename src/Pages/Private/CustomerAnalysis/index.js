@@ -640,7 +640,7 @@ const CustomerAnalysis = () => {
         {skuMix.length > 0 && (
           <div className="graph">
             <DonutChart
-              graphTitle="Product Mix YTD"
+              graphTitle={customerData?.sku_mix_type === "sku" ? "SKU Mix YTD" : "Product Mix YTD"}
               labels={skuMix.map((s) => s.name)}
               colourTheme={CHART_COLORS.slice(0, skuMix.length)}
               series={skuMix.map((s) => s.sales)}
