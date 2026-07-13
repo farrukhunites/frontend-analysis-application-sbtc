@@ -56,6 +56,11 @@ const PotentialCustomers = () => {
   const [loading, setLoading] = useState(false);
   const [potentialCustomers, setPotentialCustomers] = useState([]);
 
+  // The "dry months since last purchase of this product" calculation is
+  // meaningless without a specific product — Navbar "All Products" (empty
+  // code) is treated as an unsupported state and we render a hint instead.
+  const isAllProducts = !selectedProduct?.code;
+
   // -------------------------
   // Fetch API Data
   // -------------------------
@@ -83,10 +88,14 @@ const PotentialCustomers = () => {
       setLoading(false);
     };
 
+    if (isAllProducts) {
+      setPotentialCustomers([]);
+      return;
+    }
     if (selectedMonth && selectedProduct?.code) {
       fetchPotentialCustomers();
     }
-  }, [selectedMonth, selectedProduct, effectiveUnitType, valueType]);
+  }, [selectedMonth, selectedProduct, effectiveUnitType, valueType, isAllProducts]);
 
   const [searchText, setSearchText] = useState("");
   const [searchedColumn, setSearchedColumn] = useState("");
@@ -361,6 +370,33 @@ const PotentialCustomers = () => {
     const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
     saveAs(blob, `Potential_Customers_${selectedMonth}_${selectedProduct?.name}.xlsx`);
   };
+
+  if (isAllProducts) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: 240,
+          padding: 24,
+          textAlign: "center",
+          color: "#64748B",
+          fontSize: 14,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 16, fontWeight: 600, color: "#1E293B", marginBottom: 6 }}>
+            Select a product to see the Potential Customers report
+          </div>
+          <div>
+            This report identifies customers who stopped buying a specific product, so it
+            needs a single product picked in the top navbar (not “All Products”).
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
