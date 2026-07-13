@@ -118,6 +118,10 @@
   font-weight: 600;
 }
 
+.sa-bp-cell--highlight {
+  background: rgba(59, 130, 246, 0.08);
+}
+
 .ranking-row-selected:hover > td {
   background: rgba(59, 130, 246, 0.18) !important;
 }

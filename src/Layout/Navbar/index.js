@@ -50,7 +50,13 @@ const Navbar = ({ collapsed, setCollapsed }) => {
             });
           }
 
-          await setProductOptions(products);
+          // Prepend an "All Products" sentinel. Empty code is treated as
+          // "no product filter" by every backend that reads product_code.
+          // Initial default stays on the first real product so other pages
+          // that already expect a specific product don't get an empty scope
+          // on first load — the user opts into All Products explicitly.
+          const displayProducts = [{ code: "", name: "All Products" }, ...products];
+          await setProductOptions(displayProducts);
           if (products.length > 0) setSelectedProduct(products[0]);
         } else {
           msgApi.error(

@@ -33,3 +33,42 @@ export const getSalesmanInsight = async ({
     return { error: err.response?.data || err.message };
   }
 };
+
+export const getSalesmanInsightByProduct = async ({
+  salesmanCode, branchCode, month, unitType, valueType,
+}) => {
+  try {
+    const res = await axios.get(`${process.env.REACT_APP_BACKEND_URL}salesman-insight-by-product/`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+      params: {
+        salesman_code: salesmanCode,
+        branch_code:   branchCode,
+        month,
+        unit_type:     unitType,
+        value_type:    valueType,
+      },
+    });
+    return res?.data;
+  } catch (err) {
+    return { error: err.response?.data || err.message };
+  }
+};
+
+export const getSalesmanInvoices = async ({
+  salesmanCode, branchCode, productCode, month,
+}) => {
+  try {
+    const res = await axios.get(`${process.env.REACT_APP_BACKEND_URL}salesman-invoices/`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+      params: {
+        salesman_code: salesmanCode,
+        branch_code:   branchCode,
+        product_code:  productCode,
+        month,
+      },
+    });
+    return res?.data;
+  } catch (err) {
+    return { error: err.response?.data || err.message };
+  }
+};

@@ -24,7 +24,10 @@ import BarChart from "../../../Components/Charts/BarChart";
 import DonutChart from "../../../Components/Charts/DonutChart";
 import { getAllBranches } from "../../../API/Branches";
 import { getAllProducts } from "../../../API/Products";
-import { getSalesmanInsight, getSalesmenByBranch } from "../../../API/Salesman";
+import {
+  getSalesmanInsight, getSalesmenByBranch, getSalesmanInvoices,
+  getSalesmanInsightByProduct,
+} from "../../../API/Salesman";
 import { ProductContext } from "../../../Contexts/ProductContext";
 import { UnitValueContext } from "../../../Contexts/UnitValueContext";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
@@ -54,10 +57,22 @@ const SalesmanAnalysis = () => {
   const [selectedSalesman, setSelectedSalesman] = useState(null);
   const [loading, setLoading]                 = useState(false);
   const [data, setData]                       = useState(null);
+  const [invoices, setInvoices]               = useState([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
   const [rankModal, setRankModal]             = useState({ open: false, scope: null });
   const [activeCustModal, setActiveCustModal] = useState(false);
   const [assignedCustModal, setAssignedCustModal] = useState(false);
   const [paymentPendingModal, setPaymentPendingModal] = useState(false);
+  const [byProductModal, setByProductModal] = useState({ open: false, highlight: null });
+  const [byProductRows, setByProductRows] = useState(null);
+  const [byProductLoading, setByProductLoading] = useState(false);
+
+  // Sales-related cards can be broken down per product from
+  // SalesAggregateSalesmanProduct. Only surface the option when the navbar
+  // is on the "All Products" sentinel — otherwise there's a single product
+  // and the breakdown collapses to one row.
+  const allProductsMode = data?.product_code === "";
+  const openByProduct = (highlight) => setByProductModal({ open: true, highlight });
 
   const [searchParams] = useSearchParams();
   const locationState  = useLocation().state;
@@ -114,6 +129,11 @@ const SalesmanAnalysis = () => {
   useEffect(() => {
     if (!selectedSalesman || !selectedBranch || !selectedProduct) return;
     setLoading(true);
+    // Skeletons are gated on `loading && !data`; without clearing here, the
+    // stale payload keeps rendering during a refetch and the skeleton never
+    // appears when filters change.
+    setData(null);
+    setInvoices([]);
     getSalesmanInsight({
       salesmanCode: selectedSalesman.code,
       branchCode:   selectedBranch.code,
@@ -131,6 +151,47 @@ const SalesmanAnalysis = () => {
       setLoading(false);
     });
   }, [selectedSalesman, selectedBranch, selectedProduct, selectedMonth, effectiveUnitType, valueType]);
+
+  // Clear any cached per-product breakdown when the underlying scope changes,
+  // so the modal never shows stale rows from a different salesman/month.
+  useEffect(() => {
+    setByProductRows(null);
+    setByProductModal({ open: false, highlight: null });
+  }, [data?.salesman_code, data?.month_yyyymm, data?.unit_type, data?.value_type]);
+
+  // Lazy-fetch the per-product breakdown the first time the modal is opened
+  // for a given scope. Only meaningful in All-Products mode.
+  useEffect(() => {
+    if (!byProductModal.open || byProductRows || !allProductsMode || !data?.salesman_code) return;
+    setByProductLoading(true);
+    getSalesmanInsightByProduct({
+      salesmanCode: data.salesman_code,
+      branchCode:   data.branch_code,
+      month:        data.month_yyyymm,
+      unitType:     effectiveUnitType,
+      valueType,
+    }).then((res) => {
+      setByProductRows(res?.error ? [] : (res?.rows || []));
+      setByProductLoading(false);
+    });
+  }, [byProductModal.open, allProductsMode, data?.salesman_code, data?.branch_code, data?.month_yyyymm, effectiveUnitType, valueType]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Lazy-fetch the invoice line-items after the main insight lands. Split from
+  // the primary payload so the page paints without waiting on what can be a
+  // multi-thousand-row dump.
+  useEffect(() => {
+    if (!data?.salesman_code) { setInvoices([]); return; }
+    setInvoicesLoading(true);
+    getSalesmanInvoices({
+      salesmanCode: data.salesman_code,
+      branchCode:   data.branch_code,
+      productCode:  data.product_code,
+      month:        data.month_yyyymm,
+    }).then((res) => {
+      setInvoices(res?.error ? [] : (res?.invoices || []));
+      setInvoicesLoading(false);
+    });
+  }, [data?.salesman_code, data?.branch_code, data?.product_code, data?.month_yyyymm]);
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const ranking = data?.ranking || {};
@@ -279,7 +340,11 @@ const SalesmanAnalysis = () => {
       {/* ── KPI row: target / achievement ─────────────────────────── */}
       {data && (
         <div className="sa-section-row">
-          <div className="sa-rank-card">
+          <div
+            className={`sa-rank-card ${allProductsMode ? "sa-rank-card--clickable" : ""}`}
+            onClick={() => allProductsMode && openByProduct("month_target")}
+            title={allProductsMode ? "Click to see per-product breakdown" : ""}
+          >
             <div className="sa-rank-icon"><AimOutlined /></div>
             <div className="sa-rank-body">
               <div className="sa-rank-label" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
@@ -291,7 +356,11 @@ const SalesmanAnalysis = () => {
             </div>
           </div>
 
-          <div className="sa-rank-card">
+          <div
+            className={`sa-rank-card ${allProductsMode ? "sa-rank-card--clickable" : ""}`}
+            onClick={() => allProductsMode && openByProduct("sales_mtd")}
+            title={allProductsMode ? "Click to see per-product breakdown" : ""}
+          >
             <div className="sa-rank-icon sa-rank-icon--cadence"><LineChartOutlined /></div>
             <div className="sa-rank-body">
               <div className="sa-rank-label">MTD Sales</div>
@@ -304,7 +373,11 @@ const SalesmanAnalysis = () => {
             </div>
           </div>
 
-          <div className="sa-rank-card">
+          <div
+            className={`sa-rank-card ${allProductsMode ? "sa-rank-card--clickable" : ""}`}
+            onClick={() => allProductsMode && openByProduct("achievement_pct")}
+            title={allProductsMode ? "Click to see per-product breakdown" : ""}
+          >
             <div className="sa-rank-icon" style={{ background: `${pctColor(data.achievement_pct)}18`, color: pctColor(data.achievement_pct) }}>
               <TrophyOutlined />
             </div>
@@ -318,7 +391,11 @@ const SalesmanAnalysis = () => {
             </div>
           </div>
 
-          <div className="sa-rank-card">
+          <div
+            className={`sa-rank-card ${allProductsMode ? "sa-rank-card--clickable" : ""}`}
+            onClick={() => allProductsMode && openByProduct("daily_ach_pct")}
+            title={allProductsMode ? "Click to see per-product breakdown" : ""}
+          >
             <div className="sa-rank-icon" style={{ background: `${pctColor(data.daily_ach_pct)}18`, color: pctColor(data.daily_ach_pct) }}>
               <ThunderboltOutlined />
             </div>
@@ -458,7 +535,11 @@ const SalesmanAnalysis = () => {
             </div>
           </div>
 
-          <div className="sa-rank-card">
+          <div
+            className={`sa-rank-card ${allProductsMode ? "sa-rank-card--clickable" : ""}`}
+            onClick={() => allProductsMode && openByProduct("return_rate_percent")}
+            title={allProductsMode ? "Click to see per-product breakdown" : ""}
+          >
             <div className="sa-rank-icon" style={{ background: `${returnColor}18`, color: returnColor }}>
               <SwapOutlined />
             </div>
@@ -544,7 +625,7 @@ const SalesmanAnalysis = () => {
           {data.top_products?.length > 0 && (
             <div className="graph">
               <BarChart
-                graphTitle="Top 10 Products (YTD)"
+                graphTitle={data.top_type === "sku" ? "Top 10 SKUs (YTD)" : "Top 10 Products (YTD)"}
                 labels={data.top_products.map((p) => p.product_name)}
                 colourTheme={[CHART_COLORS[2]]}
                 units={[chartUnit]}
@@ -584,21 +665,22 @@ const SalesmanAnalysis = () => {
         </div>
       )}
 
-      {/* ── Selected-month invoice list ─────────────────────────── */}
+      {/* ── Selected-month invoice list (lazy-fetched) ─────────── */}
       {data && (
         <div style={{ marginTop: 20 }}>
           <div className="sa-section-title">
             Invoices — {data.month_yyyymm}
             <span style={{ fontSize: 12, color: "#94A3B8", marginLeft: 8, fontWeight: 400 }}>
-              ({data.invoices?.length || 0} line items)
+              {invoicesLoading ? "(loading…)" : `(${invoices.length} line items)`}
             </span>
           </div>
           <Table
             size="small"
             bordered
+            loading={invoicesLoading}
             rowKey={(_, i) => i}
             columns={invoiceColumns}
-            dataSource={data.invoices || []}
+            dataSource={invoices}
             scroll={{ x: "max-content" }}
             pagination={{ pageSize: 50, showSizeChanger: false, size: "small" }}
           />
@@ -640,7 +722,118 @@ const SalesmanAnalysis = () => {
         data={data}
         onPickCustomer={openCustomerInNewTab}
       />
+
+      {/* ── Per-product KPI breakdown modal (All Products mode) ── */}
+      <ByProductModal
+        state={byProductModal}
+        onClose={() => setByProductModal({ open: false, highlight: null })}
+        rows={byProductRows}
+        loading={byProductLoading}
+        data={data}
+        unitType={unitType}
+        isValueMode={isValueMode}
+      />
     </div>
+  );
+};
+
+const ByProductModal = ({ state, onClose, rows, loading, data, unitType, isValueMode }) => {
+  const highlight = state.highlight;
+  const unitLabel = isValueMode
+    ? <RiyalIcon width={11} height={11} color="currentColor" />
+    : (unitType || "ctn").toUpperCase();
+
+  const numHead = (label) => (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}>
+      {label} ({unitLabel})
+    </span>
+  );
+
+  const pctCell = (v) => {
+    if (v == null || !isFinite(v)) return <span style={{ color: "#94A3B8" }}>—</span>;
+    const color = v >= 0.9 ? "#10B981" : "#EF4444";
+    return <b style={{ color }}>{`${(v * 100).toFixed(1)}%`}</b>;
+  };
+
+  const cellCls = (key) => (highlight === key ? "sa-bp-cell--highlight" : "");
+
+  const columns = [
+    { title: "#", width: 44, align: "center",
+      render: (_, __, i) => <span style={{ color: "#94A3B8" }}>{i + 1}</span> },
+    { title: "Product", dataIndex: "product_name",
+      render: (v, r) => (
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 12 }}>{v}</div>
+          <div style={{ fontSize: 11, color: "#64748B" }}>{r.product_code}</div>
+        </div>
+      ) },
+    { title: numHead("Target"), dataIndex: "month_target", align: "right", width: 130,
+      onCell: () => ({ className: cellCls("month_target") }),
+      sorter: (a, b) => (a.month_target || 0) - (b.month_target || 0),
+      render: (v) => fmtNum(v) },
+    { title: numHead("MTD"), dataIndex: "sales_mtd", align: "right", width: 130,
+      defaultSortOrder: highlight === "sales_mtd" ? "descend" : undefined,
+      onCell: () => ({ className: cellCls("sales_mtd") }),
+      sorter: (a, b) => (a.sales_mtd || 0) - (b.sales_mtd || 0),
+      render: (v) => <b>{fmtNum(v)}</b> },
+    { title: "Achievement", dataIndex: "achievement_pct", align: "right", width: 130,
+      onCell: () => ({ className: cellCls("achievement_pct") }),
+      sorter: (a, b) => (a.achievement_pct || 0) - (b.achievement_pct || 0),
+      render: pctCell },
+    { title: "Daily Ach", dataIndex: "daily_ach_pct", align: "right", width: 120,
+      onCell: () => ({ className: cellCls("daily_ach_pct") }),
+      sorter: (a, b) => (a.daily_ach_pct || 0) - (b.daily_ach_pct || 0),
+      render: pctCell },
+    { title: numHead("YTD"), dataIndex: "sales_ytd", align: "right", width: 140,
+      sorter: (a, b) => (a.sales_ytd || 0) - (b.sales_ytd || 0),
+      render: (v) => fmtNum(v) },
+    { title: "Return %", dataIndex: "return_rate_percent", align: "right", width: 110,
+      onCell: () => ({ className: cellCls("return_rate_percent") }),
+      sorter: (a, b) => (a.return_rate_percent || 0) - (b.return_rate_percent || 0),
+      render: (v) => {
+        if (v == null) return <span style={{ color: "#94A3B8" }}>—</span>;
+        const color = v > 10 ? "#EF4444" : v > 5 ? "#F59E0B" : "#10B981";
+        return <b style={{ color }}>{`${v}%`}</b>;
+      } },
+  ];
+
+  const list = rows || [];
+
+  return (
+    <Modal
+      open={state.open}
+      onCancel={onClose}
+      footer={null}
+      width={1100}
+      title={
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>
+            KPI Breakdown by Product — {data?.salesman_name || ""}
+          </div>
+          <div style={{ fontSize: 12, color: "#64748B", fontWeight: 400 }}>
+            {data?.month_yyyymm ? `Month ${data.month_yyyymm} · ` : ""}
+            {list.length} product{list.length !== 1 ? "s" : ""} with activity or target
+          </div>
+        </div>
+      }
+      destroyOnClose
+    >
+      {loading ? (
+        <Skeleton active paragraph={{ rows: 8 }} />
+      ) : list.length === 0 ? (
+        <Empty description="No per-product data for this scope" />
+      ) : (
+        <Table
+          size="small"
+          bordered
+          rowKey={(r) => r.product_code}
+          columns={columns}
+          dataSource={list}
+          pagination={{ pageSize: 15, size: "small", showSizeChanger: false }}
+          scroll={{ x: "max-content", y: 460 }}
+        />
+      )}
+    </Modal>
   );
 };
 
