@@ -126,25 +126,20 @@ const DailySTT = () => {
     {
       title: "Growth %",
       render: (_, record) => {
-        const g =
-          ((record[`${prefix}_sales`] - record[`${prefix}_prev`]) /
-            (record[`${prefix}_prev`] || 1)) *
-          100;
+        const prev = record[`${prefix}_prev`] || 0;
+        if (!prev) return <span style={{ color: "#94A3B8" }}>—</span>;
+        const g = ((record[`${prefix}_sales`] - prev) / prev) * 100;
         return (
           <span style={{ color: g < 0 ? "red" : "green" }}>
-            {g?.toFixed(1)}%
+            {g.toFixed(1)}%
           </span>
         );
       },
       sorter: (a, b) => {
-        const aVal =
-          ((a[`${prefix}_sales`] - a[`${prefix}_prev`]) /
-            (a[`${prefix}_prev`] || 1)) *
-          100;
-        const bVal =
-          ((b[`${prefix}_sales`] - b[`${prefix}_prev`]) /
-            (b[`${prefix}_prev`] || 1)) *
-          100;
+        const ap = a[`${prefix}_prev`] || 0;
+        const bp = b[`${prefix}_prev`] || 0;
+        const aVal = ap ? ((a[`${prefix}_sales`] - ap) / ap) * 100 : -Infinity;
+        const bVal = bp ? ((b[`${prefix}_sales`] - bp) / bp) * 100 : -Infinity;
         return aVal - bVal;
       },
     },
@@ -407,52 +402,140 @@ const DailySTT = () => {
     const numFmt = '_(* #,##0_);[Red]_(* (#,##0);_(* "-"_);_(@_)';
     const pctFmt = "0.0%";
 
-    // Build flat column list
+    // Metric template repeated per group (or per month within an expanded group).
+    const METRICS = [
+      { label: "Sales",    suffix: "sales",  width: 14, isPct: false },
+      { label: "Target",   suffix: "target", width: 14, isPct: false },
+      { label: "Ach %",    suffix: "ach",    width: 10, isPct: true  },
+      { label: "Last Yr",  suffix: "prev",   width: 14, isPct: false },
+      { label: "Growth %", suffix: "growth", width: 11, isPct: true  },
+    ];
+
+    // Mirror the on-screen expand state — expanded product groups get a
+    // per-month breakdown + Total sub-group; collapsed groups get summary only.
+    const groups = [
+      ...selectedProducts.map((p) => ({
+        name:     p.name,
+        bg:       NAV,
+        prefix:   p.name.toLowerCase().replace(/\s+/g, "_"),
+        expanded: isMultiMonth && expandedCols.has(p.code),
+      })),
+      {
+        name:     "TOTAL (Selected Products)",
+        bg:       NAVY2,
+        prefix:   "total",
+        expanded: isMultiMonth && expandedCols.has("__total__"),
+      },
+    ];
+
+    const hasExpanded = groups.some((g) => g.expanded);
+    const hdrRows     = hasExpanded ? 3 : 2;
+    const metricRow   = hdrRows;                // metric labels always on the last header row
+    const monthRow    = hasExpanded ? 2 : null; // month/Total labels only when a 3rd header row exists
+
+    // Build flat column list. `subHeader` is the month label (or "Total") when
+    // the enclosing group is expanded; null otherwise.
     const colDefs = [{ label: "Branch", key: "branch", width: 22, isHeader: true }];
-    selectedProducts.forEach((p) => {
-      const s = p.name.toLowerCase().replace(/\s+/g, "_");
-      colDefs.push(
-        { label: "Sales",    key: `${s}_sales`,  product: p.name, width: 14 },
-        { label: "Target",   key: `${s}_target`, product: p.name, width: 14 },
-        { label: "Ach %",    key: `${s}_ach`,    product: p.name, width: 10, isPct: true },
-        { label: "Last Yr",  key: `${s}_prev`,   product: p.name, width: 14 },
-        { label: "Growth %", key: `${s}_growth`, product: p.name, width: 11, isPct: true },
-      );
+    groups.forEach((g) => {
+      if (g.expanded) {
+        reportMonths.forEach((ym) => {
+          METRICS.forEach((m) => {
+            colDefs.push({
+              label:     m.label,
+              key:       `${g.prefix}_${ym}_${m.suffix}`,
+              baseKey:   `${g.prefix}_${ym}`,
+              product:   g.name,
+              bg:        g.bg,
+              subHeader: ymLabel(ym),
+              width:     m.width,
+              isPct:     m.isPct,
+            });
+          });
+        });
+        METRICS.forEach((m) => {
+          colDefs.push({
+            label:     m.label,
+            key:       `${g.prefix}_${m.suffix}`,
+            baseKey:   g.prefix,
+            product:   g.name,
+            bg:        g.bg,
+            subHeader: "Total",
+            width:     m.width,
+            isPct:     m.isPct,
+          });
+        });
+      } else {
+        METRICS.forEach((m) => {
+          colDefs.push({
+            label:     m.label,
+            key:       `${g.prefix}_${m.suffix}`,
+            baseKey:   g.prefix,
+            product:   g.name,
+            bg:        g.bg,
+            subHeader: null,
+            width:     m.width,
+            isPct:     m.isPct,
+          });
+        });
+      }
     });
-    colDefs.push(
-      { label: "Sales",    key: "total_sales",  product: "TOTAL", width: 14 },
-      { label: "Target",   key: "total_target", product: "TOTAL", width: 14 },
-      { label: "Ach %",    key: "total_ach",    product: "TOTAL", width: 10, isPct: true },
-      { label: "Last Yr",  key: "total_prev",   product: "TOTAL", width: 14 },
-      { label: "Growth %", key: "total_growth", product: "TOTAL", width: 11, isPct: true },
-    );
 
     ws.columns = colDefs.map((c) => ({ key: c.key, width: c.width }));
 
-    // Row 1 — product group headers (merged per product)
-    const r1 = ws.getRow(1); r1.height = 20;
-    r1.getCell(1).value = ""; r1.getCell(1).style = hdrStyle(NAV);
+    for (let r = 1; r <= hdrRows; r++) ws.getRow(r).height = 20;
+
+    // Row 1 — product group headers. For expanded groups we merge horizontally
+    // across all their sub-columns here; for collapsed groups we skip and let
+    // the row-2 pass do a single 2D merge (rows 1..monthRow × 5 cols) to avoid
+    // overlapping merge ranges.
+    const r1 = ws.getRow(1);
+    r1.getCell(1).value = "";
+    r1.getCell(1).style = hdrStyle(NAV);
     let col = 2;
-    const productGroups = [
-      ...selectedProducts.map((p) => ({ name: p.name, span: 5, bg: NAV })),
-      { name: "TOTAL (Selected Products)", span: 5, bg: NAVY2 },
-    ];
-    productGroups.forEach(({ name, span, bg }) => {
-      r1.getCell(col).value = name;
-      r1.getCell(col).style = hdrStyle(bg);
-      ws.mergeCells(1, col, 1, col + span - 1);
+    groups.forEach((g) => {
+      const span = g.expanded
+        ? (reportMonths.length + 1) * METRICS.length  // months + Total
+        : METRICS.length;
+      r1.getCell(col).value = g.name;
+      r1.getCell(col).style = hdrStyle(g.bg);
+      if (g.expanded && span > 1) {
+        ws.mergeCells(1, col, 1, col + span - 1);
+      }
       col += span;
     });
 
-    // Row 2 — sub-headers
-    const r2 = ws.getRow(2); r2.height = 20;
+    // Row 2 (only when at least one group is expanded) — month / "Total"
+    // sub-labels for expanded groups; single 2D merge for collapsed groups.
+    if (monthRow) {
+      const r2 = ws.getRow(monthRow);
+      let c2 = 2;
+      groups.forEach((g) => {
+        if (g.expanded) {
+          [...reportMonths.map(ymLabel), "Total"].forEach((label) => {
+            const cell = r2.getCell(c2);
+            cell.value = label;
+            cell.style = hdrStyle(g.bg);
+            ws.mergeCells(monthRow, c2, monthRow, c2 + METRICS.length - 1);
+            c2 += METRICS.length;
+          });
+        } else {
+          ws.mergeCells(1, c2, monthRow, c2 + METRICS.length - 1);
+          c2 += METRICS.length;
+        }
+      });
+      // Branch header spans all header rows
+      ws.mergeCells(1, 1, monthRow, 1);
+    }
+
+    // Last header row — metric labels (Branch, Sales, Target, ...).
+    const rM = ws.getRow(metricRow);
     colDefs.forEach((c, i) => {
-      const cell = r2.getCell(i + 1);
+      const cell = rM.getCell(i + 1);
       cell.value = c.label;
       cell.style = hdrStyle(c.isHeader ? NAV : NAVY2);
     });
 
-    ws.views = [{ state: "frozen", xSplit: 1, ySplit: 2 }];
+    ws.views = [{ state: "frozen", xSplit: 1, ySplit: hdrRows }];
 
     // Track col widths
     const widths = colDefs.map((c) => c.label.length);
