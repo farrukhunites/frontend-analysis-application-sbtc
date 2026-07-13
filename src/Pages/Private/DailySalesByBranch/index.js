@@ -19,7 +19,6 @@ import { ProductContext } from "../../../Contexts/ProductContext";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
 import { UnitValueContext } from "../../../Contexts/UnitValueContext";
 import { UserContext } from "../../../App";
-import { getAllProducts } from "../../../API/Products";
 import {
   getDailyBranchSales,
   getDailyCustomerBreakdown,
@@ -31,11 +30,12 @@ import "./style.css";
 
 const DailySalesByBranch = () => {
   const { selectedMonth } = useDateFilter();
-  const { selectedProduct, setSelectedProduct } = useContext(ProductContext);
+  const { selectedProduct } = useContext(ProductContext);
   const { userData } = useContext(UserContext);
 
-  const [productOptions, setProductOptions] = useState([]);
-  const [useAllProducts, setUseAllProducts] = useState(false);
+  // The Navbar owns product selection. Empty selectedProduct.code = All Products
+  // (backend resolves to user's allowed_products).
+  const isAllProducts = !selectedProduct?.code;
   const [loading, setLoading] = useState(false);
   const [salesData, setSalesData] = useState([]);
   const [dayColumns, setDayColumns] = useState([]);
@@ -80,9 +80,9 @@ const DailySalesByBranch = () => {
     productName: "",
   });
 
-  // Product breakdown modal — shown when a cell is clicked while
-  // "All Products" is active. Clicking a row here opens `drillModal`
-  // for that specific product's customers.
+  // Product breakdown modal — shown when a cell is clicked while the Navbar
+  // has "All Products" selected. Clicking a row here opens `drillModal` for
+  // that specific product's customers.
   const [productModal, setProductModal] = useState({
     open: false,
     loading: false,
@@ -97,64 +97,18 @@ const DailySalesByBranch = () => {
   });
 
   // ------------------------------
-  // Fetch products
-  // ------------------------------
-  useEffect(() => {
-    const fetchProducts = async () => {
-      setLoading(true);
-      try {
-        const res = await getAllProducts();
-        const products = res?.results || [];
-
-        const hasIndomie = products.some((p) =>
-          p?.name?.toLowerCase()?.includes("indomie"),
-        );
-        if (hasIndomie) {
-          const specialIndomie = [
-            { code: "9999901", name: "INDOMIE PILLOW (All)" },
-            { code: "9999902", name: "INDOMIE CUP (All)" },
-          ];
-          specialIndomie.forEach((p) => {
-            if (!products.some((prod) => prod?.code === p?.code))
-              products.push(p);
-          });
-        }
-
-        setProductOptions(products);
-        if (!selectedProduct && products.length > 0)
-          setSelectedProduct(products[0]);
-      } catch (err) {
-        message.error("Error fetching products: " + err.message);
-      }
-      setLoading(false);
-    };
-
-    fetchProducts();
-  }, [selectedProduct, setSelectedProduct]);
-
-  // ------------------------------
   // Fetch sales data
   // ------------------------------
   useEffect(() => {
     const fetchSales = async () => {
-      if (!useAllProducts && !selectedProduct) return;
-      if (useAllProducts && !userData?.allowed_products?.length) return;
+      if (!selectedProduct) return;
       setLoading(true);
       try {
-        // "All Products" is a page-local virtual option — expand to the
-        // user's allowed product codes so the backend aggregates only across
-        // what they can see. Keeps ProductContext untouched so the navbar's
-        // Product select doesn't show a fake "All Products" entry.
-        const allowedCodes = Array.isArray(userData?.allowed_products)
-          ? userData.allowed_products
-          : [];
-        const codeParam = useAllProducts
-          ? allowedCodes.filter((c) => c && !c.startsWith("99999")).join(",")
-          : selectedProduct.code;
-
+        // selectedProduct.code is "" for All Products — the backend resolves
+        // that to the user's allowed_products whitelist.
         const res = await getDailyBranchSales(
           selectedMonth,
-          codeParam,
+          selectedProduct.code,
           effectiveUnitType,
           valueType,
           selectedChannels,
@@ -178,8 +132,6 @@ const DailySalesByBranch = () => {
     fetchSales();
   }, [
     selectedProduct,
-    useAllProducts,
-    userData,
     effectiveUnitType,
     valueType,
     selectedMonth,
@@ -482,10 +434,10 @@ const DailySalesByBranch = () => {
       : row.branch;
     const dayLabel = `${dayMeta.title} ${dayMeta.shortDay}`;
 
-    // When "All Products" is selected, first show the per-product breakdown.
-    // Clicking a row inside that modal then opens the customer breakdown
-    // filtered to that specific product.
-    if (useAllProducts) {
+    // When "All Products" is selected in the Navbar, first show the per-product
+    // breakdown. Clicking a row inside that modal then opens the customer
+    // breakdown filtered to that specific product.
+    if (isAllProducts) {
       setProductModal({
         open: true,
         loading: true,
@@ -775,41 +727,6 @@ const DailySalesByBranch = () => {
             justifyContent: "flex-end",
           }}
         >
-          <span
-            style={{
-              color: "#64748B",
-              fontSize: 13,
-              fontWeight: 500,
-              whiteSpace: "nowrap",
-            }}
-          >
-            Product:
-          </span>
-          <Select
-            showSearch
-            optionFilterProp="label"
-            loading={loading}
-            value={useAllProducts ? "__ALL__" : selectedProduct?.code}
-            onChange={(code) => {
-              if (code === "__ALL__") {
-                setUseAllProducts(true);
-                return;
-              }
-              setUseAllProducts(false);
-              const prod = productOptions.find((p) => p.code === code);
-              if (prod) setSelectedProduct(prod);
-            }}
-            style={{ minWidth: 220 }}
-            placeholder="Select product"
-            disabled={!productOptions.length}
-            options={[
-              { value: "__ALL__", label: "All Products" },
-              ...productOptions.map((p) => ({
-                value: p.code,
-                label: p.name,
-              })),
-            ]}
-          />
           <span
             style={{
               color: "#64748B",

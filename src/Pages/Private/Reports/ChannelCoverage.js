@@ -168,6 +168,10 @@ const ChannelCoverage = () => {
     const branchCode = branchCodeByName[bName];
     if (!branchCode) return;
     const drillProducts = useProductFilter ? productCodes : [];
+    // Navbar "All Products" + product-scoped column click → tell the backend to
+    // fall back to the user's allowed_products so the drill matches the report
+    // cell ("customers buying any allowed product" vs "all customers").
+    const useAllowedProducts = useProductFilter && productCodes.length === 0;
     // When drilling on the TOTAL column, restrict the backend to the channels
     // currently visible in the report so the modal matches the cell value.
     const drillChannels = channel ? undefined : visibleChannels;
@@ -178,7 +182,7 @@ const ChannelCoverage = () => {
       branchName: bName,
       channel: channel || null,
       channels: drillChannels || null,
-      hasProductFilter: useProductFilter && productCodes.length > 0,
+      hasProductFilter: useProductFilter,
       productName: selectedProduct?.name || null,
       mode: mode || "all",
     });
@@ -193,6 +197,7 @@ const ChannelCoverage = () => {
       unitType: effectiveUnitType,
       valueType,
       mode,
+      useAllowedProducts,
     }).then((res) => {
       if (res?.error) {
         message.error("Failed to load customers");

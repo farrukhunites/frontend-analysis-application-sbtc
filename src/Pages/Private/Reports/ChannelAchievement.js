@@ -70,7 +70,10 @@ const ChannelAchievement = () => {
 
   // Fetch report
   useEffect(() => {
-    if (!selectedMonth || !selectedProduct?.code) return;
+    // Empty product code == Navbar "All Products" sentinel — backend resolves
+    // it to the user's allowed_products whitelist. Only bail if selectedProduct
+    // itself is missing.
+    if (!selectedMonth || !selectedProduct) return;
     setLoading(true);
     getChannelAchievement({
       productCodes: selectedProduct.code,

@@ -40,8 +40,10 @@ const DailySTT = () => {
   const { selectedMonth } = useDateFilter();
   const { selectedProduct } = useContext(ProductContext);
   const [productOptions, setProductOptions] = useState([]);
+  // Skip the Navbar "All Products" sentinel (empty code) at mount time — the
+  // sync effect below will populate the local list once productOptions loads.
   const [selectedProducts, setSelectedProducts] = useState(
-    selectedProduct ? [selectedProduct] : []
+    selectedProduct?.code ? [selectedProduct] : []
   );
   const [dailySTTReport, setDailySTTReport] = useState([]);
   const [reportMonths, setReportMonths]     = useState([]); // YYYYMM ints from backend
@@ -185,8 +187,6 @@ const DailySTT = () => {
         }
 
         setProductOptions(products);
-        if (!selectedProducts.length && products.length > 0)
-          setSelectedProducts([products[0]]);
       } catch (error) {
         msgApi.error("Error fetching products: " + error?.message);
       }
@@ -195,6 +195,20 @@ const DailySTT = () => {
 
     fetchProductOptions();
   }, []);
+
+  // Sync local multi-select with Navbar's product selection.
+  //   - Navbar "All Products" (empty code) → select every available product so
+  //     the multi-column comparison view is populated automatically.
+  //   - Navbar specific product → collapse local selection to just that one.
+  useEffect(() => {
+    if (!productOptions.length || !selectedProduct) return;
+    if (!selectedProduct.code) {
+      setSelectedProducts(productOptions);
+    } else {
+      setSelectedProducts([selectedProduct]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProduct, productOptions]);
 
   useEffect(() => {
     const fetchDailySTTReport = async () => {

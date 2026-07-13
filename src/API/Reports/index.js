@@ -115,7 +115,7 @@ export const getChannelCustomerMonthBreakdown = ({
     .then((r) => r.data)
     .catch((err) => ({ error: err.response?.data || err.message }));
 
-export const getChannelCoverageCustomers = ({ month, fromMonth, toMonth, branchCode, channel, channels, productCodes, unitType, valueType, mode }) =>
+export const getChannelCoverageCustomers = ({ month, fromMonth, toMonth, branchCode, channel, channels, productCodes, unitType, valueType, mode, useAllowedProducts }) =>
   axios
     .get(`${process.env.REACT_APP_BACKEND_URL}reports/channel-coverage-customers/`, {
       headers: { Authorization: `Bearer ${getToken()}` },
@@ -130,6 +130,9 @@ export const getChannelCoverageCustomers = ({ month, fromMonth, toMonth, branchC
         value_type:        valueType,
         "product_codes[]": productCodes?.length ? productCodes : undefined,
         mode:              mode || undefined,
+        // Signals "product filter is on but Navbar is All Products" — backend
+        // scopes to the user's allowed_products.
+        use_allowed_products: useAllowedProducts ? 1 : undefined,
       },
     })
     .then((r) => r.data)

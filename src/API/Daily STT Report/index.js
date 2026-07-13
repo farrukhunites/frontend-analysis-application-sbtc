@@ -33,10 +33,11 @@ const getDailyBranchSales = async (
 ) => {
   const API_URL = `${process.env.REACT_APP_BACKEND_URL}sales/daily-branch/`;
 
-  // Validate required params
+  // product_codes may be "" for All Products (backend resolves to user's
+  // allowed_products); only reject when it's undefined/null.
   if (
     !month ||
-    !product_codes ||
+    product_codes == null ||
     !unit_type ||
     !value_type ||
     !selectedChannels
