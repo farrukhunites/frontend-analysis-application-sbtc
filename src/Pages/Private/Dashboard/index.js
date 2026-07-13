@@ -114,7 +114,8 @@ const Dashboard = ({ branchCode = null }) => {
       }
       setLoading(false);
     };
-    if (selectedMonth && selectedProduct?.code) {
+    // selectedProduct.code is "" for "All Products" — still a valid selection.
+    if (selectedMonth && selectedProduct) {
       fetchDashboard();
     } else {
       setLoading(false);
@@ -512,7 +513,11 @@ const Dashboard = ({ branchCode = null }) => {
           <div className="row">
             <div className="graph">
               <AreaChart
-                graphTitle={`SKU Contribution (${chartUnit})`}
+                graphTitle={`${
+                  dashboardData.sku_contribution_graph?.mix_type === "product"
+                    ? "Product"
+                    : "SKU"
+                } Contribution (${chartUnit})`}
                 labels={dashboardData.sku_contribution_graph?.labels || []}
                 colourTheme={[CHART_COLORS[0]]}
                 units={[chartUnit]}
@@ -548,12 +553,15 @@ const Dashboard = ({ branchCode = null }) => {
                   customerByChannelDataAll
                     ? [
                         {
-                          name: "All Products",
+                          name: "All Customers",
                           data:
                             customerByChannelDataAll[selectedBranch] || [],
                         },
                         {
-                          name: selectedProduct?.name || "Selected Product",
+                          name:
+                            selectedProduct?.code
+                              ? selectedProduct?.name || "Selected Product"
+                              : "Allowed Products",
                           data: customerByChannelData[selectedBranch] || [],
                         },
                       ]

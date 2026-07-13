@@ -13,7 +13,8 @@ const getDashboardData = async (
 ) => {
   const API_URL = `${process.env.REACT_APP_BACKEND_URL}dashboard/`;
 
-  if (!month || !product_code || !unit_type || !value_type) {
+  // product_code can be "" (All Products sentinel); only reject when undefined/null.
+  if (!month || product_code == null || !unit_type || !value_type) {
     return {
       success: false,
       error:
