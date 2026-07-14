@@ -10,8 +10,11 @@ import {
   ClockCircleOutlined,
   FileTextOutlined,
   SwapOutlined,
+  EnvironmentOutlined,
 } from "@ant-design/icons";
-import { Collapse, message, Modal, Select, Skeleton, Table, Tag } from "antd";
+import { Collapse, Empty, message, Modal, Segmented, Select, Skeleton, Table, Tag } from "antd";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import "./style.css";
 import { useContext, useEffect, useRef, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
@@ -50,6 +53,7 @@ const CustomerAnalysis = () => {
   const [channels, setChannels] = useState([]);
   const [rankModal, setRankModal] = useState({ open: false, scope: null });
   const [returnModal, setReturnModal] = useState({ open: false, scope: "all", loading: false, results: [], totalQty: 0 });
+  const [locationModal, setLocationModal] = useState(false);
 
   const [searchParams] = useSearchParams();
   const locationState = useLocation().state;
@@ -253,6 +257,8 @@ const CustomerAnalysis = () => {
     assignedSalesman:    customerData?.assigned_salesman || "-",
     assignedSalesmanCd:  customerData?.assigned_salesman_cd || null,
     branchCode:          customerData?.branch_code || selectedBranch?.code || null,
+    latitude:            customerData?.latitude ?? null,
+    longitude:           customerData?.longitude ?? null,
   };
 
   const openSalesmanAnalysis = (salesmanCode) => {
@@ -611,6 +617,32 @@ const CustomerAnalysis = () => {
               </div>
             </div>
           </div>
+
+          {/* ── Location (from DSR visit GPS) ─────────────────────────── */}
+          <div
+            className={`ca-rank-card ${customer.latitude != null && customer.longitude != null ? "ca-rank-card--clickable" : ""}`}
+            onClick={() => customer.latitude != null && customer.longitude != null && setLocationModal(true)}
+            title={customer.latitude != null && customer.longitude != null ? "Click to see outlet on map" : "No GPS captured yet"}
+          >
+            <div className="ca-rank-icon" style={{ background: "#0EA5E918", color: "#0EA5E9" }}>
+              <EnvironmentOutlined />
+            </div>
+            <div className="ca-rank-body">
+              <div className="ca-rank-label">Location</div>
+              <div className="ca-rank-value">
+                {customer.latitude != null && customer.longitude != null ? (
+                  <>
+                    <span className="ca-rank-num" style={{ fontSize: 14 }}>
+                      {Number(customer.latitude).toFixed(4)}, {Number(customer.longitude).toFixed(4)}
+                    </span>
+                    <span className="ca-rank-total">click to open map</span>
+                  </>
+                ) : (
+                  <span className="ca-rank-num" style={{ fontSize: 14, color: "#94A3B8" }}>Not captured</span>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -771,6 +803,13 @@ const CustomerAnalysis = () => {
         onClose={() => setReturnModal((p) => ({ ...p, open: false }))}
         unitType={effectiveUnitType}
         isValueMode={isValueMode}
+      />
+
+      {/* ── Customer location modal ───────────────────────────────────── */}
+      <CustomerLocationModal
+        open={locationModal}
+        onClose={() => setLocationModal(false)}
+        customer={customer}
       />
     </div>
   );
@@ -936,6 +975,175 @@ const ReturnBreakdownModal = ({ state, onClose, unitType, isValueMode }) => {
         pagination={{ pageSize: 20, size: "small", showSizeChanger: false }}
         scroll={{ y: "55vh" }}
       />
+    </Modal>
+  );
+};
+
+// ── Customer location modal ─────────────────────────────────────────────
+// Satellite/topo/streets/dark map viewer for a single outlet. Coordinates
+// originate from the salesman's DSR visit GPS (Customer.latitude/longitude),
+// so they may be missing for outlets that were never visited or where GPS
+// wasn't captured. Basemaps mirror the DSR route-map modal — same arcgisonline
+// host so corporate proxies that block OSM/Mapbox still work.
+const CA_BASEMAPS = {
+  satellite: {
+    label: "Satellite",
+    base:  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    attribution: "Tiles © Esri, Maxar, Earthstar Geographics",
+    overlay: "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+  },
+  streets: {
+    label: "Streets",
+    base:  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+    attribution: "Tiles © Esri",
+  },
+  topo: {
+    label: "Topo",
+    base:  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
+    attribution: "Tiles © Esri",
+  },
+  dark: {
+    label: "Dark",
+    base:  "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+    attribution: "Tiles © Esri",
+    overlay: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
+  },
+};
+
+// Inline-SVG teardrop pin — avoids the default-icon URL breakage under
+// webpack that Leaflet has out of the box.
+const buildOutletPin = () => {
+  const bg = "#EF4444";
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="42" viewBox="0 0 32 42">
+      <path d="M16 0C7.2 0 0 7.2 0 16c0 11 16 26 16 26s16-15 16-26C32 7.2 24.8 0 16 0z" fill="${bg}" stroke="#fff" stroke-width="2"/>
+      <circle cx="16" cy="16" r="5.5" fill="#fff"/>
+    </svg>`.trim();
+  return L.divIcon({
+    className: "outlet-marker",
+    html: svg,
+    iconSize: [32, 42],
+    iconAnchor: [16, 42],
+    popupAnchor: [0, -36],
+  });
+};
+
+const CustomerLocationModal = ({ open, onClose, customer }) => {
+  const mapDivRef  = useRef(null);
+  const mapObjRef  = useRef(null);
+  const baseRef    = useRef(null);
+  const overlayRef = useRef(null);
+  const [modalReady, setModalReady] = useState(false);
+  const [basemap, setBasemap] = useState("satellite");
+
+  const lat = customer?.latitude != null ? Number(customer.latitude) : null;
+  const lng = customer?.longitude != null ? Number(customer.longitude) : null;
+  const hasCoords = lat != null && lng != null && !Number.isNaN(lat) && !Number.isNaN(lng);
+
+  // Reset ready flag on close; wait a tick after open so Leaflet reads real
+  // dimensions rather than 0×0 mid-animation.
+  useEffect(() => {
+    if (!open) { setModalReady(false); return; }
+    const t = setTimeout(() => setModalReady(true), 60);
+    return () => clearTimeout(t);
+  }, [open]);
+
+  // Create map + marker once per open. Basemap swaps are handled separately
+  // so switching tiles doesn't flash the marker.
+  useEffect(() => {
+    if (!modalReady || !hasCoords || !mapDivRef.current) return;
+    if (mapObjRef.current) { mapObjRef.current.remove(); mapObjRef.current = null; }
+
+    // Cap zoom at 18 — arcgisonline imagery has variable coverage past that
+    // and shows "Map data not available" tiles in some areas. 18 is safe.
+    const map = L.map(mapDivRef.current, { zoomControl: true, maxZoom: 18 })
+      .setView([lat, lng], 16);
+    mapObjRef.current = map;
+    baseRef.current    = null;
+    overlayRef.current = null;
+
+    const mapsUrl = `https://www.google.com/maps?q=${lat.toFixed(6)},${lng.toFixed(6)}`;
+    const popup = `
+      <div style="font-family:Arial,sans-serif;min-width:200px;">
+        <div style="font-size:13px;font-weight:700;color:#0F172A;line-height:1.2;">
+          ${(customer.name || "").replace(/</g, "&lt;")}
+        </div>
+        <div style="font-size:11px;color:#64748B;margin-bottom:6px;">
+          ${customer.code || ""}${customer.channel && customer.channel !== "-" ? " · " + customer.channel : ""}
+        </div>
+        <div style="font-size:12px;color:#334155;">
+          <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer"
+             style="color:#2563EB;text-decoration:none;">
+            ${lat.toFixed(5)}, ${lng.toFixed(5)} ↗
+          </a>
+        </div>
+      </div>`;
+    L.marker([lat, lng], { icon: buildOutletPin() }).addTo(map).bindPopup(popup).openPopup();
+
+    setTimeout(() => map.invalidateSize(), 50);
+  }, [modalReady, hasCoords, lat, lng, customer?.name, customer?.code, customer?.channel]);
+
+  // Swap only the tile layers on basemap change — keeps the marker intact.
+  useEffect(() => {
+    const map = mapObjRef.current;
+    if (!map) return;
+    if (baseRef.current)    { map.removeLayer(baseRef.current);    baseRef.current = null; }
+    if (overlayRef.current) { map.removeLayer(overlayRef.current); overlayRef.current = null; }
+    const spec = CA_BASEMAPS[basemap] || CA_BASEMAPS.satellite;
+    baseRef.current = L.tileLayer(spec.base, {
+      maxZoom: 18, crossOrigin: true, attribution: spec.attribution,
+    }).addTo(map);
+    if (spec.overlay) {
+      overlayRef.current = L.tileLayer(spec.overlay, {
+        maxZoom: 18, crossOrigin: true, pane: "overlayPane",
+      }).addTo(map);
+    }
+  }, [basemap, modalReady, hasCoords]);
+
+  useEffect(() => {
+    if (open) return;
+    if (mapObjRef.current) { mapObjRef.current.remove(); mapObjRef.current = null; }
+    baseRef.current = null;
+    overlayRef.current = null;
+  }, [open]);
+
+  return (
+    <Modal
+      open={open}
+      onCancel={onClose}
+      footer={null}
+      width={820}
+      title={
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, paddingRight: 24 }}>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 600 }}>Outlet Location — {customer?.name || ""}</div>
+            <div style={{ fontSize: 12, color: "#64748B", fontWeight: 400 }}>
+              {customer?.code || ""}{customer?.channel && customer.channel !== "-" ? ` · ${customer.channel}` : ""}
+              {hasCoords && ` · ${lat.toFixed(5)}, ${lng.toFixed(5)}`}
+            </div>
+          </div>
+          {hasCoords && (
+            <Segmented
+              size="small"
+              value={basemap}
+              onChange={setBasemap}
+              options={Object.entries(CA_BASEMAPS).map(([k, v]) => ({ label: v.label, value: k }))}
+            />
+          )}
+        </div>
+      }
+      destroyOnClose
+    >
+      {!hasCoords ? (
+        <Empty description="No GPS location captured for this outlet yet" />
+      ) : (
+        <div style={{ position: "relative" }}>
+          <div
+            ref={mapDivRef}
+            style={{ width: "100%", height: 480, borderRadius: 6, border: "1px solid #E2E8F0", background: "#F1F5F9" }}
+          />
+        </div>
+      )}
     </Modal>
   );
 };

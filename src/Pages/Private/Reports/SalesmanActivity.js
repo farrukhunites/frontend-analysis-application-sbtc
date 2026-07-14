@@ -614,12 +614,14 @@ const RouteMapModal = ({ open, onClose, date, salesman, branchScope }) => {
       .filter(hasGeo)
       .sort((a, b) => (a.visit_in_dt || "").localeCompare(b.visit_in_dt || ""));
 
-    const map = L.map(mapDivRef.current, { zoomControl: true });
+    // Cap zoom at 18 — arcgisonline imagery coverage past that is spotty and
+    // shows "Map data not available" tiles in some areas.
+    const map = L.map(mapDivRef.current, { zoomControl: true, maxZoom: 18 });
     mapObjRef.current = map;
 
     const spec = BASEMAPS[basemap] || BASEMAPS.satellite;
     const tiles = L.tileLayer(spec.base, {
-      maxZoom: 19,
+      maxZoom: 18,
       crossOrigin: true,
       attribution: spec.attribution,
     });
@@ -629,7 +631,7 @@ const RouteMapModal = ({ open, onClose, date, salesman, branchScope }) => {
     tiles.addTo(map);
     baseRef.current = tiles;
     overlayRef.current = spec.overlay
-      ? L.tileLayer(spec.overlay, { maxZoom: 19, crossOrigin: true, pane: "overlayPane" }).addTo(map)
+      ? L.tileLayer(spec.overlay, { maxZoom: 18, crossOrigin: true, pane: "overlayPane" }).addTo(map)
       : null;
 
     if (visits.length === 0) {
@@ -701,11 +703,11 @@ const RouteMapModal = ({ open, onClose, date, salesman, branchScope }) => {
     if (overlayRef.current) { map.removeLayer(overlayRef.current); overlayRef.current = null; }
     const spec = BASEMAPS[basemap] || BASEMAPS.satellite;
     baseRef.current = L.tileLayer(spec.base, {
-      maxZoom: 19, crossOrigin: true, attribution: spec.attribution,
+      maxZoom: 18, crossOrigin: true, attribution: spec.attribution,
     }).addTo(map);
     if (spec.overlay) {
       overlayRef.current = L.tileLayer(spec.overlay, {
-        maxZoom: 19, crossOrigin: true, pane: "overlayPane",
+        maxZoom: 18, crossOrigin: true, pane: "overlayPane",
       }).addTo(map);
     }
   }, [basemap]);
