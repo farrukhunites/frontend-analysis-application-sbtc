@@ -145,22 +145,39 @@ const MoneyCell = ({ v }) => (
   </span>
 );
 
-const fmtTime = (iso) => (iso ? dayjs(iso).format("HH:mm") : "—");
+// DSR visit timestamps arrive as wall-clock salesman-local time. Whatever tz
+// suffix Django attaches during serialization would cause dayjs to re-convert
+// to browser-local and shift the visible hour — so extract HH:mm directly
+// from the ISO string instead.
+const fmtTime = (iso) => {
+  if (!iso) return "—";
+  const m = String(iso).match(/T(\d{2}):(\d{2})/);
+  return m ? `${m[1]}:${m[2]}` : dayjs(iso).format("HH:mm");
+};
 
-// Minutes between two ISO timestamps, or null if either is missing / invalid / negative.
-const durationMin = (inIso, outIso) => {
+// Seconds between two ISO timestamps computed from wall-clock components,
+// matching fmtTime's tz-agnostic parsing. Returns null on invalid/negative.
+const durationSec = (inIso, outIso) => {
   if (!inIso || !outIso) return null;
-  const mins = dayjs(outIso).diff(dayjs(inIso), "minute", true);
-  return mins >= 0 ? mins : null;
+  const parseWall = (s) => {
+    const m = String(s).match(/T(\d{2}):(\d{2}):(\d{2})/);
+    if (m) return (+m[1]) * 3600 + (+m[2]) * 60 + (+m[3]);
+    return Math.floor(dayjs(s).valueOf() / 1000);
+  };
+  const secs = parseWall(outIso) - parseWall(inIso);
+  return secs >= 0 ? secs : null;
 };
 
 const DurationCell = ({ inIso, outIso }) => {
-  const m = durationMin(inIso, outIso);
-  if (m == null) return <span style={{ fontSize: 12, color: "#94A3B8" }}>—</span>;
-  const color = m < 5 ? "#DC2626" : m < 10 ? "#B45309" : "#059669";
+  const s = durationSec(inIso, outIso);
+  if (s == null) return <span style={{ fontSize: 12, color: "#94A3B8" }}>—</span>;
+  const min = Math.floor(s / 60);
+  const sec = s % 60;
+  const color = min < 5 ? "#DC2626" : min < 10 ? "#B45309" : "#059669";
   return (
     <span style={{ fontSize: 12, color, fontWeight: 500 }}>
-      {m.toFixed(1)} <span style={{ color: "#64748B", fontSize: 10, fontWeight: 400 }}>min</span>
+      {min}<span style={{ color: "#64748B", fontSize: 10, fontWeight: 400 }}>min </span>
+      {sec}<span style={{ color: "#64748B", fontSize: 10, fontWeight: 400 }}>sec</span>
     </span>
   );
 };
@@ -196,6 +213,8 @@ const DrillModal = ({ open, onClose, date, salesman, branchScope }) => {
   };
 
   const visitedCols = [
+    { title: "#", key: "_idx", width: 40, align: "center",
+      render: (_, __, i) => <span style={{ fontSize: 12, color: "#64748B" }}>{i + 1}</span> },
     {
       title: "Customer",
       dataIndex: "cust_nm",
@@ -211,7 +230,7 @@ const DrillModal = ({ open, onClose, date, salesman, branchScope }) => {
     { title: "Out", dataIndex: "visit_out_dt", key: "out", width: 70, align: "center", render: (v) => <span style={{ fontSize: 12 }}>{fmtTime(v)}</span> },
     { title: "Time in Outlet", key: "duration", width: 110, align: "center",
       render: (_, r) => <DurationCell inIso={r.visit_in_dt} outIso={r.visit_out_dt} />,
-      sorter: (a, b) => (durationMin(a.visit_in_dt, a.visit_out_dt) ?? -1) - (durationMin(b.visit_in_dt, b.visit_out_dt) ?? -1) },
+      sorter: (a, b) => (durationSec(a.visit_in_dt, a.visit_out_dt) ?? -1) - (durationSec(b.visit_in_dt, b.visit_out_dt) ?? -1) },
     { title: "Type", dataIndex: "is_rps", key: "is_rps", width: 80, align: "center",
       render: (v) => v ? <Tag color="blue" style={{ margin: 0 }}>RPS</Tag> : <Tag style={{ margin: 0 }}>Non-RPS</Tag> },
     { title: "Qty",   dataIndex: "sales_qty",   key: "qty",   width: 90,  align: "right", render: (v) => <NumCell v={v} digits={2} /> },
@@ -625,8 +644,9 @@ const RouteMapModal = ({ open, onClose, date, salesman, branchScope }) => {
     }
 
     visits.forEach((v, i) => {
-      const dur = durationMin(v.visit_in_dt, v.visit_out_dt);
-      const durTxt = dur == null ? "—" : `${dur.toFixed(0)} min`;
+      const dur = durationSec(v.visit_in_dt, v.visit_out_dt);
+      const durTxt =
+        dur == null ? "—" : `${Math.floor(dur / 60)}min ${dur % 60}sec`;
       const salesQtyTxt = v.sales_qty
         ? `${Number(v.sales_qty).toLocaleString("en-US", { maximumFractionDigits: 0 })} ctn`
         : "—";
@@ -646,8 +666,8 @@ const RouteMapModal = ({ open, onClose, date, salesman, branchScope }) => {
           </div>
           <div style="font-size:12px;color:#334155;line-height:1.5;">
             <div><b>Type:</b> ${v.is_rps ? "RPS" : "Non-RPS"}</div>
-            <div><b>In:</b> ${v.visit_in_dt ? dayjs(v.visit_in_dt).format("HH:mm") : "—"}
-                 &nbsp;<b>Out:</b> ${v.visit_out_dt ? dayjs(v.visit_out_dt).format("HH:mm") : "—"}</div>
+            <div><b>In:</b> ${fmtTime(v.visit_in_dt)}
+                 &nbsp;<b>Out:</b> ${fmtTime(v.visit_out_dt)}</div>
             <div><b>Time in outlet:</b> ${durTxt}</div>
             <div><b>Sales:</b> ${salesQtyTxt}</div>
             <div><b>Collection:</b> ${collectionTxt}</div>
@@ -755,7 +775,7 @@ const RouteMapModal = ({ open, onClose, date, salesman, branchScope }) => {
             {withoutGeo.map((v) => (
               <Tag key={`${v.cust_cd}-${v.visit_in_dt || ""}`} style={{ margin: 0 }}>
                 {v.cust_nm} · {v.cust_cd}
-                {v.visit_in_dt && <span style={{ color: "#64748B" }}> · {dayjs(v.visit_in_dt).format("HH:mm")}</span>}
+                {v.visit_in_dt && <span style={{ color: "#64748B" }}> · {fmtTime(v.visit_in_dt)}</span>}
               </Tag>
             ))}
           </div>
@@ -824,6 +844,8 @@ const DailyDrillModal = ({ open, onClose, date, salesman, metric, branchScope })
   };
 
   const columns = [
+    { title: "#", key: "_idx", width: 40, align: "center",
+      render: (_, __, i) => <span style={{ fontSize: 12, color: "#64748B" }}>{i + 1}</span> },
     {
       title: "Customer",
       dataIndex: "cust_nm",
@@ -864,7 +886,7 @@ const DailyDrillModal = ({ open, onClose, date, salesman, metric, branchScope })
         render: (v) => <span style={{ fontSize: 12 }}>{fmtTime(v)}</span> },
       { title: "Time in Outlet", key: "duration", width: 110, align: "center",
         render: (_, r) => <DurationCell inIso={r.visit_in_dt} outIso={r.visit_out_dt} />,
-        sorter: (a, b) => (durationMin(a.visit_in_dt, a.visit_out_dt) ?? -1) - (durationMin(b.visit_in_dt, b.visit_out_dt) ?? -1) },
+        sorter: (a, b) => (durationSec(a.visit_in_dt, a.visit_out_dt) ?? -1) - (durationSec(b.visit_in_dt, b.visit_out_dt) ?? -1) },
     ]),
   ];
 
