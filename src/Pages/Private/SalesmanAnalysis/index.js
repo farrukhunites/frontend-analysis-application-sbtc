@@ -501,15 +501,20 @@ const SalesmanAnalysis = () => {
           </div>
 
           <div
-            className={`sa-rank-card ${data.assigned_customers_list?.length ? "sa-rank-card--clickable" : ""}`}
-            onClick={() => data.assigned_customers_list?.length && setAssignedCustModal(true)}
-            title={data.assigned_customers_list?.length ? "Click to see the assigned customers list" : ""}
+            className={`sa-rank-card ${data.assigned_customer_count ? "sa-rank-card--clickable" : ""}`}
+            onClick={() => data.assigned_customer_count && setAssignedCustModal(true)}
+            title={data.assigned_customer_count ? "Click to see active vs non-active assigned customers" : ""}
           >
             <div className="sa-rank-icon sa-rank-icon--invoice"><TeamOutlined /></div>
             <div className="sa-rank-body">
               <div className="sa-rank-label">Assigned Customers</div>
               <div className="sa-rank-value">
                 <span className="sa-rank-num">{data.assigned_customer_count}</span>
+                {(data.assigned_active_count != null || data.assigned_inactive_count != null) && (
+                  <span className="sa-rank-total">
+                    {data.assigned_active_count || 0} active · {data.assigned_inactive_count || 0} inactive
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -711,6 +716,8 @@ const SalesmanAnalysis = () => {
         open={assignedCustModal}
         onClose={() => setAssignedCustModal(false)}
         data={data}
+        unitType={unitType}
+        isValueMode={isValueMode}
         onPickCustomer={openCustomerInNewTab}
       />
 
@@ -902,61 +909,116 @@ const PaymentPendingModal = ({ open, onClose, data, onPickCustomer }) => {
   );
 };
 
-const AssignedCustomersModal = ({ open, onClose, data, onPickCustomer }) => {
-  const list = data?.assigned_customers_list || [];
+const AssignedCustomersModal = ({ open, onClose, data, unitType, isValueMode, onPickCustomer }) => {
+  const active   = data?.assigned_active_list   || [];
+  const inactive = data?.assigned_inactive_list || [];
+  const total    = active.length + inactive.length;
 
-  const columns = [
-    { title: "#", width: 50, align: "center",
-      render: (_, __, i) => <span style={{ color: "#94A3B8" }}>{i + 1}</span> },
-    { title: "Customer", dataIndex: "customer_name",
-      sorter: (a, b) => (a.customer_name || "").localeCompare(b.customer_name || ""),
-      render: (v, r) => (
-        <div
-          className="report-clickable-name"
-          title="Open Customer Analysis in new tab"
-          onClick={() => onPickCustomer(r)}
-        >
-          <div style={{ fontWeight: 600, fontSize: 12 }}>{v}</div>
-          <div style={{ fontSize: 11, color: "#64748B" }}>{r.customer_code}</div>
-        </div>
-      ) },
-    { title: "Channel", dataIndex: "channel", width: 100,
-      render: (v) => v ? <Tag color="blue">{v}</Tag> : <span style={{ color: "#CBD5E1" }}>-</span> },
-    { title: "Branch", dataIndex: "branch_name", width: 180,
-      render: (v) => v ? <span style={{ fontSize: 12 }}>{v}</span> : <span style={{ color: "#94A3B8" }}>-</span> },
+  const ytdTitle = isValueMode
+    ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>YTD Sales (<RiyalIcon width={11} height={11} color="#FFFFFF" />)</span>
+    : `YTD Sales (${(unitType || "ctn").toUpperCase()})`;
+
+  const nameCol = {
+    title: "Customer", dataIndex: "customer_name",
+    sorter: (a, b) => (a.customer_name || "").localeCompare(b.customer_name || ""),
+    render: (v, r) => (
+      <div
+        className="report-clickable-name"
+        title="Open Customer Analysis in new tab"
+        onClick={() => onPickCustomer(r)}
+      >
+        <div style={{ fontWeight: 600, fontSize: 12 }}>{v}</div>
+        <div style={{ fontSize: 11, color: "#64748B" }}>{r.customer_code}</div>
+      </div>
+    ),
+  };
+  const channelCol = {
+    title: "Channel", dataIndex: "channel", width: 100,
+    render: (v) => v ? <Tag color="blue">{v}</Tag> : <span style={{ color: "#CBD5E1" }}>-</span>,
+  };
+  const branchCol = {
+    title: "Branch", dataIndex: "branch_name", width: 160,
+    render: (v) => v ? <span style={{ fontSize: 12 }}>{v}</span> : <span style={{ color: "#94A3B8" }}>-</span>,
+  };
+  const lastInvCol = {
+    title: "Last Invoice", dataIndex: "last_invoice", width: 120,
+    render: (v) => v ? <span style={{ fontSize: 12 }}>{v}</span> : <span style={{ color: "#94A3B8" }}>-</span>,
+  };
+  const idxCol = {
+    title: "#", width: 50, align: "center",
+    render: (_, __, i) => <span style={{ color: "#94A3B8" }}>{i + 1}</span>,
+  };
+
+  const activeCols = [
+    idxCol, nameCol, channelCol, branchCol, lastInvCol,
+    { title: ytdTitle, dataIndex: "sales_ytd", align: "right", width: 140,
+      defaultSortOrder: "descend",
+      sorter: (a, b) => (a.sales_ytd || 0) - (b.sales_ytd || 0),
+      render: (v) => <b style={{ color: "#10B981" }}>{fmtNum(v)}</b> },
   ];
+  const inactiveCols = [idxCol, nameCol, channelCol, branchCol];
 
   return (
     <Modal
       open={open}
       onCancel={onClose}
       footer={null}
-      width={760}
+      width={920}
       title={
         <div>
           <div style={{ fontSize: 15, fontWeight: 600 }}>
             Assigned Customers — {data?.salesman_name || ""}
           </div>
           <div style={{ fontSize: 12, color: "#64748B", fontWeight: 400 }}>
-            {list.length} customer{list.length !== 1 ? "s" : ""} officially assigned to this salesman
+            {total} customer{total !== 1 ? "s" : ""} on the RPS route plan · Active = bought from this salesman YTD
           </div>
         </div>
       }
       destroyOnClose
     >
-      {list.length === 0 ? (
-        <Empty description="No customers assigned to this salesman" />
-      ) : (
-        <Table
-          size="small"
-          bordered
-          rowKey={(r) => r.customer_code}
-          columns={columns}
-          dataSource={list}
-          pagination={{ pageSize: 15, size: "small", showSizeChanger: false }}
-          scroll={{ y: 420 }}
-        />
-      )}
+      <div style={{ marginBottom: 24 }}>
+        <div className="sa-section-title" style={{ marginBottom: 8 }}>
+          Active ({active.length})
+          <span style={{ fontSize: 12, color: "#94A3B8", marginLeft: 8, fontWeight: 400 }}>
+            assigned customers with sales YTD
+          </span>
+        </div>
+        {active.length === 0 ? (
+          <Empty description="No assigned customers have bought from this salesman this year" />
+        ) : (
+          <Table
+            size="small"
+            bordered
+            rowKey={(r) => `aa-${r.customer_code}`}
+            columns={activeCols}
+            dataSource={active}
+            pagination={{ pageSize: 10, size: "small", showSizeChanger: false }}
+            scroll={{ y: 320 }}
+          />
+        )}
+      </div>
+
+      <div>
+        <div className="sa-section-title" style={{ marginBottom: 8 }}>
+          Non-Active ({inactive.length})
+          <span style={{ fontSize: 12, color: "#94A3B8", marginLeft: 8, fontWeight: 400 }}>
+            assigned but no sale from this salesman YTD
+          </span>
+        </div>
+        {inactive.length === 0 ? (
+          <Empty description="Every assigned customer bought this year — full coverage" />
+        ) : (
+          <Table
+            size="small"
+            bordered
+            rowKey={(r) => `ai-${r.customer_code}`}
+            columns={inactiveCols}
+            dataSource={inactive}
+            pagination={{ pageSize: 10, size: "small", showSizeChanger: false }}
+            scroll={{ y: 320 }}
+          />
+        )}
+      </div>
     </Modal>
   );
 };
