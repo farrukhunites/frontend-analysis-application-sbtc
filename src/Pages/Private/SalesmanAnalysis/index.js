@@ -592,7 +592,6 @@ const SalesmanAnalysis = () => {
                 series={data.channel_mix.map((c) => c.sales)}
                 seriesValues={data.channel_mix.map((c) => c.sales)}
                 units={[chartUnit]}
-                showTable={false}
               />
             </div>
           )}

@@ -459,7 +459,6 @@ const Dashboard = ({ branchCode = null }) => {
                 units={["%"]}
                 series={channelSeries}
                 seriesValues={channelSeriesValues}
-                showTable={false}
               />
             </div>
 

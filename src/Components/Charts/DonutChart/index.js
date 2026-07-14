@@ -67,12 +67,37 @@ const DonutChart = ({
     },
   };
 
+  // GraphLayout's table modal expects series as [{name, data}, ...] (bar/line
+  // shape). Donut passes a flat numeric array, so adapt here: one virtual
+  // series holds raw values, plus a computed "%" extraCol. Some call sites
+  // (e.g. Dashboard "Channel Sales Contribution") pass series as already-
+  // computed percentages and seriesValues as raw amounts; others pass raw in
+  // both. Detect the split so the table doesn't end up with two "%" columns.
+  const rawValues = seriesValues.length ? seriesValues : series;
+  const seriesIsPercent =
+    seriesValues.length > 0 &&
+    seriesValues.some((v, i) => v !== series[i]);
+  const percentages = seriesIsPercent
+    ? series.map((v) => Number((+v).toFixed(1)))
+    : (() => {
+        const total = rawValues.reduce((a, b) => a + b, 0) || 1;
+        return rawValues.map(
+          (v) => Number(((v / total) * 100).toFixed(1))
+        );
+      })();
+  // "%" as a unit refers to the slice size, not to the values themselves —
+  // fall back to a generic "Value" header in that case so the raw-amount
+  // column isn't mislabelled.
+  const valueLabel = units[0] && units[0] !== "%" ? units[0] : "Value";
+  const tableSeries = [{ name: valueLabel, data: rawValues }];
+  const tableExtraCols = [...extraCols, { name: "%", data: percentages }];
+
   return (
     <GraphLayout
       title={graphTitle}
       labels={labels}
-      series={series}
-      extraCols={extraCols}
+      series={tableSeries}
+      extraCols={tableExtraCols}
       showTable={showTable}
     >
       <Chart options={options} series={series} type="donut" height={310} />

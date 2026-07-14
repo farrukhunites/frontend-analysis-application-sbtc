@@ -646,7 +646,6 @@ const CustomerAnalysis = () => {
               series={skuMix.map((s) => s.sales)}
               seriesValues={skuMix.map((s) => s.sales)}
               units={[chartUnit]}
-              showTable={false}
             />
           </div>
         )}
