@@ -1,5 +1,5 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
-import { Form, Input, Button, message, Divider, Skeleton, Radio, DatePicker, Select } from "antd";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { Form, Input, Button, message, Divider, Skeleton, Radio, DatePicker, Select, Switch, Tooltip } from "antd";
 import dayjs from "dayjs";
 import {
   LockOutlined,
@@ -11,19 +11,84 @@ import {
   SyncOutlined,
   ClockCircleOutlined,
   TeamOutlined,
+  FileTextOutlined,
+  ReloadOutlined,
+  HolderOutlined,
 } from "@ant-design/icons";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { changePassword, getAdminUsers, adminSetPassword } from "../../../API/Auth";
 import { getAllBranches } from "../../../API/Branches";
 import { getAllProducts } from "../../../API/Products";
 import { getAllChannels } from "../../../API/Channels";
 import { streamForceRefresh } from "../../../API/ForceRefresh";
 import { UserContext } from "../../../App";
+import { isReportBlocked } from "../../../Utils/access";
+import { REPORT_CATALOG, getReportPrefs, saveReportPrefs, clearReportPrefs } from "../../../Utils/reportPrefs";
 import "./style.css";
+
+// Sortable row for the Report Preferences card. Drag handle is the leftmost
+// icon — clicking the visibility Switch must NOT start a drag, which the
+// PointerSensor activationConstraint distance:5 already handles.
+const SortableReportRow = ({ entry, index, isHidden, onToggle }) => {
+  const {
+    attributes, listeners, setNodeRef, transform, transition, isDragging,
+  } = useSortable({ id: entry.key });
+  const Icon = entry.icon;
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 5 : "auto",
+    boxShadow: isDragging ? "0 8px 24px rgba(30, 58, 95, 0.15)" : undefined,
+  };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`report-prefs-row${isHidden ? " report-prefs-row--hidden" : ""}${isDragging ? " report-prefs-row--dragging" : ""}`}
+    >
+      <span
+        className="report-prefs-handle"
+        {...attributes}
+        {...listeners}
+        title="Drag to reorder"
+      >
+        <HolderOutlined />
+      </span>
+      <span className="report-prefs-position">{index + 1}</span>
+      <Icon className="report-prefs-icon" />
+      <span className="report-prefs-label">{entry.label}</span>
+      <div className="report-prefs-actions">
+        <Tooltip title={isHidden ? "Show this report" : "Hide this report"}>
+          <Switch
+            size="small"
+            checked={!isHidden}
+            onChange={(checked) => onToggle(entry.key, checked)}
+          />
+        </Tooltip>
+      </div>
+    </div>
+  );
+};
 
 const Settings = () => {
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
-  const { userData } = useContext(UserContext);
+  const { userData, setUserData } = useContext(UserContext);
   const [msgAPI, contextHolder] = message.useMessage();
 
   const [refreshRunning, setRefreshRunning] = useState(false);
@@ -54,6 +119,96 @@ const Settings = () => {
 
   const isAdmin = userData?.role === "admin";
 
+  // Report preferences (order + hidden). Backed by user.report_prefs on the
+  // server; local state mirrors userData for fast UI response, and each
+  // change is PATCHed to the backend. Reports blocked by admin ACL are
+  // excluded from the list — user can't toggle what they don't have access to.
+  const [reportPrefs, setReportPrefs] = useState(() => getReportPrefs(userData));
+  const [prefsSaving, setPrefsSaving] = useState(false);
+
+  // Rehydrate from userData only when content actually changes. Skipping
+  // no-op updates avoids an extra render + SortableContext items array
+  // rebuild after every save, which was showing up as a subtle flicker.
+  useEffect(() => {
+    const next = getReportPrefs(userData);
+    setReportPrefs((prev) => {
+      const same =
+        prev.order.length === next.order.length &&
+        prev.hidden.length === next.hidden.length &&
+        prev.order.every((k, i) => k === next.order[i]) &&
+        prev.hidden.every((k, i) => k === next.hidden[i]);
+      return same ? prev : next;
+    });
+  }, [userData]);
+
+  const orderedReports = useMemo(() => {
+    const byKey = new Map(REPORT_CATALOG.map((r) => [r.key, r]));
+    return reportPrefs.order
+      .map((k) => byKey.get(k))
+      .filter(Boolean)
+      .filter((r) => !isReportBlocked(userData, r.reportKey));
+  }, [reportPrefs.order, userData]);
+
+  const persistPrefs = async (next) => {
+    setReportPrefs(next);           // optimistic
+    setPrefsSaving(true);
+    const res = await saveReportPrefs(setUserData, next);
+    setPrefsSaving(false);
+    if (!res.ok) {
+      msgAPI.error("Failed to save report preferences");
+      // Rehydrate from server truth so UI doesn't lie about what got saved.
+      setReportPrefs(getReportPrefs(userData));
+    }
+  };
+
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    // Visible list can be a subset of order[] (admin-blocked keys are hidden
+    // from the UI). Reorder only within the visible subset, then splice back
+    // into the full order preserving the blocked keys' original positions.
+    const visibleKeys = orderedReports.map((r) => r.key);
+    const oldVIdx = visibleKeys.indexOf(active.id);
+    const newVIdx = visibleKeys.indexOf(over.id);
+    if (oldVIdx < 0 || newVIdx < 0) return;
+    const newVisible = arrayMove(visibleKeys, oldVIdx, newVIdx);
+
+    const visibleSet = new Set(visibleKeys);
+    let cursor = 0;
+    const nextOrder = reportPrefs.order.map((k) =>
+      visibleSet.has(k) ? newVisible[cursor++] : k
+    );
+    persistPrefs({ ...reportPrefs, order: nextOrder });
+  };
+
+  const toggleReportVisible = (key, visible) => {
+    const hiddenSet = new Set(reportPrefs.hidden);
+    if (visible) hiddenSet.delete(key);
+    else hiddenSet.add(key);
+    persistPrefs({ ...reportPrefs, hidden: Array.from(hiddenSet) });
+  };
+
+  const resetReportPrefs = async () => {
+    setPrefsSaving(true);
+    const res = await clearReportPrefs(setUserData);
+    setPrefsSaving(false);
+    if (res.ok) {
+      msgAPI.success("Report preferences reset to default");
+    } else {
+      msgAPI.error("Failed to reset report preferences");
+    }
+  };
+
+  const visibleReportsCount = orderedReports.filter(
+    (r) => !reportPrefs.hidden.includes(r.key)
+  ).length;
+
   useEffect(() => {
     if (!isAdmin) return;
     setAdminUsersLoading(true);
@@ -74,7 +229,15 @@ const Settings = () => {
     setAdminResetLoading(false);
   };
 
-  // Resolve allowed_branches / allowed_products codes → names
+  // Resolve allowed_branches / allowed_products codes → names.
+  // Dep key intentionally excludes unrelated userData fields (e.g. report_prefs)
+  // so PATCHing prefs elsewhere in this page doesn't retrigger the resolver
+  // and flash the profile skeleton.
+  const aclKey = JSON.stringify({
+    b: userData?.allowed_branches ?? null,
+    p: userData?.allowed_products ?? null,
+    c: userData?.allowed_channels ?? null,
+  });
   useEffect(() => {
     const resolveCodes = async () => {
       setResolving(true);
@@ -149,7 +312,8 @@ const Settings = () => {
     };
 
     if (userData) resolveCodes();
-  }, [userData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aclKey]);
 
   // Auto-scroll log console to bottom on new entries
   useEffect(() => {
@@ -370,6 +534,71 @@ const Settings = () => {
             </Button>
           </Form>
         </div>
+      </div>
+
+      {/* Report Preferences: drag to reorder + toggle to hide (per-user, synced) */}
+      <div className="settings-card settings-card--full" style={{ marginTop: 20 }}>
+        <div className="card-section-header">
+          <div className="section-icon reports">
+            <FileTextOutlined />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div className="section-title">Report Preferences</div>
+            <div className="section-desc">
+              Drag to reorder by priority or toggle off the ones you don't use. Synced to your account.
+            </div>
+          </div>
+          <Tooltip title="Reset to default order and show all">
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={resetReportPrefs}
+              size="small"
+              loading={prefsSaving}
+            >
+              Reset
+            </Button>
+          </Tooltip>
+        </div>
+
+        <Divider style={{ margin: "16px 0" }} />
+
+        {orderedReports.length === 0 ? (
+          <div style={{ padding: 24, textAlign: "center", color: "var(--color-text-secondary)" }}>
+            You don't have access to any reports.
+          </div>
+        ) : (
+          <>
+            <DndContext
+              sensors={dndSensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={orderedReports.map((r) => r.key)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="report-prefs-list">
+                  {orderedReports.map((r, idx) => (
+                    <SortableReportRow
+                      key={r.key}
+                      entry={r}
+                      index={idx}
+                      isHidden={reportPrefs.hidden.includes(r.key)}
+                      onToggle={toggleReportVisible}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+
+            <div className="report-prefs-footer">
+              <span>
+                Showing <b>{visibleReportsCount}</b> of <b>{orderedReports.length}</b> reports
+              </span>
+              <span>{prefsSaving ? "Saving…" : "Changes are saved automatically."}</span>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Admin-only: reset password for any user */}

@@ -1,8 +1,8 @@
 import { lazy, Suspense, useContext, useMemo, useState } from "react";
 import { Tabs, Skeleton, Empty } from "antd";
-import { CalendarOutlined, AimOutlined, TrophyOutlined, RiseOutlined, AppstoreOutlined, TeamOutlined, DatabaseOutlined, BulbOutlined, UsergroupAddOutlined, PieChartOutlined, EnvironmentOutlined } from "@ant-design/icons";
 import { UserContext } from "../../../App";
-import { REPORT_KEYS, isReportBlocked } from "../../../Utils/access";
+import { isReportBlocked } from "../../../Utils/access";
+import { REPORT_CATALOG, getReportPrefs } from "../../../Utils/reportPrefs";
 
 const SalesTargetOverview = lazy(() => import("./SalesTargetOverview"));
 const DailySalesByBranch  = lazy(() => import("../DailySalesByBranch"));
@@ -22,175 +22,60 @@ const TabLoader = () => (
   </div>
 );
 
-const TABS = [
-  {
-    key:       "sales-target-overview",
-    reportKey: REPORT_KEYS.SALES_TARGET_OVERVIEW,
-    label:     (
+// Map catalog key -> lazy component. Adding a report is one entry here plus
+// one entry in REPORT_CATALOG.
+const REPORT_COMPONENTS = {
+  "sales-target-overview": SalesTargetOverview,
+  "daily-sales":           DailySalesByBranch,
+  "monthly-sales":         DailySTT,
+  "salesman-achievement":  SalesmanAchievement,
+  "customer-yoy":          ChannelCustomerYoY,
+  "channel-achievement":   ChannelAchievement,
+  "channel-coverage":      ChannelCoverage,
+  "target-feasibility":    TargetFeasibility,
+  "raw-data":              RawData,
+  "potential-customers":   PotentialCustomers,
+  "salesman-activity":     SalesmanActivity,
+};
+
+const buildTab = (entry) => {
+  const Icon = entry.icon;
+  const Component = REPORT_COMPONENTS[entry.key];
+  return {
+    key:       entry.key,
+    reportKey: entry.reportKey,
+    label: (
       <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <PieChartOutlined /> Sales Target Overview
+        <Icon /> {entry.label}
       </span>
     ),
-    children:  (
+    children: (
       <Suspense fallback={<TabLoader />}>
-        <SalesTargetOverview />
+        {Component ? <Component /> : null}
       </Suspense>
     ),
-  },
-  {
-    key:       "daily-sales",
-    reportKey: REPORT_KEYS.DAILY_SALES,
-    label:     (
-      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <CalendarOutlined /> Daily Sales
-      </span>
-    ),
-    children:  (
-      <Suspense fallback={<TabLoader />}>
-        <DailySalesByBranch />
-      </Suspense>
-    ),
-  },
-  {
-    key:       "monthly-sales",
-    reportKey: REPORT_KEYS.MONTHLY_SALES,
-    label:     (
-      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <AimOutlined /> Monthly Sales
-      </span>
-    ),
-    children:  (
-      <Suspense fallback={<TabLoader />}>
-        <DailySTT />
-      </Suspense>
-    ),
-  },
-  {
-    key:       "salesman-achievement",
-    reportKey: REPORT_KEYS.SALESMAN_ACHIEVEMENT,
-    label:     (
-      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <TrophyOutlined /> Salesman Achievement
-      </span>
-    ),
-    children:  (
-      <Suspense fallback={<TabLoader />}>
-        <SalesmanAchievement />
-      </Suspense>
-    ),
-  },
-  {
-    key:       "customer-yoy",
-    reportKey: REPORT_KEYS.CUSTOMER_YOY,
-    label:     (
-      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <RiseOutlined /> Customer YoY
-      </span>
-    ),
-    children:  (
-      <Suspense fallback={<TabLoader />}>
-        <ChannelCustomerYoY />
-      </Suspense>
-    ),
-  },
-  {
-    key:       "channel-achievement",
-    reportKey: REPORT_KEYS.CHANNEL_ACHIEVEMENT,
-    label:     (
-      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <AppstoreOutlined /> Channel Achievement
-      </span>
-    ),
-    children:  (
-      <Suspense fallback={<TabLoader />}>
-        <ChannelAchievement />
-      </Suspense>
-    ),
-  },
-  {
-    key:       "channel-coverage",
-    reportKey: REPORT_KEYS.CHANNEL_COVERAGE,
-    label:     (
-      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <TeamOutlined /> Coverage Report
-      </span>
-    ),
-    children:  (
-      <Suspense fallback={<TabLoader />}>
-        <ChannelCoverage />
-      </Suspense>
-    ),
-  },
-  {
-    key:       "target-feasibility",
-    reportKey: REPORT_KEYS.TARGET_FEASIBILITY,
-    label:     (
-      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <BulbOutlined /> Target Feasibility
-      </span>
-    ),
-    children:  (
-      <Suspense fallback={<TabLoader />}>
-        <TargetFeasibility />
-      </Suspense>
-    ),
-  },
-  {
-    key:       "raw-data",
-    reportKey: REPORT_KEYS.RAW_DATA,
-    label:     (
-      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <DatabaseOutlined /> Raw Data
-      </span>
-    ),
-    children:  (
-      <Suspense fallback={<TabLoader />}>
-        <RawData />
-      </Suspense>
-    ),
-  },
-  {
-    key:       "potential-customers",
-    reportKey: REPORT_KEYS.POTENTIAL_CUSTOMERS,
-    label:     (
-      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <UsergroupAddOutlined /> Potential Customers
-      </span>
-    ),
-    children:  (
-      <Suspense fallback={<TabLoader />}>
-        <PotentialCustomers />
-      </Suspense>
-    ),
-  },
-  {
-    key:       "salesman-activity",
-    reportKey: REPORT_KEYS.SALESMAN_ACTIVITY,
-    label:     (
-      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <EnvironmentOutlined /> Salesman Activity
-      </span>
-    ),
-    children:  (
-      <Suspense fallback={<TabLoader />}>
-        <SalesmanActivity />
-      </Suspense>
-    ),
-  },
-];
+  };
+};
 
 const Reports = () => {
   const { userData } = useContext(UserContext);
 
-  const visibleTabs = useMemo(
-    () => TABS.filter((tab) => !isReportBlocked(userData, tab.reportKey)),
-    [userData]
-  );
+  const visibleTabs = useMemo(() => {
+    const prefs = getReportPrefs(userData);
+    const byKey = new Map(REPORT_CATALOG.map((r) => [r.key, r]));
+    const hidden = new Set(prefs.hidden);
+    return prefs.order
+      .map((k) => byKey.get(k))
+      .filter(Boolean)
+      .filter((entry) => !hidden.has(entry.key))
+      .filter((entry) => !isReportBlocked(userData, entry.reportKey))
+      .map(buildTab);
+  }, [userData]);
 
   const [activeTab, setActiveTab] = useState(visibleTabs[0]?.key);
 
-  // If denied list changes (e.g. after re-login) and current tab is no longer
-  // visible, fall back to the first available one.
+  // If the visible tab set changes (ACL/pref update, or first paint) and the
+  // current tab is no longer visible, fall back to the first available one.
   if (visibleTabs.length && !visibleTabs.some((t) => t.key === activeTab)) {
     setActiveTab(visibleTabs[0].key);
   }
@@ -208,7 +93,7 @@ const Reports = () => {
 
       {visibleTabs.length === 0 ? (
         <div style={{ background: "var(--color-bg-card)", borderRadius: 12, padding: 48 }}>
-          <Empty description="You don't have access to any reports. Contact your administrator." />
+          <Empty description="No reports to display. Enable some in Settings > Report Preferences, or contact your administrator." />
         </div>
       ) : (
         <Tabs

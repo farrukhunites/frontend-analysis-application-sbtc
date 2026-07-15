@@ -86,4 +86,29 @@ const getCurrentUser = async () => {
   }
 };
 
-export { login, refresh, changePassword, getAdminUsers, adminSetPassword, getCurrentUser };
+const updateReportPrefs = async (prefs) => {
+  try {
+    const res = await axios.patch(
+      `${process.env.REACT_APP_BACKEND_URL}auth/me/report-prefs/`,
+      prefs,
+      { headers: { Authorization: `Bearer ${getToken()}` } }
+    );
+    return res.data;
+  } catch (error) {
+    return { error: error.response?.data || error.message };
+  }
+};
+
+const resetReportPrefsAPI = async () => {
+  try {
+    const res = await axios.delete(
+      `${process.env.REACT_APP_BACKEND_URL}auth/me/report-prefs/`,
+      { headers: { Authorization: `Bearer ${getToken()}` } }
+    );
+    return res.data;
+  } catch (error) {
+    return { error: error.response?.data || error.message };
+  }
+};
+
+export { login, refresh, changePassword, getAdminUsers, adminSetPassword, getCurrentUser, updateReportPrefs, resetReportPrefsAPI };
