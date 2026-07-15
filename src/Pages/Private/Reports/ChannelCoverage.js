@@ -20,6 +20,7 @@ import { getAllBranches } from "../../../API/Branches";
 import {
   getChannelCoverage,
   getChannelCoverageCustomers,
+  getProductBranchCoverage,
 } from "../../../API/Reports";
 import { pinGrandTotal } from "./reportUtils";
 import ChannelCoverageCustomersModal from "./ChannelCoverageCustomersModal";
@@ -143,6 +144,12 @@ const ChannelCoverage = () => {
     results: [],
     has_product_filter: false,
   });
+  const [productBranchData, setProductBranchData] = useState({
+    branches: [],
+    branch_totals: {},
+    results: [],
+  });
+  const [productLoading, setProductLoading] = useState(false);
   const [drillState, setDrillState] = useState({
     open: false,
     loading: false,
@@ -238,6 +245,26 @@ const ChannelCoverage = () => {
       setLoading(false);
     });
   }, [fromMonthStr, toMonthStr, effectiveUnitType, valueType, selectedBranches, productCodes]);
+
+  // Product × Branch is fetched lazily — only when the user switches into
+  // that orientation. Avoids the extra query for users who never open it.
+  useEffect(() => {
+    if (viewOrientation !== "byProduct") return;
+    if (!fromMonthStr || !toMonthStr || !selectedBranches.length) return;
+    setProductLoading(true);
+    getProductBranchCoverage({
+      fromMonth: fromMonthStr,
+      toMonth: toMonthStr,
+      unitType: effectiveUnitType,
+      valueType,
+      branchCodes: selectedBranches,
+      productCodes,
+    }).then((res) => {
+      if (res?.error) message.error("Failed to load product coverage");
+      else setProductBranchData(res);
+      setProductLoading(false);
+    });
+  }, [viewOrientation, fromMonthStr, toMonthStr, effectiveUnitType, valueType, selectedBranches, productCodes]);
 
   // Channels ranked lower in importance — kept in the report but pushed to the
   // end of every ordering (columns, picker, default selection).
@@ -913,6 +940,522 @@ const ChannelCoverage = () => {
     return gt;
   }, [viewOrientation, transposedDataSource, branchColsFromRows, hasFilter]);
 
+  // ── Branch × Product view ────────────────────────────────────────────────
+  // Rows are branches, columns are products. Every cell in a row shares the
+  // same denominator (the branch's own customer base), so a row reads as
+  // "how much of THIS branch's base each product reaches".
+  const productInfos = useMemo(() => {
+    return (productBranchData.results || []).map((p) => ({
+      productCode: p.product_code,
+      productName: p.product_name,
+      isSpecial: !!p.is_special,
+    }));
+  }, [productBranchData.results]);
+
+  const productDataSource = useMemo(() => {
+    if (viewOrientation !== "byProduct") return [];
+    const bt = productBranchData.branch_totals || {};
+    const branches = productBranchData.branches || [];
+    const products = productBranchData.results || [];
+    return branches.map((b, i) => {
+      const bs = slug(b.short);
+      const base = bt[bs] || 0;
+      const row = {
+        key: `${b.short}-${i}`,
+        branch: b.short,
+        branch_name: b.name,
+        base_customers: base,
+      };
+      products.forEach((p) => {
+        const pk = p.product_code;
+        const bought = p[`${bs}_customers`] || 0;
+        row[`p_${pk}_customers`] = bought;
+        row[`p_${pk}_remaining`] = Math.max(0, base - bought);
+        row[`p_${pk}_pct`] = p[`${bs}_pct`] || 0;
+      });
+      return row;
+    });
+  }, [
+    viewOrientation,
+    productBranchData.branches,
+    productBranchData.branch_totals,
+    productBranchData.results,
+  ]);
+
+  const openProductDrill = ({ productCode, productName, branchName, cellValue, mode = "all" }) => {
+    const branchCode = branchCodeByName[branchName];
+    if (!branchCode || !cellValue) return;
+    setDrillState({
+      open: true,
+      loading: true,
+      data: null,
+      branchName,
+      channel: null,
+      channels: null,
+      hasProductFilter: !!productCode,
+      productName: productName || null,
+      mode,
+    });
+    getChannelCoverageCustomers({
+      month: selectedMonth,
+      fromMonth: fromMonthStr,
+      toMonth: toMonthStr,
+      branchCode,
+      productCodes: productCode ? [productCode] : [],
+      unitType: effectiveUnitType,
+      valueType,
+      mode,
+    }).then((res) => {
+      if (res?.error) {
+        message.error("Failed to load customers");
+        setDrillState((s) => ({ ...s, open: false, loading: false }));
+        return;
+      }
+      setDrillState((s) => ({ ...s, loading: false, data: res }));
+    });
+  };
+
+  const productColumns = useMemo(() => {
+    if (viewOrientation !== "byProduct") return [];
+    const infos = productInfos;
+    if (!infos.length) return [];
+
+    const productCols = infos.map(({ productCode, productName, isSpecial }) => {
+      const drillCell = ({ v, row, accent, bold }) => {
+        if (!v || row.isGrandTotal) {
+          const Tag = bold ? "b" : "span";
+          return <Tag style={{ color: accent || "#1E293B" }}>{fmtNum(v)}</Tag>;
+        }
+        const Tag = bold ? "b" : "span";
+        return (
+          <Tag
+            className="report-clickable-name"
+            style={{ color: accent || "#1E293B", display: "inline-block" }}
+            onClick={() =>
+              openProductDrill({
+                productCode,
+                productName,
+                branchName: row.branch_name,
+                cellValue: v,
+              })
+            }
+            title="Open customer list for this product in this branch"
+          >
+            {fmtNum(v)}
+          </Tag>
+        );
+      };
+
+      return {
+        title: (
+          <span style={{ fontWeight: 700, fontSize: 11 }} title={productName}>
+            {productName}
+          </span>
+        ),
+        align: "center",
+        children: [
+          {
+            title: "Customers",
+            dataIndex: `p_${productCode}_customers`,
+            align: "right",
+            width: 100,
+            sorter: pinGrandTotal(
+              (a, b) =>
+                (a[`p_${productCode}_customers`] || 0) -
+                (b[`p_${productCode}_customers`] || 0),
+            ),
+            render: (v, r) =>
+              drillCell({
+                v,
+                row: r,
+                accent: "var(--color-accent)",
+                bold: true,
+              }),
+          },
+          {
+            title: "Remaining",
+            dataIndex: `p_${productCode}_remaining`,
+            align: "right",
+            width: 95,
+            sorter: pinGrandTotal(
+              (a, b) =>
+                (a[`p_${productCode}_remaining`] || 0) -
+                (b[`p_${productCode}_remaining`] || 0),
+            ),
+            render: (v, r) => {
+              if (!r.base_customers) {
+                return <span style={{ color: "#94A3B8" }}>—</span>;
+              }
+              if (!v || r.isGrandTotal) {
+                return <b style={{ color: "#B91C1C" }}>{fmtNum(v)}</b>;
+              }
+              return (
+                <b
+                  className="report-clickable-name"
+                  style={{ color: "#B91C1C", display: "inline-block" }}
+                  onClick={() =>
+                    openProductDrill({
+                      productCode,
+                      productName,
+                      branchName: r.branch_name,
+                      cellValue: v,
+                      mode: "remaining",
+                    })
+                  }
+                  title="Open remaining-customer list (didn't buy this product)"
+                >
+                  {fmtNum(v)}
+                </b>
+              );
+            },
+          },
+          {
+            title: "(%)",
+            dataIndex: `p_${productCode}_pct`,
+            align: "center",
+            width: 80,
+            sorter: pinGrandTotal(
+              (a, b) =>
+                (a[`p_${productCode}_pct`] || 0) -
+                (b[`p_${productCode}_pct`] || 0),
+            ),
+            render: (v, r) => <PctCell v={v} allCount={r.base_customers} />,
+          },
+        ],
+      };
+    });
+
+    return [
+      {
+        title: "#",
+        width: 44,
+        align: "center",
+        fixed: "left",
+        render: (_, r, i) =>
+          r.isGrandTotal ? "" : (
+            <span style={{ color: "#64748B", fontSize: 11 }}>{i + 1}</span>
+          ),
+      },
+      {
+        title: "Branch",
+        fixed: "left",
+        width: 160,
+        ...nameSearchProps((r) => r.branch, "Search branch"),
+        render: (_, r) =>
+          r.isGrandTotal ? (
+            <b>GRAND TOTAL</b>
+          ) : (
+            <span style={{ fontWeight: 600, fontSize: 12 }}>{r.branch}</span>
+          ),
+      },
+      {
+        title: <span style={{ fontWeight: 700 }}>BRANCH BASE</span>,
+        dataIndex: "base_customers",
+        align: "right",
+        width: 120,
+        fixed: "left",
+        defaultSortOrder: "descend",
+        sorter: pinGrandTotal(
+          (a, b) => (a.base_customers || 0) - (b.base_customers || 0),
+        ),
+        render: (v, r) => {
+          if (!v || r.isGrandTotal) {
+            return (
+              <b style={{ color: "var(--color-primary)" }}>{fmtNum(v)}</b>
+            );
+          }
+          return (
+            <b
+              className="report-clickable-name"
+              style={{ color: "var(--color-primary)", display: "inline-block" }}
+              onClick={() =>
+                openProductDrill({
+                  productCode: null,
+                  productName: null,
+                  branchName: r.branch_name,
+                  cellValue: v,
+                  mode: "all",
+                })
+              }
+              title="Open all customers for this branch"
+            >
+              {fmtNum(v)}
+            </b>
+          );
+        },
+      },
+      ...productCols,
+    ];
+  }, [
+    viewOrientation,
+    productInfos,
+    branchCodeByName,
+    fromMonthStr,
+    toMonthStr,
+    effectiveUnitType,
+    valueType,
+    selectedMonth,
+  ]);
+
+  const productGrandTotals = useMemo(() => {
+    if (viewOrientation !== "byProduct") return null;
+    const rows = productDataSource;
+    if (!rows.length) return null;
+    const pct = (n, d) => (d ? Math.round((n / d) * 1000) / 10 : 0);
+    const sumField = (f) => rows.reduce((acc, r) => acc + (r[f] || 0), 0);
+    const gt = { base_customers: sumField("base_customers") };
+    productInfos.forEach(({ productCode }) => {
+      const n = sumField(`p_${productCode}_customers`);
+      gt[`p_${productCode}_customers`] = n;
+      gt[`p_${productCode}_remaining`] = Math.max(0, gt.base_customers - n);
+      gt[`p_${productCode}_pct`] = pct(n, gt.base_customers);
+    });
+    return gt;
+  }, [viewOrientation, productDataSource, productInfos]);
+
+  const exportProductBranchToExcel = async () => {
+    const infos = productInfos;
+    const results = productDataSource;
+    if (!infos.length || !results.length) {
+      message.warning("No data to export");
+      return;
+    }
+
+    const ExcelJS = (await import("exceljs")).default;
+    const wb = new ExcelJS.Workbook();
+    wb.creator = "Wazalytics";
+    const ws = wb.addWorksheet("Branch × Product", {
+      views: [{ state: "frozen", xSplit: 3, ySplit: 2 }],
+    });
+
+    const NAV = "002060";
+    const NAV2 = "1E3A5F";
+    const LGRAY = "F1F5F9";
+    const AGOLD = "FEF3C7";
+    const PCT_GOOD = "D1FAE5";
+    const PCT_BAD = "FEE2E2";
+    const PCT_GOOD_TXT = "FF15803D";
+    const PCT_BAD_TXT = "FFB91C1C";
+    const WHITE = "FFFFFFFF";
+    const thin = (a = "FFE2E8F0") => ({ style: "thin", color: { argb: a } });
+    const bdr = { top: thin(), bottom: thin(), left: thin(), right: thin() };
+
+    const hdr = (bg) => ({
+      font: { bold: true, size: 10, color: { argb: WHITE } },
+      fill: { type: "pattern", pattern: "solid", fgColor: { argb: `FF${bg}` } },
+      alignment: { horizontal: "center", vertical: "middle", wrapText: true },
+      border: bdr,
+    });
+
+    const numFmt = '_(* #,##0_);[Red]_(* (#,##0);_(* "-"_);_(@_)';
+    const pctFmt = '0.0"%"';
+    const subHeaders = ["Customers", "Remaining", "(%)"];
+    const stride = subHeaders.length;
+
+    const r1 = ws.getRow(1);
+    r1.height = 24;
+    ws.mergeCells(1, 1, 2, 1);
+    ws.mergeCells(1, 2, 2, 2);
+    ws.mergeCells(1, 3, 2, 3);
+    r1.getCell(1).value = "#";
+    r1.getCell(1).style = hdr(NAV);
+    r1.getCell(2).value = "Branch";
+    r1.getCell(2).style = hdr(NAV);
+    r1.getCell(3).value = "BRANCH BASE";
+    r1.getCell(3).style = hdr(NAV2);
+
+    let col = 4;
+    infos.forEach(({ productName }) => {
+      r1.getCell(col).value = productName;
+      r1.getCell(col).style = hdr(NAV);
+      ws.mergeCells(1, col, 1, col + stride - 1);
+      col += stride;
+    });
+
+    const r2 = ws.getRow(2);
+    r2.height = 18;
+    col = 4;
+    infos.forEach(() => {
+      subHeaders.forEach((lbl, i) => {
+        r2.getCell(col + i).value = lbl;
+        r2.getCell(col + i).style = hdr(NAV);
+      });
+      col += stride;
+    });
+
+    ws.getColumn(1).width = 5;
+    ws.getColumn(2).width = 22;
+    ws.getColumn(3).width = 14;
+    for (let c = 4; c <= 3 + infos.length * stride; c++) {
+      ws.getColumn(c).width = 11;
+    }
+
+    const pctStyleFactory = (bg) => (val, base) => {
+      if (base == null || base === 0) {
+        return {
+          numFmt: '"-"',
+          font: { size: 10, color: { argb: "FF64748B" } },
+          fill: { type: "pattern", pattern: "solid", fgColor: { argb: bg } },
+          alignment: { horizontal: "center", vertical: "middle" },
+          border: bdr,
+        };
+      }
+      const good = val >= 80;
+      return {
+        numFmt: pctFmt,
+        font: {
+          size: 10,
+          bold: true,
+          color: { argb: good ? PCT_GOOD_TXT : PCT_BAD_TXT },
+        },
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: `FF${good ? PCT_GOOD : PCT_BAD}` },
+        },
+        alignment: { horizontal: "center", vertical: "middle" },
+        border: bdr,
+      };
+    };
+
+    results.forEach((row, idx) => {
+      const dr = ws.addRow({});
+      dr.height = 17;
+      const isEven = idx % 2 === 0;
+      const bg = isEven ? WHITE : `FF${LGRAY}`;
+      const pctStyle = pctStyleFactory(bg);
+
+      const cellStyle = (extra = {}) => ({
+        fill: { type: "pattern", pattern: "solid", fgColor: { argb: bg } },
+        alignment: { vertical: "middle" },
+        border: bdr,
+        ...extra,
+      });
+
+      dr.getCell(1).value = idx + 1;
+      dr.getCell(1).style = cellStyle({
+        alignment: { horizontal: "center", vertical: "middle" },
+        numFmt,
+      });
+      dr.getCell(2).value = row.branch;
+      dr.getCell(2).style = cellStyle({ font: { size: 10, bold: true } });
+
+      const base = row.base_customers;
+      dr.getCell(3).value = base || null;
+      dr.getCell(3).style = {
+        numFmt,
+        font: { size: 10, bold: true, color: { argb: "FF002060" } },
+        fill: { type: "pattern", pattern: "solid", fgColor: { argb: bg } },
+        alignment: { horizontal: "right", vertical: "middle" },
+        border: bdr,
+      };
+
+      let c = 4;
+      infos.forEach(({ productCode }) => {
+        const n = row[`p_${productCode}_customers`];
+        const rem = row[`p_${productCode}_remaining`];
+        const p = row[`p_${productCode}_pct`];
+        dr.getCell(c).value = n || null;
+        dr.getCell(c).style = {
+          numFmt,
+          font: { size: 10, bold: true, color: { argb: "FF1E293B" } },
+          fill: { type: "pattern", pattern: "solid", fgColor: { argb: bg } },
+          alignment: { horizontal: "right", vertical: "middle" },
+          border: bdr,
+        };
+        dr.getCell(c + 1).value = base ? rem : null;
+        dr.getCell(c + 1).style = {
+          numFmt,
+          font: { size: 10, bold: true, color: { argb: "FFB91C1C" } },
+          fill: { type: "pattern", pattern: "solid", fgColor: { argb: bg } },
+          alignment: { horizontal: "right", vertical: "middle" },
+          border: bdr,
+        };
+        dr.getCell(c + 2).value = base ? p : null;
+        dr.getCell(c + 2).style = {
+          ...pctStyle(p, base),
+          numFmt: base ? '0.0"%"' : '"-"',
+        };
+        c += stride;
+      });
+    });
+
+    const GT_BG = `FF${AGOLD}`;
+    const gtr = ws.addRow({});
+    gtr.height = 18;
+    const gtStyle = (extra = {}) => ({
+      fill: { type: "pattern", pattern: "solid", fgColor: { argb: GT_BG } },
+      font: { bold: true, size: 10, color: { argb: "FF1E293B" } },
+      alignment: { vertical: "middle" },
+      border: bdr,
+      ...extra,
+    });
+    gtr.getCell(1).value = "";
+    gtr.getCell(1).style = gtStyle();
+    gtr.getCell(2).value = "GRAND TOTAL";
+    gtr.getCell(2).style = gtStyle();
+
+    const pctOf = (n, d) => (d ? Math.round((n / d) * 1000) / 10 : 0);
+    const sumField = (f) => results.reduce((acc, r) => acc + (r[f] || 0), 0);
+    const totBase = sumField("base_customers");
+
+    gtr.getCell(3).value = totBase || null;
+    gtr.getCell(3).style = gtStyle({
+      numFmt,
+      alignment: { horizontal: "right", vertical: "middle" },
+      font: { bold: true, size: 10, color: { argb: "FF002060" } },
+    });
+
+    let gc = 4;
+    infos.forEach(({ productCode }) => {
+      const n = sumField(`p_${productCode}_customers`);
+      const rem = Math.max(0, totBase - n);
+      const p = pctOf(n, totBase);
+      const good = p >= 80;
+      gtr.getCell(gc).value = n || null;
+      gtr.getCell(gc).style = gtStyle({
+        numFmt,
+        alignment: { horizontal: "right", vertical: "middle" },
+      });
+      gtr.getCell(gc + 1).value = totBase ? rem : null;
+      gtr.getCell(gc + 1).style = gtStyle({
+        numFmt,
+        alignment: { horizontal: "right", vertical: "middle" },
+        font: { bold: true, size: 10, color: { argb: "FFB91C1C" } },
+      });
+      gtr.getCell(gc + 2).value = totBase ? p : null;
+      gtr.getCell(gc + 2).style = {
+        numFmt: totBase ? pctFmt : '"-"',
+        font: {
+          bold: true,
+          size: 10,
+          color: {
+            argb: totBase ? (good ? PCT_GOOD_TXT : PCT_BAD_TXT) : "FF64748B",
+          },
+        },
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: totBase ? `FF${good ? PCT_GOOD : PCT_BAD}` : GT_BG },
+        },
+        alignment: { horizontal: "center", vertical: "middle" },
+        border: bdr,
+      };
+      gc += stride;
+    });
+
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Coverage_Report_BranchProduct_${fromMonthStr}_${toMonthStr}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const exportTransposedToExcel = async () => {
     const branchInfos = branchColsFromRows;
     const results = transposedDataSource;
@@ -1274,6 +1817,10 @@ const ChannelCoverage = () => {
   const exportToExcel = async () => {
     if (viewOrientation === "byChannel") {
       await exportTransposedToExcel();
+      return;
+    }
+    if (viewOrientation === "byProduct") {
+      await exportProductBranchToExcel();
       return;
     }
     const channels = visibleChannels;
@@ -1717,53 +2264,57 @@ const ChannelCoverage = () => {
           )}
         />
 
-        <span
-          style={{
-            color: "#64748B",
-            fontSize: 13,
-            fontWeight: 500,
-            whiteSpace: "nowrap",
-          }}
-        >
-          Channel:
-        </span>
-        <Select
-          mode="multiple"
-          showSearch
-          optionFilterProp="label"
-          style={{ flex: 1, minWidth: 200 }}
-          placeholder="All channels"
-          value={selectedChannels}
-          onChange={setSelectedChannels}
-          maxTagCount="responsive"
-          disabled={!orderedChannels.length}
-          options={orderedChannels.map((c) => ({ value: c, label: c }))}
-          dropdownRender={(menu) => (
-            <>
-              <div style={{ padding: "4px 8px", display: "flex", gap: 8 }}>
-                <Button
-                  size="small"
-                  type="link"
-                  style={{ padding: 0 }}
-                  onClick={() => setSelectedChannels(orderedChannels)}
-                >
-                  Select All
-                </Button>
-                <Divider type="vertical" />
-                <Button
-                  size="small"
-                  type="link"
-                  style={{ padding: 0 }}
-                  onClick={() => setSelectedChannels([])}
-                >
-                  Unselect All
-                </Button>
-              </div>
-              <Divider style={{ margin: "4px 0" }} />
-              {menu}
-            </>
-          )}
-        />
+        {viewOrientation !== "byProduct" && (
+          <>
+            <span
+              style={{
+                color: "#64748B",
+                fontSize: 13,
+                fontWeight: 500,
+                whiteSpace: "nowrap",
+              }}
+            >
+              Channel:
+            </span>
+            <Select
+              mode="multiple"
+              showSearch
+              optionFilterProp="label"
+              style={{ flex: 1, minWidth: 200 }}
+              placeholder="All channels"
+              value={selectedChannels}
+              onChange={setSelectedChannels}
+              maxTagCount="responsive"
+              disabled={!orderedChannels.length}
+              options={orderedChannels.map((c) => ({ value: c, label: c }))}
+              dropdownRender={(menu) => (
+                <>
+                  <div style={{ padding: "4px 8px", display: "flex", gap: 8 }}>
+                    <Button
+                      size="small"
+                      type="link"
+                      style={{ padding: 0 }}
+                      onClick={() => setSelectedChannels(orderedChannels)}
+                    >
+                      Select All
+                    </Button>
+                    <Divider type="vertical" />
+                    <Button
+                      size="small"
+                      type="link"
+                      style={{ padding: 0 }}
+                      onClick={() => setSelectedChannels([])}
+                    >
+                      Unselect All
+                    </Button>
+                  </div>
+                  <Divider style={{ margin: "4px 0" }} />
+                  {menu}
+                </>
+              )}
+            />
+          </>
+        )}
 
         <Divider type="vertical" style={{ height: 24 }} />
 
@@ -1786,30 +2337,43 @@ const ChannelCoverage = () => {
           options={[
             { label: "Branch × Channel", value: "byBranch" },
             { label: "Channel × Branch", value: "byChannel" },
+            { label: "Branch × Product", value: "byProduct" },
           ]}
         />
 
         <Button
           type="primary"
           icon={<DownloadOutlined />}
-          disabled={loading || !reportData.results.length}
+          disabled={
+            viewOrientation === "byProduct"
+              ? productLoading || !productBranchData.results.length
+              : loading || !reportData.results.length
+          }
           onClick={exportToExcel}
         >
           Export to Excel
         </Button>
       </div>
 
-      {loading ? (
+      {(viewOrientation === "byProduct" ? productLoading : loading) ? (
         <Skeleton active paragraph={{ rows: 10 }} />
       ) : (
         <Table
           bordered
           size="small"
           dataSource={
-            viewOrientation === "byChannel" ? transposedDataSource : dataSource
+            viewOrientation === "byProduct"
+              ? productDataSource
+              : viewOrientation === "byChannel"
+              ? transposedDataSource
+              : dataSource
           }
           columns={
-            viewOrientation === "byChannel" ? transposedColumns : columns
+            viewOrientation === "byProduct"
+              ? productColumns
+              : viewOrientation === "byChannel"
+              ? transposedColumns
+              : columns
           }
           pagination={{ pageSize: 25, showSizeChanger: false, size: "small" }}
           scroll={{ x: "max-content", y: "55vh" }}
@@ -1818,12 +2382,6 @@ const ChannelCoverage = () => {
           }}
           rowClassName={(r) => (r.isGrandTotal ? "report-grand-total-row" : "")}
           summary={() => {
-            const isTx = viewOrientation === "byChannel";
-            const gt = isTx ? transposedGrandTotals : grandTotals;
-            if (!gt) return null;
-            const groupKeys = isTx
-              ? branchColsFromRows.map((b) => b.branch)
-              : visibleChannels;
             let i = 0;
             const cell = (content, opts = {}) => (
               <Table.Summary.Cell
@@ -1835,6 +2393,32 @@ const ChannelCoverage = () => {
                 {content}
               </Table.Summary.Cell>
             );
+
+            if (viewOrientation === "byProduct") {
+              const gt = productGrandTotals;
+              if (!gt) return null;
+              const cells = [];
+              cells.push(cell("", { align: "center" }));
+              cells.push(cell(<b>GRAND TOTAL</b>, { align: "left" }));
+              cells.push(cell(<b style={{ color: "var(--color-primary)" }}>{fmtNum(gt.base_customers)}</b>));
+              productInfos.forEach(({ productCode }) => {
+                cells.push(cell(<b style={{ color: "var(--color-accent)" }}>{fmtNum(gt[`p_${productCode}_customers`])}</b>));
+                cells.push(cell(<b style={{ color: "#B91C1C" }}>{fmtNum(gt[`p_${productCode}_remaining`])}</b>));
+                cells.push(cell(<PctCell v={gt[`p_${productCode}_pct`]} allCount={gt.base_customers} />, { align: "center" }));
+              });
+              return (
+                <Table.Summary fixed>
+                  <Table.Summary.Row className="report-grand-total-row">{cells}</Table.Summary.Row>
+                </Table.Summary>
+              );
+            }
+
+            const isTx = viewOrientation === "byChannel";
+            const gt = isTx ? transposedGrandTotals : grandTotals;
+            if (!gt) return null;
+            const groupKeys = isTx
+              ? branchColsFromRows.map((b) => b.branch)
+              : visibleChannels;
             const cells = [];
             cells.push(cell("", { align: "center" }));
             cells.push(cell(<b>GRAND TOTAL</b>, { align: "left" }));
