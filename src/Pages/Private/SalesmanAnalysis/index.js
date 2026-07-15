@@ -208,7 +208,7 @@ const SalesmanAnalysis = () => {
     { title: "Code",             value: data.salesman_code,                                          icon: <UserOutlined /> },
     { title: "Branch",           value: data.branch_name,                                            icon: <AimOutlined /> },
     { title: "Mobile",           value: data.mobile_no || "-",                                      icon: <PhoneOutlined /> },
-    { title: "Channels",         value: data.channels?.length ? data.channels.join(", ") : "-",     icon: <ApartmentOutlined /> },
+    { title: "Channels",         value: data.channel_mix?.length ? data.channel_mix.map((c) => c.channel).join(", ") : "-", icon: <ApartmentOutlined /> },
     { title: "Sales MTD",        value: <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>{isValueMode && <RiyalIcon width={14} height={14} />}{fmtNum(data.sales_mtd)}{!isValueMode && ` ${unitType}`}</span>, icon: <CalendarOutlined /> },
     { title: "Sales YTD",        value: <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>{isValueMode && <RiyalIcon width={14} height={14} />}{fmtNum(data.sales_ytd)}{!isValueMode && ` ${unitType}`}</span>, icon: <LineChartOutlined /> },
     { title: "Total Sales (2023+)", value: <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>{isValueMode && <RiyalIcon width={14} height={14} />}{fmtNum(data.total_sales_forever)}{!isValueMode && ` ${unitType}`}</span>, icon: <DollarOutlined /> },
