@@ -23,6 +23,7 @@ export const REPORT_KEYS = {
   RAW_DATA:             "raw_data",
   POTENTIAL_CUSTOMERS:  "potential_customers",
   SALESMAN_ACTIVITY:    "salesman_activity",
+  CUSTOMER_SALES_VARIANCE: "customer_sales_variance",
 };
 
 export const isPageBlocked = (userData, pageKey) =>

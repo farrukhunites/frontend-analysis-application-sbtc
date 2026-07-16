@@ -172,6 +172,25 @@ export const getProductBranchCoverage = ({ month, fromMonth, toMonth, unitType, 
     .then((r) => r.data)
     .catch((err) => ({ error: err.response?.data || err.message }));
 
+export const getCustomerSalesVariance = ({ month, fromMonth, toMonth, unitType, valueType, branchCodes, channels, productCodes, lyMode }) =>
+  axios
+    .get(`${process.env.REACT_APP_BACKEND_URL}reports/customer-sales-variance/`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+      params: {
+        month:       fromMonth && toMonth ? undefined : month,
+        from_month:  fromMonth || undefined,
+        to_month:    toMonth   || undefined,
+        unit_type:         unitType,
+        value_type:        valueType,
+        "branch_codes[]":  branchCodes?.length ? branchCodes : undefined,
+        "channels[]":      channels?.length ? channels : undefined,
+        "product_codes[]": productCodes?.length ? productCodes : undefined,
+        ly_mode:           lyMode || undefined,
+      },
+    })
+    .then((r) => r.data)
+    .catch((err) => ({ error: err.response?.data || err.message }));
+
 export const exportRawSalesCsv = ({ startDate, endDate, branchCodes, productCodes, onDownloadProgress }) =>
   axios
     .get(`${process.env.REACT_APP_BACKEND_URL}reports/raw-sales/`, {

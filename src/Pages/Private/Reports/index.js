@@ -15,6 +15,7 @@ const TargetFeasibility   = lazy(() => import("./TargetFeasibility"));
 const RawData             = lazy(() => import("./RawData"));
 const PotentialCustomers  = lazy(() => import("../PotentialCustomers"));
 const SalesmanActivity    = lazy(() => import("./SalesmanActivity"));
+const CustomerSalesVariance = lazy(() => import("./CustomerSalesVariance"));
 
 const TabLoader = () => (
   <div style={{ padding: "24px 0" }}>
@@ -36,6 +37,7 @@ const REPORT_COMPONENTS = {
   "raw-data":              RawData,
   "potential-customers":   PotentialCustomers,
   "salesman-activity":     SalesmanActivity,
+  "customer-sales-variance": CustomerSalesVariance,
 };
 
 const buildTab = (entry) => {
