@@ -984,12 +984,33 @@ const SalesmanActivity = () => {
     key: "salesman_name",
     fixed: "left",
     width: 220,
-    render: (v, r) => (
-      <div style={{ lineHeight: 1.2 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: "#1E293B" }}>{v}</div>
-        <div style={{ fontSize: 10, color: "#64748B" }}>{r.salesman_code}</div>
-      </div>
-    ),
+    render: (v, r) => {
+      const openAnalysis = () => {
+        if (!r.salesman_code) return;
+        const params = new URLSearchParams({ salesman_code: r.salesman_code });
+        if (r.branch_code) params.set("branch_code", r.branch_code);
+        window.open(`/salesman-analysis?${params.toString()}`, "_blank", "noopener");
+      };
+      return (
+        <div
+          onClick={openAnalysis}
+          style={{ lineHeight: 1.2, cursor: "pointer" }}
+          title="Open Salesman Analysis in new tab"
+        >
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: "#2563EB",
+              textDecoration: "underline dotted",
+            }}
+          >
+            {v}
+          </div>
+          <div style={{ fontSize: 10, color: "#64748B" }}>{r.salesman_code}</div>
+        </div>
+      );
+    },
     filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
       <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()}>
         <Input
