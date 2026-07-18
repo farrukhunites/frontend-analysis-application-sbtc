@@ -498,12 +498,12 @@ const DailySTT = () => {
 
     for (let r = 1; r <= hdrRows; r++) ws.getRow(r).height = 20;
 
-    // Row 1 — product group headers. For expanded groups we merge horizontally
-    // across all their sub-columns here; for collapsed groups we skip and let
-    // the row-2 pass do a single 2D merge (rows 1..monthRow × 5 cols) to avoid
-    // overlapping merge ranges.
+    // Row 1 — product group headers. Every group header is merged horizontally
+    // across its span. For collapsed groups when a monthRow exists, we defer to
+    // the row-2 pass which does a 2D merge (rows 1..monthRow × span) so the
+    // header spans downward too — merging here would overlap.
     const r1 = ws.getRow(1);
-    r1.getCell(1).value = "";
+    r1.getCell(1).value = "Branch";
     r1.getCell(1).style = hdrStyle(NAV);
     let col = 2;
     groups.forEach((g) => {
@@ -512,7 +512,7 @@ const DailySTT = () => {
         : METRICS.length;
       r1.getCell(col).value = g.name;
       r1.getCell(col).style = hdrStyle(g.bg);
-      if (g.expanded && span > 1) {
+      if (span > 1 && (g.expanded || !monthRow)) {
         ws.mergeCells(1, col, 1, col + span - 1);
       }
       col += span;
@@ -537,17 +537,21 @@ const DailySTT = () => {
           c2 += METRICS.length;
         }
       });
-      // Branch header spans all header rows
-      ws.mergeCells(1, 1, monthRow, 1);
     }
 
-    // Last header row — metric labels (Branch, Sales, Target, ...).
+    // Last header row — metric labels (Sales, Target, ...). Branch column is
+    // filled in row 1 and merged down across all header rows below.
     const rM = ws.getRow(metricRow);
     colDefs.forEach((c, i) => {
       const cell = rM.getCell(i + 1);
       cell.value = c.label;
       cell.style = hdrStyle(c.isHeader ? NAV : NAVY2);
     });
+
+    // Branch column: single navy cell spanning every header row.
+    if (hdrRows > 1) {
+      ws.mergeCells(1, 1, hdrRows, 1);
+    }
 
     ws.views = [{ state: "frozen", xSplit: 1, ySplit: hdrRows }];
 
