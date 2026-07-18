@@ -7,6 +7,7 @@ export const PAGE_KEYS = {
   SALESMAN_ANALYSIS:   "salesman_analysis",
   REPORTS:             "reports",
   MOR:                 "mor",
+  FORECAST:            "forecast",
   USER_ACTIVITY:       "user_activity",
   SETTINGS:            "settings",
 };

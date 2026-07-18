@@ -8,6 +8,7 @@ import {
   FileTextOutlined,
   SafetyOutlined,
   ShopOutlined,
+  ThunderboltOutlined,
 } from "@ant-design/icons";
 import { Layout, Tooltip } from "antd";
 import "./style.css";
@@ -77,7 +78,8 @@ const Sidebar = ({ collapsed }) => {
   const fullMenu = userData?.role === "admin"
     ? [
         ...menuItems,
-        { key: "10", icon: <SafetyOutlined />, label: "User Activity", path: "/user-activity", pageKey: PAGE_KEYS.USER_ACTIVITY },
+        { key: "8",  icon: <ThunderboltOutlined />, label: "Forecast",      path: "/forecast",      pageKey: PAGE_KEYS.FORECAST },
+        { key: "10", icon: <SafetyOutlined />,      label: "User Activity", path: "/user-activity", pageKey: PAGE_KEYS.USER_ACTIVITY },
       ]
     : menuItems;
   const visibleMenuItems   = fullMenu.filter((item)    => !isPageBlocked(userData, item.pageKey));

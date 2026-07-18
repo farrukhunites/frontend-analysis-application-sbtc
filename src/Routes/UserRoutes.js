@@ -13,6 +13,7 @@ const Reports            = lazy(() => import("../Pages/Private/Reports"));
 const MOR                = lazy(() => import("../Pages/Private/MOR"));
 const Settings           = lazy(() => import("../Pages/Private/Settings"));
 const UserActivity       = lazy(() => import("../Pages/Private/UserActivity"));
+const Forecast           = lazy(() => import("../Pages/Private/Forecast"));
 
 const PageLoader = () => (
   <div style={{ padding: 24 }}>
@@ -74,6 +75,9 @@ const UserRoutes = () => (
       <Route path="settings"            element={<Settings />} />
       <Route path="user-activity"       element={
         <Guarded pageKey={PAGE_KEYS.USER_ACTIVITY}><UserActivity /></Guarded>
+      } />
+      <Route path="forecast"            element={
+        <Guarded pageKey={PAGE_KEYS.FORECAST}><Forecast /></Guarded>
       } />
       <Route path="*"                   element={<Navigate to="/" />} />
     </Routes>

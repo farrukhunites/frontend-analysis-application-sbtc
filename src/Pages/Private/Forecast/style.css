@@ -1,0 +1,276 @@
+/* ============================================================
+   Forecast Studio — futuristic AI/DS-styled dashboard
+   ============================================================ */
+
+.forecast-page {
+  padding: 20px 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 100vh;
+  background:
+    radial-gradient(1200px 400px at 10% -10%, rgba(139, 92, 246, 0.10), transparent 60%),
+    radial-gradient(1000px 380px at 100% 0%, rgba(59, 130, 246, 0.08), transparent 60%),
+    #F5F7FB;
+}
+
+/* ── Header ────────────────────────────────────────────────── */
+.forecast-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.forecast-header__title {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.forecast-header__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 20px;
+  background: linear-gradient(135deg, #3B82F6, #8B5CF6);
+  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.35);
+}
+.forecast-header__h1 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0F172A;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.forecast-header__tag {
+  background: linear-gradient(135deg, rgba(59,130,246,0.10), rgba(139,92,246,0.14));
+  color: #6366F1;
+  border: 1px solid rgba(99, 102, 241, 0.28);
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0 8px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.forecast-header__sub {
+  color: #64748B;
+  font-size: 12px;
+  margin-top: 2px;
+  max-width: 620px;
+}
+
+/* ── Hero KPI panel ───────────────────────────────────────── */
+.forecast-hero {
+  position: relative;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 16px;
+  padding: 18px 20px;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.05);
+}
+.forecast-hero__glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(600px 200px at 15% 0%, rgba(59,130,246,0.10), transparent 60%),
+    radial-gradient(500px 180px at 100% 100%, rgba(139,92,246,0.10), transparent 60%);
+}
+.forecast-hero__row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 900px) {
+  .forecast-hero__row { grid-template-columns: 1fr; }
+}
+
+.forecast-kpi {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.7);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+.forecast-kpi--primary {
+  background: linear-gradient(135deg, rgba(59,130,246,0.09), rgba(139,92,246,0.12));
+  border-color: rgba(99, 102, 241, 0.25);
+}
+.forecast-kpi__label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748B;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.forecast-kpi__value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #0F172A;
+  letter-spacing: -0.02em;
+  margin-top: 4px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  line-height: 1.1;
+}
+.forecast-kpi--primary .forecast-kpi__value { font-size: 32px; }
+.forecast-kpi__unit {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748B;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.forecast-kpi__delta {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #64748B;
+}
+.forecast-kpi__delta strong {
+  color: #334155;
+  font-weight: 600;
+}
+.forecast-kpi__help {
+  color: #94A3B8;
+  font-size: 12px;
+  margin-left: auto;
+  cursor: help;
+  transition: color 0.15s ease;
+}
+.forecast-kpi__help:hover { color: #3B82F6; }
+
+/* Stats mini-grid inside the accuracy KPI card */
+.forecast-kpi__stats {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(148, 163, 184, 0.35);
+}
+.forecast-kpi__stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 11px;
+  color: #64748B;
+  cursor: help;
+}
+.forecast-kpi__stat strong {
+  color: #0F172A;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.forecast-hero__insight {
+  position: relative;
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.10), rgba(245, 158, 11, 0.02));
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: #78350F;
+  font-size: 12.5px;
+  line-height: 1.5;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.forecast-hero__insight .anticon {
+  color: #F59E0B;
+  margin-top: 2px;
+  font-size: 15px;
+}
+
+/* ── Controls row ─────────────────────────────────────────── */
+.forecast-controls {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 16px;
+  align-items: center;
+  background: rgba(255,255,255,0.85);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 14px;
+  padding: 12px 16px;
+}
+@media (max-width: 900px) {
+  .forecast-controls { grid-template-columns: 1fr; }
+}
+.forecast-controls__group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.forecast-controls__group--slider {
+  padding: 0 12px 0 24px;
+}
+.forecast-controls__label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748B;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.forecast-controls__value {
+  margin-left: auto;
+  font-size: 13px;
+  color: #6366F1;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.forecast-controls__notes {
+  font-size: 11px;
+  color: #94A3B8;
+  font-style: italic;
+}
+
+/* ── Chart panel ──────────────────────────────────────────── */
+.forecast-chart {
+  background: rgba(255,255,255,0.9);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 14px;
+  padding: 12px 8px 4px;
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.04);
+}
+
+.forecast-chart__hint {
+  margin: 4px 12px 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.06);
+  border: 1px dashed rgba(59, 130, 246, 0.25);
+  color: #475569;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.forecast-chart__hint .anticon { color: #3B82F6; }
+
+/* ── Footer ───────────────────────────────────────────────── */
+.forecast-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 11px;
+  color: #94A3B8;
+  padding: 0 6px;
+}
+.forecast-footer strong { color: #475569; font-weight: 600; }
