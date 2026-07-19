@@ -507,7 +507,8 @@ const Forecast = () => {
                       </strong>
                     </div>
                   </Tooltip>
-                  <Tooltip title={<span>Band coverage — what % of held-out actuals landed inside the 68% confidence band. Ideally near 68.</span>}>
+                  {/* Coverage stat hidden for now — revisit later.
+                  <Tooltip title={<span>How reliable the shaded confidence band is. During backtesting we hide the last few real months and check how many landed inside the band. A trustworthy band scores near 68% (matching its confidence level). Below 68% = band too narrow (model over-confident); above 68% = band too wide (model under-confident).</span>}>
                     <div className="forecast-kpi__stat">
                       <span>Coverage</span>
                       <strong>
@@ -517,6 +518,7 @@ const Forecast = () => {
                       </strong>
                     </div>
                   </Tooltip>
+                  */}
                 </div>
               </div>
             </div>
