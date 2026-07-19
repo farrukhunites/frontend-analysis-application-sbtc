@@ -196,7 +196,7 @@ const UserActivity = () => {
       ) : (
         <>
           <div className="activity-stats-row">
-            <StatCard icon={<LoginOutlined />} label="Logins Today" value={summary.logins_today} accent="#3B82F6" />
+            <StatCard icon={<TeamOutlined />} label="Active Users Today" value={summary.active_users_today} accent="#3B82F6" />
             <StatCard icon={<LoginOutlined />} label="Logins (7d)" value={summary.logins_7d} accent="#6366F1" />
             <StatCard icon={<ApiOutlined />}   label="API Calls Today" value={summary.calls_today} accent="#10B981" />
             <StatCard icon={<ApiOutlined />}   label="API Calls (7d)" value={summary.calls_7d} accent="#F59E0B" />
