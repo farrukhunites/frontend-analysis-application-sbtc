@@ -4,6 +4,8 @@ import {
   Skeleton,
   Segmented,
   Slider,
+  Spin,
+  Table,
   Tag,
   Tooltip,
   message,
@@ -24,7 +26,7 @@ import { UnitValueContext } from "../../../Contexts/UnitValueContext";
 import { getAllBranches } from "../../../API/Branches";
 import { getAllProducts } from "../../../API/Products";
 import { getAllChannels } from "../../../API/Channels";
-import { getYEForecast } from "../../../API/Forecast";
+import { getYEForecast, getYEForecastByBranch } from "../../../API/Forecast";
 import RiyalIcon from "../../../Utils/RiyalIcon";
 import "./style.css";
 
@@ -70,6 +72,9 @@ const Forecast = () => {
   const [loading, setLoading] = useState(false);
   const [data, setData]       = useState(null);
 
+  const [branchLoading, setBranchLoading] = useState(false);
+  const [branchData, setBranchData]       = useState(null);
+
   useEffect(() => {
     getAllBranches().then((r) => setBranches(r?.results || []));
     getAllChannels().then((r) => setChannels(r?.results || []));
@@ -112,6 +117,28 @@ const Forecast = () => {
     selectedBranches, selectedProducts, selectedChannels, whatifPct,
   ]);
 
+  // Per-branch breakdown — same params, runs the model once per branch.
+  useEffect(() => {
+    setBranchLoading(true);
+    getYEForecastByBranch({
+      method,
+      year,
+      unitType:  effectiveUnitType,
+      valueType,
+      branchCodes:  selectedBranches,
+      productCodes: selectedProducts,
+      channels:     selectedChannels,
+      whatifPct,
+    }).then((res) => {
+      if (res?.error) setBranchData(null);
+      else setBranchData(res);
+      setBranchLoading(false);
+    });
+  }, [
+    method, year, effectiveUnitType, valueType,
+    selectedBranches, selectedProducts, selectedChannels, whatifPct,
+  ]);
+
   // ── Chart series prep ─────────────────────────────────────────────────
   const { chartSeries, hasGaps } = useMemo(() => {
     if (!data) return { chartSeries: [], hasGaps: false };
@@ -125,18 +152,15 @@ const Forecast = () => {
       return { x: ymToDate(r.ym), y: isGap ? null : r.actual };
     });
     const forecast = (data.forecast || []).map((r) => ({ x: ymToDate(r.ym), y: r.forecast }));
-    const band     = (data.forecast || []).map((r) => ({ x: ymToDate(r.ym), y: [r.lower, r.upper] }));
 
     // Bridge: prepend last non-null history point to forecast so line is continuous.
     const lastReal = [...history].reverse().find((p) => p.y != null);
     if (lastReal && forecast.length) {
       forecast.unshift({ x: lastReal.x, y: lastReal.y });
-      band.unshift({ x: lastReal.x, y: [lastReal.y, lastReal.y] });
     }
     const series = [
-      { name: "68% Confidence", type: "rangeArea", data: band,     color: "#8B5CF6" },
-      { name: "Actuals",        type: "line",     data: history,  color: "#3B82F6" },
-      { name: "Forecast",       type: "line",     data: forecast, color: "#8B5CF6" },
+      { name: "Actuals",  type: "line", data: history,  color: "#3B82F6" },
+      { name: "Forecast", type: "line", data: forecast, color: "#8B5CF6" },
     ];
     return { chartSeries: series, hasGaps: gaps };
   }, [data]);
@@ -146,7 +170,7 @@ const Forecast = () => {
       const d = new Date(ts);
       return `${YM_MONTH[d.getMonth()]} ${d.getFullYear()}`;
     };
-    const seriesColors = { actuals: "#3B82F6", forecast: "#8B5CF6", band: "#8B5CF6" };
+    const seriesColors = { actuals: "#3B82F6", forecast: "#8B5CF6" };
 
     return {
       chart: {
@@ -159,15 +183,15 @@ const Forecast = () => {
       },
       stroke: {
         curve: "smooth",
-        width: [0, 3, 3],
-        dashArray: [0, 0, 6],
+        width: [3, 3],
+        dashArray: [0, 6],
       },
       fill: {
-        type: ["solid", "solid", "solid"],
-        opacity: [0.18, 1, 1],
+        type: ["solid", "solid"],
+        opacity: [1, 1],
       },
       markers: {
-        size: [0, 4, 4],
+        size: [4, 4],
         strokeWidth: 0,
         hover: { size: 7 },
       },
@@ -206,24 +230,21 @@ const Forecast = () => {
       tooltip: {
         shared: true,
         intersect: false,
-        // Custom tooltip so we can render actuals / forecast / band / target
-        // properly across mixed series (rangeArea + line).
-        custom: ({ dataPointIndex, w }) => {
+        // Custom tooltip. NB: Apex's dataPointIndex is the position within the
+        // hovered series, not a shared index across series — Actuals[3] and
+        // Forecast[3] land on completely different months. So we resolve the
+        // hovered timestamp first, then match every series by timestamp.
+        custom: ({ seriesIndex, dataPointIndex, w }) => {
           const s = w.config.series;
-          // Prefer a real timestamp from any non-empty series at this index.
-          let ts = null;
-          for (const ser of s) {
-            const pt = ser.data && ser.data[dataPointIndex];
-            if (pt) { ts = pt.x ?? pt[0]; break; }
-          }
+          const hovered = s[seriesIndex]?.data?.[dataPointIndex];
+          const ts = hovered ? (hovered.x ?? hovered[0]) : null;
           if (ts == null) return "";
 
-          const findVal = (name, transform = (v) => v) => {
+          const findVal = (name) => {
             const ser = s.find((x) => x.name === name);
-            const pt  = ser?.data?.[dataPointIndex];
+            const pt  = ser?.data?.find((p) => (p.x ?? p[0]) === ts);
             if (!pt) return null;
-            const y = pt.y ?? pt[1];
-            return transform(y);
+            return pt.y ?? pt[1];
           };
 
           const row = (label, val, color, extra = "") => {
@@ -241,14 +262,12 @@ const Forecast = () => {
 
           const actuals  = findVal("Actuals");
           const forecast = findVal("Forecast");
-          const band     = findVal("68% Confidence");
 
           return `
             <div style="padding:10px 12px;min-width:220px;font-family:Inter,sans-serif;">
               <div style="color:#0F172A;font-weight:700;font-size:12px;margin-bottom:6px;letter-spacing:-0.01em;">${monthName(ts)}</div>
               ${row("Actuals",  actuals,  seriesColors.actuals)}
               ${row("Forecast", forecast, seriesColors.forecast)}
-              ${row("68% band", band,     seriesColors.band)}
             </div>`;
         },
       },
@@ -359,7 +378,7 @@ const Forecast = () => {
               <Tag className="forecast-header__tag">AI · Beta</Tag>
             </div>
             <div className="forecast-header__sub">
-              Predictive year-end projection with confidence bands, model comparison and what-if scenarios.
+              Predictive year-end projection with model comparison and what-if scenarios.
             </div>
           </div>
         </div>
@@ -423,7 +442,7 @@ const Forecast = () => {
         ) : !data ? (
           <Empty description="No forecast data" />
         ) : (
-          <>
+          <Spin spinning={loading} tip="Refreshing forecast…">
             <div className="forecast-hero__row">
               <div className="forecast-kpi forecast-kpi--primary">
                 <div className="forecast-kpi__label">Projected Year-End · {year}</div>
@@ -523,7 +542,7 @@ const Forecast = () => {
               </div>
             </div>
 
-          </>
+          </Spin>
         )}
       </div>
 
@@ -570,7 +589,7 @@ const Forecast = () => {
         ) : chartSeries.length === 0 ? (
           <Empty description="No history in the selected scope" />
         ) : (
-          <>
+          <Spin spinning={loading} tip="Refreshing forecast…">
             <ReactApexChart
               height={420}
               options={chartOptions}
@@ -582,8 +601,119 @@ const Forecast = () => {
                 <BulbOutlined /> Some months had no sales in this scope — the actuals line breaks over those gaps.
               </div>
             )}
-          </>
+          </Spin>
         )}
+      </div>
+
+      {/* Per-branch breakdown */}
+      <div className="forecast-chart" style={{ padding: "12px 12px 4px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 4px 10px" }}>
+          <ExperimentOutlined style={{ color: "#8B5CF6" }} />
+          <span style={{ fontWeight: 700, color: "#0F172A", fontSize: 14 }}>
+            Year-End Projection by Branch
+          </span>
+          <span style={{ color: "#64748B", fontSize: 12 }}>
+            · same model, same filters — one row per branch in scope
+          </span>
+        </div>
+        <Spin spinning={branchLoading} tip="Running model per branch…">
+          <Table
+            size="small"
+            rowKey="branch_code"
+            dataSource={branchData?.branches || []}
+            pagination={false}
+            scroll={{ x: 720 }}
+            locale={{ emptyText: <Empty description="No branch data" /> }}
+            summary={(pageData) => {
+              if (!pageData.length) return null;
+              const sum = (k) => pageData.reduce((a, r) => a + (r[k] || 0), 0);
+              const ytd    = sum("ytd_actual");
+              const tail   = sum("forecast_tail");
+              const ye     = sum("projected_ye");
+              const ly     = sum("ly_full_year");
+              const yoy    = ly > 0 ? ((ye / ly - 1) * 100) : null;
+              return (
+                <Table.Summary.Row style={{ background: "#F8FAFC", fontWeight: 700 }}>
+                  <Table.Summary.Cell index={0}>Total</Table.Summary.Cell>
+                  <Table.Summary.Cell index={1} align="right">{fmt(ytd)}</Table.Summary.Cell>
+                  <Table.Summary.Cell index={2} align="right">{fmt(tail)}</Table.Summary.Cell>
+                  <Table.Summary.Cell index={3} align="right">{fmt(ye)}</Table.Summary.Cell>
+                  <Table.Summary.Cell index={4} align="right">{fmt(ly)}</Table.Summary.Cell>
+                  <Table.Summary.Cell index={5} align="right">
+                    {yoy == null ? "—" : (
+                      <span style={{ color: yoy >= 0 ? "#10B981" : "#EF4444" }}>
+                        {yoy >= 0 ? "+" : ""}{yoy.toFixed(1)}%
+                      </span>
+                    )}
+                  </Table.Summary.Cell>
+                </Table.Summary.Row>
+              );
+            }}
+            columns={[
+              {
+                title: "Branch",
+                dataIndex: "branch_name",
+                key: "branch_name",
+                render: (v, r) => (
+                  <div style={{ lineHeight: 1.2 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "#1E293B" }}>{v}</div>
+                    <div style={{ fontSize: 10, color: "#64748B" }}>{r.branch_code}</div>
+                  </div>
+                ),
+              },
+              {
+                title: "YTD Actual",
+                dataIndex: "ytd_actual",
+                key: "ytd_actual",
+                align: "right",
+                sorter: (a, b) => (a.ytd_actual || 0) - (b.ytd_actual || 0),
+                render: (v) => <span style={{ fontSize: 12 }}>{fmt(v)}</span>,
+              },
+              {
+                title: "Forecast Tail",
+                dataIndex: "forecast_tail",
+                key: "forecast_tail",
+                align: "right",
+                sorter: (a, b) => (a.forecast_tail || 0) - (b.forecast_tail || 0),
+                render: (v) => <span style={{ fontSize: 12, color: "#8B5CF6" }}>{fmt(v)}</span>,
+              },
+              {
+                title: `Projected YE (${year})`,
+                dataIndex: "projected_ye",
+                key: "projected_ye",
+                align: "right",
+                defaultSortOrder: "descend",
+                sorter: (a, b) => (a.projected_ye || 0) - (b.projected_ye || 0),
+                render: (v) => <span style={{ fontSize: 12, fontWeight: 700, color: "#0F172A" }}>{fmt(v)}</span>,
+              },
+              {
+                title: `${year - 1} Full Year`,
+                dataIndex: "ly_full_year",
+                key: "ly_full_year",
+                align: "right",
+                sorter: (a, b) => (a.ly_full_year || 0) - (b.ly_full_year || 0),
+                render: (v) => <span style={{ fontSize: 12, color: "#64748B" }}>{fmt(v)}</span>,
+              },
+              {
+                title: "YoY %",
+                dataIndex: "yoy_pct",
+                key: "yoy_pct",
+                align: "right",
+                sorter: (a, b) => (a.yoy_pct ?? -9999) - (b.yoy_pct ?? -9999),
+                render: (v) => {
+                  if (v == null) return <span style={{ color: "#94A3B8", fontSize: 12 }}>—</span>;
+                  const color = v >= 0 ? "#10B981" : "#EF4444";
+                  const bg    = v >= 0 ? "rgba(16,185,129,0.10)" : "rgba(239,68,68,0.10)";
+                  return (
+                    <span style={{ color, background: bg, padding: "2px 8px", borderRadius: 10, fontWeight: 600, fontSize: 11 }}>
+                      {v >= 0 ? "+" : ""}{v.toFixed(1)}%
+                    </span>
+                  );
+                },
+              },
+            ]}
+          />
+        </Spin>
       </div>
 
       {/* Footer meta */}
