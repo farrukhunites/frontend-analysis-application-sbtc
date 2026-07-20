@@ -267,7 +267,7 @@ export const getTargetFeasibilityCustomers = ({ month, branchCode, salesmanCode,
     .then((r) => r.data)
     .catch((err) => ({ error: err.response?.data || err.message }));
 
-export const getSalesmanActivity = ({ mode, date, startDate, endDate, fromMonth, toMonth, branchCodes, salesmanCodes }) =>
+export const getSalesmanActivity = ({ mode, date, startDate, endDate, fromMonth, toMonth, branchCodes, salesmanCodes, productCode, unitType, valueType }) =>
   axios
     .get(`${process.env.REACT_APP_BACKEND_URL}reports/salesman-activity/`, {
       headers: { Authorization: `Bearer ${getToken()}` },
@@ -278,6 +278,9 @@ export const getSalesmanActivity = ({ mode, date, startDate, endDate, fromMonth,
         end_date:   endDate   || undefined,
         from_month: fromMonth || undefined,
         to_month:   toMonth   || undefined,
+        product_code: productCode || undefined,
+        unit_type:    unitType    || undefined,
+        value_type:   valueType   || undefined,
         "branch_codes[]":   branchCodes?.length   ? branchCodes   : undefined,
         "salesman_codes[]": salesmanCodes?.length ? salesmanCodes : undefined,
       },

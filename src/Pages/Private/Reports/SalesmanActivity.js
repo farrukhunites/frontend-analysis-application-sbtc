@@ -1,16 +1,19 @@
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { Table, Skeleton, Space, Select, message, Empty, Segmented, DatePicker, Modal, Tabs, Tag, Button, Divider, Input } from "antd";
-import { DownloadOutlined, EnvironmentOutlined, SearchOutlined } from "@ant-design/icons";
+import { DownloadOutlined, EnvironmentOutlined, SearchOutlined, PlusSquareOutlined, MinusSquareOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { getAllBranches } from "../../../API/Branches";
 import { useDateFilter } from "../../../Contexts/DateFilterContext";
+import { ProductContext } from "../../../Contexts/ProductContext";
+import { UnitValueContext } from "../../../Contexts/UnitValueContext";
 import {
   getSalesmanActivity,
   getSalesmanActivityCustomers,
   getSalesmanActivityPeriodCustomers,
 } from "../../../API/Reports";
+import { getSalesmanInsightByProduct } from "../../../API/Salesman";
 import RiyalIcon from "../../../Utils/RiyalIcon";
 import "./reports.css";
 
@@ -929,8 +932,132 @@ const DailyDrillModal = ({ open, onClose, date, salesman, metric, branchScope })
 };
 
 
+// ── Sales Achievement drill modal ─────────────────────────────────────────
+// Mirrors the "By Product" modal on the Salesman Analysis page — one row per
+// product with target / MTD / achievement % / daily-ach %. Reuses the
+// existing SalesmanInsightByProductView endpoint. Highlights the achievement
+// column since that's the cell the user just clicked.
+const SalesAchievementModal = ({ open, onClose, salesman, month, unitType, valueType, isValueMode }) => {
+  const [loading, setLoading] = useState(false);
+  const [rows, setRows]       = useState([]);
+  const [meta, setMeta]       = useState({ elapsed: 0, total: 0 });
+
+  useEffect(() => {
+    if (!open || !salesman) return;
+    setLoading(true);
+    getSalesmanInsightByProduct({
+      salesmanCode: salesman.salesman_code,
+      branchCode:   salesman.branch_code,
+      month:        month?.format("YYYYMM"),
+      unitType,
+      valueType,
+    }).then((res) => {
+      if (res?.error) {
+        message.error("Failed to load per-product breakdown");
+        setRows([]);
+      } else {
+        setRows(res?.rows || []);
+        setMeta({ elapsed: res?.elapsed_days || 0, total: res?.total_days || 0 });
+      }
+      setLoading(false);
+    });
+  }, [open, salesman, month, unitType, valueType]);
+
+  const unitLbl = isValueMode ? "SAR" : (unitType || "").toUpperCase();
+  const pctFmt = (v) => (v == null || !isFinite(v) ? "—" : `${(v * 100).toFixed(1)}%`);
+  const pctColor = (v, threshold = 0.9) =>
+    (v == null || !isFinite(v)) ? "#94A3B8" : v >= threshold ? "#059669" : "#DC2626";
+
+  const columns = [
+    { title: "#", key: "_idx", width: 40, align: "center",
+      render: (_, __, i) => <span style={{ fontSize: 12, color: "#64748B" }}>{i + 1}</span> },
+    { title: "Product", dataIndex: "product_name", key: "product_name",
+      render: (v, r) => (
+        <div style={{ lineHeight: 1.2 }}>
+          <div style={{ fontSize: 12, fontWeight: 600 }}>{v || "—"}</div>
+          <div style={{ fontSize: 10, color: "#64748B" }}>{r.product_code}</div>
+        </div>
+      ) },
+    { title: `Target (${unitLbl})`, dataIndex: "month_target", key: "month_target",
+      width: 120, align: "right",
+      render: (v) => <NumCell v={v} />,
+      sorter: (a, b) => (a.month_target || 0) - (b.month_target || 0) },
+    { title: `MTD (${unitLbl})`, dataIndex: "sales_mtd", key: "sales_mtd",
+      width: 120, align: "right",
+      render: (v) => <NumCell v={v} />,
+      sorter: (a, b) => (a.sales_mtd || 0) - (b.sales_mtd || 0) },
+    { title: "Achievement", dataIndex: "achievement_pct", key: "achievement_pct",
+      width: 110, align: "center",
+      render: (v) => (
+        <span style={{ color: pctColor(v, 0.9), fontWeight: 600, fontSize: 12 }}>
+          {pctFmt(v)}
+        </span>
+      ),
+      sorter: (a, b) => (a.achievement_pct ?? -1) - (b.achievement_pct ?? -1),
+      defaultSortOrder: "descend" },
+    { title: "Daily Ach", dataIndex: "daily_ach_pct", key: "daily_ach_pct",
+      width: 110, align: "center",
+      render: (v) => (
+        <span style={{ color: pctColor(v, 1.0), fontWeight: 600, fontSize: 12 }}>
+          {pctFmt(v)}
+        </span>
+      ),
+      sorter: (a, b) => (a.daily_ach_pct ?? -1) - (b.daily_ach_pct ?? -1) },
+    { title: `YTD (${unitLbl})`, dataIndex: "sales_ytd", key: "sales_ytd",
+      width: 120, align: "right",
+      render: (v) => <NumCell v={v} />,
+      sorter: (a, b) => (a.sales_ytd || 0) - (b.sales_ytd || 0) },
+    { title: "Return %", dataIndex: "return_rate_percent", key: "return_rate_percent",
+      width: 90, align: "center",
+      render: (v) => (v == null ? "—" : `${Number(v).toFixed(2)}%`),
+      sorter: (a, b) => (a.return_rate_percent || 0) - (b.return_rate_percent || 0) },
+  ];
+
+  return (
+    <Modal
+      open={open}
+      onCancel={onClose}
+      footer={null}
+      width={960}
+      title={
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700 }}>
+            {salesman?.salesman_name || "—"} · Sales Achievement by Product
+          </div>
+          <div style={{ fontSize: 11, color: "#64748B", fontWeight: 400 }}>
+            {month?.format("MMM YYYY")} · {(salesman?.branch_name || salesman?.branch_code || "")}
+            {meta.total ? ` · ${meta.elapsed}/${meta.total} days elapsed` : ""}
+            {isValueMode ? " · Targets not tracked in value mode" : ""}
+          </div>
+        </div>
+      }
+    >
+      {loading ? (
+        <Skeleton active paragraph={{ rows: 6 }} />
+      ) : rows.length ? (
+        <Table
+          rowKey="product_code"
+          size="small"
+          bordered
+          pagination={false}
+          dataSource={rows}
+          columns={columns}
+          scroll={{ y: 460 }}
+        />
+      ) : (
+        <Empty description="No product-level activity or targets" />
+      )}
+    </Modal>
+  );
+};
+
+
 const SalesmanActivity = () => {
   const { selectedMonth } = useDateFilter();
+  const { selectedProduct } = useContext(ProductContext);
+  const { effectiveUnitType, valueType, mode: unitMode } = useContext(UnitValueContext);
+  const isValueMode = unitMode === "val";
+  const productCode = selectedProduct?.code || "";
   // Period mode is driven by the navbar's global month. Fall back to the
   // current month if the context has no value yet.
   const navMonth = selectedMonth
@@ -948,6 +1075,9 @@ const SalesmanActivity = () => {
   const [periodDrill, setPeriodDrill] = useState(null); // { salesman, metric }
   const [dailyDrill, setDailyDrill]   = useState(null); // { salesman, metric }
   const [routeMap, setRouteMap]       = useState(null); // salesman row for map view
+  const [achDrill, setAchDrill]       = useState(null); // salesman row for sales-achievement modal
+  const [showBreakdown, setShowBreakdown] = useState(false);       // Visit & Engagement Score sub-scores
+  const [showActivityDetails, setShowActivityDetails] = useState(false); // Detailed Activity Report
 
   useEffect(() => {
     getAllBranches().then((r) => setBranches(r?.results || []));
@@ -963,6 +1093,9 @@ const SalesmanActivity = () => {
         ? { fromMonth: fromMonth.format("YYYYMM"), toMonth: toMonth.format("YYYYMM") }
         : { date: day.format("YYYY-MM-DD") }),
       branchCodes: selectedBranches,
+      productCode,
+      unitType:  effectiveUnitType,
+      valueType,
     }).then((res) => {
       if (res?.error) {
         message.error("Failed to load report");
@@ -975,7 +1108,7 @@ const SalesmanActivity = () => {
       }
       setLoading(false);
     });
-  }, [mode, selectedMonth, day, selectedBranches]);
+  }, [mode, selectedMonth, day, selectedBranches, productCode, effectiveUnitType, valueType]);
 
   // ── Column sets ────────────────────────────────────────────────────────
   const salesmanCol = {
@@ -1100,16 +1233,25 @@ const SalesmanActivity = () => {
       ],
     },
     {
-      title: <span style={{ fontSize: 11, fontWeight: 700 }}>Monthly Visits</span>,
+      title: (
+        <span style={{ fontSize: 11, fontWeight: 700, cursor: "pointer", userSelect: "none" }}
+              onClick={() => setShowActivityDetails(v => !v)}
+              title={showActivityDetails ? "Hide detailed activity report" : "Show detailed activity report"}>
+          {showActivityDetails
+            ? <MinusSquareOutlined style={{ marginRight: 4 }} />
+            : <PlusSquareOutlined  style={{ marginRight: 4 }} />}
+          Detailed Activity Report
+        </span>
+      ),
       align: "center",
-      children: [
-        { title: "RPS",     dataIndex: "rps_visits",     key: "rps_visits",     align: "center", width: 80,
+      children: showActivityDetails ? [
+        { title: "RPS Visits",     dataIndex: "rps_visits",     key: "rps_visits",     align: "center", width: 80,
           render: (v, r) => <PlainClickableNum v={v} onClick={() => drillTo(r, "rps_visits")} />,
           sorter: (a, b) => (a.rps_visits || 0) - (b.rps_visits || 0) },
         { title: "Non-RPS", dataIndex: "non_rps_visits", key: "non_rps_visits", align: "center", width: 90,
           render: (v, r) => <PlainClickableNum v={v} onClick={() => drillTo(r, "non_rps_visits")} />,
           sorter: (a, b) => (a.non_rps_visits || 0) - (b.non_rps_visits || 0) },
-        { title: "Total",   dataIndex: "total_visits",   key: "total_visits",   align: "center", width: 80,
+        { title: "Total Visits", dataIndex: "total_visits",   key: "total_visits",   align: "center", width: 90,
           render: (v, r) => <PlainClickableNum v={v} onClick={() => drillTo(r, "total_visits")} />,
           sorter: (a, b) => (a.total_visits || 0) - (b.total_visits || 0) },
         { title: "Planned", dataIndex: "planned_rps",    key: "planned_rps",    align: "center", width: 90,
@@ -1118,28 +1260,16 @@ const SalesmanActivity = () => {
         { title: "RPS Visit %", dataIndex: "visit_pct",      key: "visit_pct",      align: "center", width: 110,
           render: (v) => <PctCell v={v} thresholds={{ good: 90, ok: 70 }} />,
           sorter: (a, b) => (a.visit_pct ?? -Infinity) - (b.visit_pct ?? -Infinity) },
-        { title: "Total Time in Outlet", dataIndex: "total_time_min", key: "total_time_min", align: "center", width: 130,
+        { title: "Total Time in Outlet", dataIndex: "total_time_min", key: "total_time_min", align: "center", width: 150,
           render: (v) => <HoursMinCell v={v} />,
           sorter: (a, b) => (a.total_time_min ?? -Infinity) - (b.total_time_min ?? -Infinity) },
-        { title: "Time in Outlet / Day", dataIndex: "time_per_day_min", key: "time_per_day_min", align: "center", width: 140,
+        { title: "Time in Outlet / Day", dataIndex: "time_per_day_min", key: "time_per_day_min", align: "center", width: 155,
           render: (v) => <HoursMinCell v={v} />,
           sorter: (a, b) => (a.time_per_day_min ?? -Infinity) - (b.time_per_day_min ?? -Infinity) },
-      ],
-    },
-    {
-      title: <span style={{ fontSize: 11, fontWeight: 700 }}>Outlet Quality</span>,
-      align: "center",
-      children: [
-        { title: "Avg Time in Outlet", dataIndex: "avg_time_min", key: "avg_time_min", align: "center", width: 140,
+        { title: "Avg Time in Outlet", dataIndex: "avg_time_min", key: "avg_time_min", align: "center", width: 150,
           render: (v) => <MinCell v={v} />,
           sorter: (a, b) => (a.avg_time_min ?? -Infinity) - (b.avg_time_min ?? -Infinity) },
-      ],
-    },
-    {
-      title: <span style={{ fontSize: 11, fontWeight: 700 }}>Effective Calls</span>,
-      align: "center",
-      children: [
-        { title: "Total Visits", dataIndex: "total_visits",    key: "eff_total_visits",   align: "center", width: 100,
+        { title: "Eff. Visits", dataIndex: "total_visits",    key: "eff_total_visits",   align: "center", width: 100,
           render: (v) => <NumCell v={v} />,
           sorter: (a, b) => (a.total_visits || 0) - (b.total_visits || 0) },
         { title: "With Sales",   dataIndex: "effective_calls", key: "effective_calls",    align: "center", width: 100,
@@ -1148,24 +1278,72 @@ const SalesmanActivity = () => {
         { title: "Effective Call %", dataIndex: "call_pct",    key: "call_pct",           align: "center", width: 130,
           render: (v) => <PctCell v={v} thresholds={{ good: 10, ok: 5 }} />,
           sorter: (a, b) => (a.call_pct ?? -Infinity) - (b.call_pct ?? -Infinity) },
+      ] : [
+        { title: "…", key: "activity_details_placeholder", align: "center", width: 200,
+          render: () => <span style={{ color: "#94A3B8" }}>—</span> },
       ],
     },
     {
-      title: <span style={{ fontSize: 11, fontWeight: 700 }}>Score (Out of 100)</span>,
+      title: (
+        <span style={{ fontSize: 11, fontWeight: 700, cursor: "pointer", userSelect: "none" }}
+              onClick={() => setShowBreakdown(v => !v)}
+              title={showBreakdown ? "Hide component scores" : "Show component scores"}>
+          {showBreakdown
+            ? <MinusSquareOutlined style={{ marginRight: 4 }} />
+            : <PlusSquareOutlined  style={{ marginRight: 4 }} />}
+          Visit &amp; Engagement Score
+        </span>
+      ),
       align: "center",
       children: [
-        { title: "RPS (/15)",           dataIndex: "score_rps",   key: "score_rps",   align: "center", width: 90,
-          render: (v) => <ScoreCell v={v} max={15} />,
-          sorter: (a, b) => (a.score_rps ?? -Infinity) - (b.score_rps ?? -Infinity) },
-        { title: "Time in Outlet (/15)", dataIndex: "score_time",  key: "score_time",  align: "center", width: 130,
-          render: (v) => <ScoreCell v={v} max={15} />,
-          sorter: (a, b) => (a.score_time ?? -Infinity) - (b.score_time ?? -Infinity) },
-        { title: "Effective Call (/70)", dataIndex: "score_call",  key: "score_call",  align: "center", width: 130,
-          render: (v) => <ScoreCell v={v} max={70} />,
-          sorter: (a, b) => (a.score_call ?? -Infinity) - (b.score_call ?? -Infinity) },
-        { title: "Total (/100)",         dataIndex: "score_total", key: "score_total", align: "center", width: 110,
+        ...(showBreakdown ? [
+          { title: "RPS (/15)",           dataIndex: "score_rps",   key: "score_rps",   align: "center", width: 100,
+            render: (v) => <ScoreCell v={v} max={15} />,
+            sorter: (a, b) => (a.score_rps ?? -Infinity) - (b.score_rps ?? -Infinity) },
+          { title: "Time in Outlet (/15)", dataIndex: "score_time",  key: "score_time",  align: "center", width: 150,
+            render: (v) => <ScoreCell v={v} max={15} />,
+            sorter: (a, b) => (a.score_time ?? -Infinity) - (b.score_time ?? -Infinity) },
+          { title: "Effective Call (/70)", dataIndex: "score_call",  key: "score_call",  align: "center", width: 150,
+            render: (v) => <ScoreCell v={v} max={70} />,
+            sorter: (a, b) => (a.score_call ?? -Infinity) - (b.score_call ?? -Infinity) },
+        ] : []),
+        { title: "Total (/100)", dataIndex: "score_total", key: "score_total", align: "center", width: 200,
           render: (v) => <ScoreCell v={v} max={100} bold />,
-          sorter: (a, b) => (a.score_total ?? -Infinity) - (b.score_total ?? -Infinity),
+          sorter: (a, b) => (a.score_total ?? -Infinity) - (b.score_total ?? -Infinity) },
+      ],
+    },
+    {
+      title: <span style={{ fontSize: 11, fontWeight: 700 }}>Sales Achievement</span>,
+      align: "center",
+      children: [
+        { title: "Ach %", dataIndex: "sales_achievement_pct", key: "sales_achievement_pct",
+          align: "center", width: 160,
+          render: (v, r) => {
+            const disabled = v == null;
+            return (
+              <span
+                onClick={() => !disabled && setAchDrill(r)}
+                style={{
+                  cursor: disabled ? "default" : "pointer",
+                  textDecoration: disabled ? "none" : "underline dotted",
+                }}
+                title={disabled ? "" : "Click to see per-product breakdown"}
+              >
+                <PctCell v={v} thresholds={{ good: 90, ok: 70 }} />
+              </span>
+            );
+          },
+          sorter: (a, b) => (a.sales_achievement_pct ?? -Infinity) - (b.sales_achievement_pct ?? -Infinity) },
+      ],
+    },
+    {
+      title: <span style={{ fontSize: 11, fontWeight: 700 }}>Final Score</span>,
+      align: "center",
+      children: [
+        { title: "(/100)", dataIndex: "final_score", key: "final_score",
+          align: "center", width: 130,
+          render: (v) => <ScoreCell v={v} max={100} bold />,
+          sorter: (a, b) => (a.final_score ?? -Infinity) - (b.final_score ?? -Infinity),
           defaultSortOrder: "descend" },
       ],
     },
@@ -1285,7 +1463,7 @@ const SalesmanActivity = () => {
       ? `Daily ${day.format("YYYY-MM-DD")}`
       : `Period ${fromMonth.format("YYYY-MM")}`;
     const ws = wb.addWorksheet(sheetName.substring(0, 31), {
-      views: [{ state: "frozen", xSplit: 3, ySplit: 1 }],
+      views: [{ state: "frozen", xSplit: 3, ySplit: 2 }],
     });
 
     const NAV   = "002060";
@@ -1305,64 +1483,123 @@ const SalesmanActivity = () => {
       border: bdr,
     };
 
-    // Column definitions per mode. Each: { header, key, width, kind }
+    // Excel-safe tint mirroring PctCell/ScoreCell UI palette (rgba → solid).
+    const TONE = {
+      good: { bg: "FFD1FADF", fg: "FF059669" },
+      ok:   { bg: "FFFEF3C7", fg: "FFB45309" },
+      bad:   { bg: "FFFEE2E2", fg: "FFDC2626" },
+      none: { bg: null,       fg: "FF94A3B8" },
+    };
+    const toneFor = (v, good = 90, ok = 70) => {
+      if (v == null || !isFinite(v)) return TONE.none;
+      if (v >= good) return TONE.good;
+      if (v >= ok)   return TONE.ok;
+      return TONE.bad;
+    };
+    const paletteFor = (col, v) => {
+      if (col.pctThresh) return toneFor(v, col.pctThresh.good, col.pctThresh.ok);
+      if (col.scoreMax)  return toneFor((v || 0) / col.scoreMax * 100, 90, 70);
+      return null;
+    };
+
+    // Column definitions per mode. Each: { header, key, width, kind, group?, pctThresh?, scoreMax? }
+    // `group` = merged top-header label; only defined groups get merged.
+    // Columns without a `group` span both header rows individually.
+    // Period export mirrors on-screen visibility: gated by the two toggles.
     const periodCols = [
       { header: "#",              key: "idx",              width: 5,  kind: "num" },
-      { header: "Salesman",       key: "salesman",         width: 30, kind: "text" },
-      { header: "Branch",         key: "branch",           width: 20, kind: "text" },
-      { header: "Customer Base",  key: "customer_base",    width: 14, kind: "num" },
-      { header: "RPS Visits",     key: "rps_visits",       width: 12, kind: "num" },
-      { header: "Non-RPS Visits", key: "non_rps_visits",   width: 14, kind: "num" },
-      { header: "Total Visits",   key: "total_visits",     width: 12, kind: "num" },
-      { header: "Planned RPS",    key: "planned_rps",      width: 12, kind: "num" },
-      { header: "RPS Visit %",    key: "visit_pct",        width: 12, kind: "pct" },
-      { header: "Total Time (min)",     key: "total_time_min",   width: 15, kind: "dec" },
-      { header: "Time / Day (min)",     key: "time_per_day_min", width: 15, kind: "dec" },
-      { header: "Avg Time / Visit (min)", key: "avg_time_min",   width: 18, kind: "dec" },
-      { header: "Effective Calls",  key: "effective_calls",  width: 14, kind: "num" },
-      { header: "Effective Call %", key: "call_pct",        width: 14, kind: "pct" },
-      { header: "Score RPS (/15)",         key: "score_rps",   width: 14, kind: "dec" },
-      { header: "Score Time (/15)",        key: "score_time",  width: 14, kind: "dec" },
-      { header: "Score Eff Call (/70)",    key: "score_call",  width: 16, kind: "dec" },
-      { header: "Score Total (/100)",      key: "score_total", width: 16, kind: "dec" },
+      { header: "Salesman",       key: "salesman",         width: 42, kind: "text" },
+      { header: "Branch",         key: "branch",           width: 22, kind: "text" },
+      { header: "Total",          key: "customer_base",    width: 16, kind: "num", group: "Customer Base" },
+      ...(showActivityDetails ? [
+        { header: "RPS Visits",     key: "rps_visits",       width: 12, kind: "num", group: "Detailed Activity Report" },
+        { header: "Non-RPS Visits", key: "non_rps_visits",   width: 14, kind: "num", group: "Detailed Activity Report" },
+        { header: "Total Visits",   key: "total_visits",     width: 12, kind: "num", group: "Detailed Activity Report" },
+        { header: "Planned RPS",    key: "planned_rps",      width: 12, kind: "num", group: "Detailed Activity Report" },
+        { header: "RPS Visit %",    key: "visit_pct",        width: 12, kind: "pct", group: "Detailed Activity Report", pctThresh: { good: 90, ok: 70 } },
+        { header: "Total Time (min)",       key: "total_time_min",   width: 15, kind: "dec", group: "Detailed Activity Report" },
+        { header: "Time / Day (min)",       key: "time_per_day_min", width: 15, kind: "dec", group: "Detailed Activity Report" },
+        { header: "Avg Time / Visit (min)", key: "avg_time_min",     width: 18, kind: "dec", group: "Detailed Activity Report" },
+        { header: "Effective Calls",  key: "effective_calls",  width: 14, kind: "num", group: "Detailed Activity Report" },
+        { header: "Effective Call %", key: "call_pct",         width: 14, kind: "pct", group: "Detailed Activity Report", pctThresh: { good: 10, ok: 5 } },
+      ] : [
+        { header: "…", key: "activity_details_placeholder", width: 26, kind: "text", group: "Detailed Activity Report", placeholder: true },
+      ]),
+      ...(showBreakdown ? [
+        { header: "RPS (/15)",           key: "score_rps",   width: 14, kind: "dec", group: "Visit & Engagement Score", scoreMax: 15 },
+        { header: "Time in Outlet (/15)",key: "score_time",  width: 20, kind: "dec", group: "Visit & Engagement Score", scoreMax: 15 },
+        { header: "Effective Call (/70)",key: "score_call",  width: 22, kind: "dec", group: "Visit & Engagement Score", scoreMax: 70 },
+      ] : []),
+      { header: "Total (/100)",        key: "score_total", width: 18, kind: "dec", group: "Visit & Engagement Score", scoreMax: 100 },
+      { header: "Ach %",               key: "sales_achievement_pct", width: 20, kind: "pct", group: "Sales Achievement", pctThresh: { good: 90, ok: 70 } },
+      { header: "(/100)",              key: "final_score",           width: 14, kind: "dec", group: "Final Score", scoreMax: 100 },
     ];
     const dailyCols = [
       { header: "#",              key: "idx",             width: 5,  kind: "num" },
-      { header: "Salesman",       key: "salesman",        width: 30, kind: "text" },
-      { header: "Branch",         key: "branch",          width: 20, kind: "text" },
-      { header: "RPS Visits",     key: "rps_visits",      width: 12, kind: "num" },
-      { header: "Non-RPS Visits", key: "non_rps_visits",  width: 14, kind: "num" },
-      { header: "Total Visits",   key: "total_visits",    width: 12, kind: "num" },
-      { header: "With Sales",       key: "effective_calls", width: 12, kind: "num" },
-      { header: "Effective Call %", key: "call_pct",        width: 14, kind: "pct" },
-      { header: "Planned RPS",      key: "planned_rps",     width: 12, kind: "num" },
-      { header: "RPS Visit %",      key: "visit_pct",       width: 12, kind: "pct" },
-      { header: "Total Time (min)", key: "total_time_min", width: 15, kind: "dec" },
-      { header: "Sales Value",    key: "sales_value",     width: 15, kind: "num" },
-      { header: "Collection",     key: "collection",      width: 15, kind: "num" },
+      { header: "Salesman",       key: "salesman",        width: 42, kind: "text" },
+      { header: "Branch",         key: "branch",          width: 22, kind: "text" },
+      { header: "RPS",              key: "rps_visits",      width: 10, kind: "num", group: "Visits" },
+      { header: "Non-RPS",          key: "non_rps_visits",  width: 12, kind: "num", group: "Visits" },
+      { header: "Total",            key: "total_visits",    width: 10, kind: "num", group: "Visits" },
+      { header: "With Sales",       key: "effective_calls", width: 12, kind: "num", group: "Visits" },
+      { header: "Effective Call %", key: "call_pct",        width: 14, kind: "pct", group: "Visits", pctThresh: { good: 60, ok: 30 } },
+      { header: "Planned",          key: "planned_rps",     width: 10, kind: "num", group: "Visits" },
+      { header: "RPS Visit %",      key: "visit_pct",       width: 12, kind: "pct", group: "Visits", pctThresh: { good: 90, ok: 70 } },
+      { header: "Total (min)",      key: "total_time_min",  width: 12, kind: "dec", group: "Outlet Time" },
+      { header: "Value",            key: "sales_value",     width: 15, kind: "num", group: "Sales" },
+      { header: "Value",            key: "collection",      width: 15, kind: "num", group: "Collection" },
     ];
     const colDefs = isDaily ? dailyCols : periodCols;
 
-    const hdrRow = ws.getRow(1); hdrRow.height = 22;
-    colDefs.forEach((c, i) => {
-      const cell = hdrRow.getCell(i + 1);
-      cell.value = c.header;
-      cell.style = hdrStyle;
-      ws.getColumn(i + 1).width = c.width;
-    });
-
     const numFmtFor = (kind) => kind === "pct" ? pctFmt : kind === "dec" ? decFmt : numFmt;
+
+    // ── Two-row header with merged group cells ────────────────────────────
+    const groupRow = ws.getRow(1); groupRow.height = 28;
+    const childRow = ws.getRow(2); childRow.height = 22;
+    colDefs.forEach((c, i) => { ws.getColumn(i + 1).width = c.width; });
+
+    // Walk cols and merge each contiguous run sharing the same defined
+    // `group`. Standalone columns (no group) each get their own vertical
+    // merge across both header rows.
+    let runStart = 0;
+    while (runStart < colDefs.length) {
+      const c = colDefs[runStart];
+      let runEnd = runStart;
+      if (c.group) {
+        while (runEnd + 1 < colDefs.length && colDefs[runEnd + 1].group === c.group) runEnd++;
+      }
+      const startCol = runStart + 1;
+      const endCol   = runEnd + 1;
+      if (c.group) {
+        ws.mergeCells(1, startCol, 1, endCol);
+        const gCell = groupRow.getCell(startCol);
+        gCell.value = c.group;
+        gCell.style = hdrStyle;
+        for (let i = runStart; i <= runEnd; i++) {
+          const cc = childRow.getCell(i + 1);
+          cc.value = colDefs[i].header;
+          cc.style = hdrStyle;
+        }
+      } else {
+        ws.mergeCells(1, startCol, 2, endCol);
+        const gCell = groupRow.getCell(startCol);
+        gCell.value = c.header;
+        gCell.style = hdrStyle;
+      }
+      runStart = runEnd + 1;
+    }
 
     // Data rows
     rows.forEach((r, idx) => {
-      const dr = ws.addRow({}); dr.height = 17;
+      const dr = ws.addRow({}); dr.height = 20;
       const isEven = idx % 2 === 0;
-      const bg = isEven ? WHITE : `FF${LGRAY}`;
+      const zebraBg = isEven ? WHITE : `FF${LGRAY}`;
       const rowValues = {
         idx:              idx + 1,
         salesman:         `${r.salesman_name} (${r.salesman_code})`,
         branch:           r.branch_name || r.branch_code || "",
         customer_base:    r.customer_base,
+        activity_details_placeholder: "—",
         rps_visits:       r.rps_visits,
         non_rps_visits:   r.non_rps_visits,
         total_visits:     r.total_visits,
@@ -1379,15 +1616,28 @@ const SalesmanActivity = () => {
         score_total:      r.score_total,
         sales_value:      r.sales_value,
         collection:       r.collection,
+        month_target:     r.month_target,
+        sales_mtd:        r.sales_mtd,
+        sales_achievement_pct: r.sales_achievement_pct,
+        final_score:      r.final_score,
       };
       colDefs.forEach((c, i) => {
         const cell = dr.getCell(i + 1);
         const v = rowValues[c.key];
         cell.value = (v === undefined || v === null || v === "") ? null : v;
+        const tone = paletteFor(c, v);
+        const bg   = tone && tone.bg ? tone.bg : zebraBg;
+        const fontColor = tone ? tone.fg : "FF0F172A";
+        const isColoured = tone != null && tone.bg != null;
+        const align = c.placeholder
+          ? "center"
+          : c.kind === "text" ? "left"
+          : c.kind === "num" && c.key === "idx" ? "center"
+          : "right";
         cell.style = {
           fill: { type: "pattern", pattern: "solid", fgColor: { argb: bg } },
-          font: { size: 10 },
-          alignment: { horizontal: c.kind === "text" ? "left" : c.kind === "num" && c.key === "idx" ? "center" : "right", vertical: "middle" },
+          font: { size: 10, bold: isColoured, color: { argb: c.placeholder ? "FF94A3B8" : fontColor } },
+          alignment: { horizontal: align, vertical: "middle" },
           border: bdr,
           numFmt: c.kind === "text" ? undefined : numFmtFor(c.kind),
         };
@@ -1396,7 +1646,7 @@ const SalesmanActivity = () => {
 
     // Grand total row from data.totals
     const t = data?.totals || {};
-    const gtRow = ws.addRow({}); gtRow.height = 18;
+    const gtRow = ws.addRow({}); gtRow.height = 20;
     const GT_BG = `FF${AGOLD}`;
     const gtStyle = {
       fill: { type: "pattern", pattern: "solid", fgColor: { argb: GT_BG } },
@@ -1409,6 +1659,7 @@ const SalesmanActivity = () => {
       salesman: "TOTAL",
       branch: "",
       customer_base:    t.customer_base,
+      activity_details_placeholder: "—",
       rps_visits:       t.rps_visits,
       non_rps_visits:   t.non_rps_visits,
       total_visits:     t.total_visits,
@@ -1425,14 +1676,23 @@ const SalesmanActivity = () => {
       score_total:      t.score_total,
       sales_value:      t.sales_value,
       collection:       t.collection,
+      month_target:     t.month_target,
+      sales_mtd:        t.sales_mtd,
+      sales_achievement_pct: t.sales_achievement_pct,
+      final_score:      t.final_score,
     };
     colDefs.forEach((c, i) => {
       const cell = gtRow.getCell(i + 1);
       const v = totalValues[c.key];
       cell.value = (v === undefined || v === null || v === "") ? null : v;
+      const tone = paletteFor(c, v);
+      // Totals keep the gold background but pick up the threshold font colour.
+      const fontColor = tone ? tone.fg : "FF1E293B";
+      const align = c.placeholder ? "center" : c.kind === "text" ? "left" : "right";
       cell.style = {
         ...gtStyle,
-        alignment: { horizontal: c.kind === "text" ? "left" : "right", vertical: "middle" },
+        font: { bold: true, size: 10, color: { argb: c.placeholder ? "FF94A3B8" : fontColor } },
+        alignment: { horizontal: align, vertical: "middle" },
         numFmt: c.kind === "text" ? undefined : numFmtFor(c.kind),
       };
     });
@@ -1459,26 +1719,39 @@ const SalesmanActivity = () => {
       <Table.Summary.Row style={{ background: "#F8FAFC", fontWeight: 700 }}>
         <Table.Summary.Cell index={0}>Total</Table.Summary.Cell>
         <Table.Summary.Cell index={1} />
-        {mode === "period" ? (
-          <>
-            <Table.Summary.Cell index={2} align="center"><NumCell v={data.totals.customer_base} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={3} align="center"><NumCell v={data.totals.rps_visits} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={4} align="center"><NumCell v={data.totals.non_rps_visits} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={5} align="center"><NumCell v={data.totals.total_visits} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={6} align="center"><NumCell v={data.totals.planned_rps} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={7} align="center"><PctCell v={data.totals.visit_pct} thresholds={{ good: 90, ok: 70 }} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={8} align="center"><HoursMinCell v={data.totals.total_time_min} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={9} align="center"><HoursMinCell v={data.totals.time_per_day_min} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={10} align="center"><MinCell v={data.totals.avg_time_min} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={11} align="center"><NumCell v={data.totals.total_visits} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={12} align="center"><NumCell v={data.totals.effective_calls} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={13} align="center"><PctCell v={data.totals.call_pct} thresholds={{ good: 10, ok: 5 }} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={14} align="center"><ScoreCell v={data.totals.score_rps}   max={15} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={15} align="center"><ScoreCell v={data.totals.score_time}  max={15} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={16} align="center"><ScoreCell v={data.totals.score_call}  max={70} /></Table.Summary.Cell>
-            <Table.Summary.Cell index={17} align="center"><ScoreCell v={data.totals.score_total} max={100} bold /></Table.Summary.Cell>
-          </>
-        ) : (
+        {mode === "period" ? (() => {
+          let i = 2;
+          const cells = [];
+          cells.push(<Table.Summary.Cell key="cb"  index={i++} align="center"><NumCell v={data.totals.customer_base} /></Table.Summary.Cell>);
+          if (showActivityDetails) {
+            cells.push(
+              <Table.Summary.Cell key="rv"  index={i++} align="center"><NumCell v={data.totals.rps_visits} /></Table.Summary.Cell>,
+              <Table.Summary.Cell key="nrv" index={i++} align="center"><NumCell v={data.totals.non_rps_visits} /></Table.Summary.Cell>,
+              <Table.Summary.Cell key="tv"  index={i++} align="center"><NumCell v={data.totals.total_visits} /></Table.Summary.Cell>,
+              <Table.Summary.Cell key="pr"  index={i++} align="center"><NumCell v={data.totals.planned_rps} /></Table.Summary.Cell>,
+              <Table.Summary.Cell key="vp"  index={i++} align="center"><PctCell v={data.totals.visit_pct} thresholds={{ good: 90, ok: 70 }} /></Table.Summary.Cell>,
+              <Table.Summary.Cell key="tt"  index={i++} align="center"><HoursMinCell v={data.totals.total_time_min} /></Table.Summary.Cell>,
+              <Table.Summary.Cell key="tpd" index={i++} align="center"><HoursMinCell v={data.totals.time_per_day_min} /></Table.Summary.Cell>,
+              <Table.Summary.Cell key="at"  index={i++} align="center"><MinCell v={data.totals.avg_time_min} /></Table.Summary.Cell>,
+              <Table.Summary.Cell key="etv" index={i++} align="center"><NumCell v={data.totals.total_visits} /></Table.Summary.Cell>,
+              <Table.Summary.Cell key="ec"  index={i++} align="center"><NumCell v={data.totals.effective_calls} /></Table.Summary.Cell>,
+              <Table.Summary.Cell key="cp"  index={i++} align="center"><PctCell v={data.totals.call_pct} thresholds={{ good: 10, ok: 5 }} /></Table.Summary.Cell>,
+            );
+          } else {
+            cells.push(<Table.Summary.Cell key="adplc" index={i++} align="center"><span style={{ color: "#94A3B8" }}>—</span></Table.Summary.Cell>);
+          }
+          if (showBreakdown) {
+            cells.push(
+              <Table.Summary.Cell key="sr"  index={i++} align="center"><ScoreCell v={data.totals.score_rps}  max={15} /></Table.Summary.Cell>,
+              <Table.Summary.Cell key="st"  index={i++} align="center"><ScoreCell v={data.totals.score_time} max={15} /></Table.Summary.Cell>,
+              <Table.Summary.Cell key="sc"  index={i++} align="center"><ScoreCell v={data.totals.score_call} max={70} /></Table.Summary.Cell>,
+            );
+          }
+          cells.push(<Table.Summary.Cell key="stot" index={i++} align="center"><ScoreCell v={data.totals.score_total} max={100} bold /></Table.Summary.Cell>);
+          cells.push(<Table.Summary.Cell key="sap"  index={i++} align="center"><PctCell v={data.totals.sales_achievement_pct} thresholds={{ good: 90, ok: 70 }} /></Table.Summary.Cell>);
+          cells.push(<Table.Summary.Cell key="fs"   index={i++} align="center"><ScoreCell v={data.totals.final_score} max={100} bold /></Table.Summary.Cell>);
+          return <>{cells}</>;
+        })() : (
           <>
             <Table.Summary.Cell index={2} align="center"><NumCell v={data.totals.rps_visits} /></Table.Summary.Cell>
             <Table.Summary.Cell index={3} align="center"><NumCell v={data.totals.non_rps_visits} /></Table.Summary.Cell>
@@ -1630,6 +1903,16 @@ const SalesmanActivity = () => {
         date={day}
         salesman={routeMap}
         branchScope={selectedBranches}
+      />
+
+      <SalesAchievementModal
+        open={!!achDrill}
+        onClose={() => setAchDrill(null)}
+        salesman={achDrill}
+        month={mode === "daily" ? dayjs(day).startOf("month") : navMonth}
+        unitType={effectiveUnitType}
+        valueType={valueType}
+        isValueMode={isValueMode}
       />
     </div>
   );
