@@ -57,6 +57,7 @@ const Login = () => {
             allowed_channels: loginData?.data?.allowed_channels,
             denied_pages:     loginData?.data?.denied_pages   || [],
             denied_reports:   loginData?.data?.denied_reports || [],
+            report_prefs:     loginData?.data?.report_prefs   || {},
           })
         )
       );
