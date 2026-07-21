@@ -345,6 +345,25 @@ const CustomerAnalysis = () => {
       icon: <DollarOutlined />,
     },
     {
+      title: "Payment Health",
+      value: phScore != null ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <span style={{ display: "inline-flex", alignItems: "baseline", gap: 4, color: phColor, fontWeight: 700 }}>
+            {phScore}
+            <span style={{ fontSize: 12, color: "#94A3B8", fontWeight: 500 }}>/ {phMax}</span>
+          </span>
+          <span style={{ fontSize: 11, color: "#64748B", fontWeight: 400 }}>
+            Sales <b style={{ color: "#0F172A" }}>{paymentHealth.sales_category}</b>
+            {"  ·  "}
+            Risk <b style={{ color: "#0F172A" }}>{paymentHealth.risk_category}</b>
+          </span>
+        </div>
+      ) : "—",
+      icon: <SafetyCertificateOutlined />,
+      onClick: paymentHealth ? () => setPaymentHealthModal(true) : undefined,
+      tooltip: paymentHealth ? "Click to see the score breakdown" : undefined,
+    },
+    {
       title: "Last Payment Date",
       value: customer.lastPaymentDate
         ? new Date(customer.lastPaymentDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
@@ -659,34 +678,6 @@ const CustomerAnalysis = () => {
                   </>
                 ) : (
                   <span className="ca-rank-num" style={{ fontSize: 14, color: "#94A3B8" }}>Not captured</span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* ── Payment Health Score ─────────────────────────────────── */}
-          <div
-            className={`ca-rank-card ${paymentHealth ? "ca-rank-card--clickable" : ""}`}
-            onClick={() => paymentHealth && setPaymentHealthModal(true)}
-            title={paymentHealth ? "Click to see the score breakdown" : ""}
-          >
-            <div className="ca-rank-icon" style={{ background: `${phColor}18`, color: phColor }}>
-              <SafetyCertificateOutlined />
-            </div>
-            <div className="ca-rank-body">
-              <div className="ca-rank-label">Payment Health</div>
-              <div className="ca-rank-value">
-                {phScore != null ? (
-                  <>
-                    <span className="ca-rank-num" style={{ color: phColor }}>
-                      {phScore}<span style={{ fontSize: 13, color: "#94A3B8" }}> / {phMax}</span>
-                    </span>
-                    <span className="ca-rank-total">
-                      Sales <b>{paymentHealth.sales_category}</b> · Risk <b>{paymentHealth.risk_category}</b>
-                    </span>
-                  </>
-                ) : (
-                  <span className="ca-rank-num" style={{ fontSize: 14, color: "#94A3B8" }}>—</span>
                 )}
               </div>
             </div>
