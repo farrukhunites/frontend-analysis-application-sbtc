@@ -294,12 +294,14 @@ const CustomerAnalysis = () => {
   const paymentHealth = customerData?.payment_health || null;
   const phScore = paymentHealth?.score ?? null;
   const phMax = paymentHealth?.max_score ?? 6;
+  const phSalesUnidentified = paymentHealth?.sales_category === "Unidentified";
+  const phRatio = phScore == null || !phMax ? null : phScore / phMax;
   const phColor =
-    phScore == null ? "#94A3B8"
-    : phScore >= 5 ? "#16A34A"
-    : phScore >= 3 ? "#F59E0B"
-    : phScore >= 1 ? "#EA580C"
-    :                "#DC2626";
+    phRatio == null ? "#94A3B8"
+    : phRatio >= 0.75 ? "#16A34A"
+    : phRatio >= 0.5  ? "#F59E0B"
+    : phRatio >= 0.25 ? "#EA580C"
+    :                   "#DC2626";
   const skuMix = customerData?.sku_mix || [];
   const schemeHistory = customerData?.scheme_history || [];
 
@@ -353,9 +355,15 @@ const CustomerAnalysis = () => {
             <span style={{ fontSize: 12, color: "#94A3B8", fontWeight: 500 }}>/ {phMax}</span>
           </span>
           <span style={{ fontSize: 11, color: "#64748B", fontWeight: 400 }}>
-            Sales <b style={{ color: "#0F172A" }}>{paymentHealth.sales_category}</b>
-            {"  ·  "}
-            Risk <b style={{ color: "#0F172A" }}>{paymentHealth.risk_category}</b>
+            {phSalesUnidentified ? (
+              <>Risk only <b style={{ color: "#0F172A" }}>{paymentHealth.risk_category}</b></>
+            ) : (
+              <>
+                Sales <b style={{ color: "#0F172A" }}>{paymentHealth.sales_category}</b>
+                {"  ·  "}
+                Risk <b style={{ color: "#0F172A" }}>{paymentHealth.risk_category}</b>
+              </>
+            )}
           </span>
         </div>
       ) : "—",
@@ -932,17 +940,23 @@ const PaymentHealthModal = ({ open, onClose, paymentHealth, customerName }) => {
   }
 
   const {
-    score, max_score, sales_type_used,
+    score, max_score, sales_type_used, channel,
     overdue_balance, monthly_avg_sales, ytd_sales_value, months_elapsed,
-    risk_pct, sales_category, sales_category_score,
+    risk_pct, sales_category, sales_category_score, sales_thresholds,
     risk_category, risk_category_score,
   } = paymentHealth;
 
+  const salesUnidentified = sales_category === "Unidentified";
+  const ratio = max_score ? score / max_score : 0;
   const scoreColor =
-    score >= 5 ? "#16A34A"
-    : score >= 3 ? "#F59E0B"
-    : score >= 1 ? "#EA580C"
-    :              "#DC2626";
+    ratio >= 0.75 ? "#16A34A"
+    : ratio >= 0.5  ? "#F59E0B"
+    : ratio >= 0.25 ? "#EA580C"
+    :                 "#DC2626";
+  const fmtInt = (v) => Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
+  const salesHint = sales_thresholds
+    ? `${channel || ""} channel — A: ≥ ${fmtInt(sales_thresholds.a_min)}  ·  B: ≥ ${fmtInt(sales_thresholds.b_min)}  ·  C: below ${fmtInt(sales_thresholds.b_min)}  (SAR monthly avg)`
+    : `${channel || "This channel"} has no configured sales thresholds — sales is not scored, composite is risk-only (max 3).`;
 
   const catColor = (c) => c === "A" ? "#16A34A" : c === "B" ? "#3B82F6" : c === "C" ? "#F59E0B" : "#DC2626";
   const scoreForCat = (c) => ({ A: 3, B: 2, C: 1, D: -1 })[c] ?? 0;
@@ -998,12 +1012,20 @@ const PaymentHealthModal = ({ open, onClose, paymentHealth, customerName }) => {
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 13, color: "#334155", marginBottom: 6 }}>
-            Composite score = <b>Sales Category</b> ({sales_category_score}) + <b>Risk Category</b> ({risk_category_score})
+            {salesUnidentified ? (
+              <>Composite score = <b>Risk Category</b> only ({risk_category_score}) — no sales thresholds for channel <b>{channel || "?"}</b></>
+            ) : (
+              <>Composite score = <b>Sales Category</b> ({sales_category_score}) + <b>Risk Category</b> ({risk_category_score})</>
+            )}
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Tag color={catColor(sales_category) === "#16A34A" ? "green" : catColor(sales_category) === "#3B82F6" ? "blue" : catColor(sales_category) === "#F59E0B" ? "orange" : "red"}>
-              Sales {sales_category} · +{sales_category_score}
-            </Tag>
+            {salesUnidentified ? (
+              <Tag>Sales · Unidentified</Tag>
+            ) : (
+              <Tag color={catColor(sales_category) === "#16A34A" ? "green" : catColor(sales_category) === "#3B82F6" ? "blue" : catColor(sales_category) === "#F59E0B" ? "orange" : "red"}>
+                Sales {sales_category} · +{sales_category_score}
+              </Tag>
+            )}
             <Tag color={catColor(risk_category) === "#16A34A" ? "green" : catColor(risk_category) === "#3B82F6" ? "blue" : catColor(risk_category) === "#F59E0B" ? "orange" : "red"}>
               Risk {risk_category} · {risk_category_score > 0 ? "+" : ""}{risk_category_score}
             </Tag>
@@ -1041,14 +1063,21 @@ const PaymentHealthModal = ({ open, onClose, paymentHealth, customerName }) => {
         <Row
           label="Sales Category"
           value={
-            <span>
-              <Tag color={sales_category === "A" ? "green" : sales_category === "B" ? "blue" : "orange"} style={{ margin: 0 }}>
-                {sales_category}
-              </Tag>
-              <span style={{ marginLeft: 8, color: "#64748B" }}>+{sales_category_score} pts</span>
-            </span>
+            salesUnidentified ? (
+              <span>
+                <Tag style={{ margin: 0 }}>Unidentified</Tag>
+                <span style={{ marginLeft: 8, color: "#64748B" }}>not scored</span>
+              </span>
+            ) : (
+              <span>
+                <Tag color={sales_category === "A" ? "green" : sales_category === "B" ? "blue" : "orange"} style={{ margin: 0 }}>
+                  {sales_category}
+                </Tag>
+                <span style={{ marginLeft: 8, color: "#64748B" }}>+{sales_category_score} pts</span>
+              </span>
+            )
           }
-          hint="A: ≥ 100,000  ·  B: ≥ 25,000  ·  C: below 25,000  (monthly avg)"
+          hint={salesHint}
         />
         <Row
           label="Risk %"
