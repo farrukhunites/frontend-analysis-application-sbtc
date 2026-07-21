@@ -16,6 +16,7 @@ const RawData             = lazy(() => import("./RawData"));
 const PotentialCustomers  = lazy(() => import("../PotentialCustomers"));
 const SalesmanActivity    = lazy(() => import("./SalesmanActivity"));
 const CustomerSalesVariance = lazy(() => import("./CustomerSalesVariance"));
+const PaymentHealthReport   = lazy(() => import("./PaymentHealthReport"));
 
 const TabLoader = () => (
   <div style={{ padding: "24px 0" }}>
@@ -38,6 +39,7 @@ const REPORT_COMPONENTS = {
   "potential-customers":   PotentialCustomers,
   "salesman-activity":     SalesmanActivity,
   "customer-sales-variance": CustomerSalesVariance,
+  "payment-health":        PaymentHealthReport,
 };
 
 const buildTab = (entry) => {

@@ -11,6 +11,7 @@ import {
   PieChartOutlined,
   EnvironmentOutlined,
   FallOutlined,
+  SafetyCertificateOutlined,
 } from "@ant-design/icons";
 import { REPORT_KEYS } from "./access";
 import { updateReportPrefs, resetReportPrefsAPI } from "../API/Auth";
@@ -31,6 +32,7 @@ export const REPORT_CATALOG = [
   { key: "potential-customers",   reportKey: REPORT_KEYS.POTENTIAL_CUSTOMERS,   label: "Potential Customers",   icon: UsergroupAddOutlined },
   { key: "salesman-activity",     reportKey: REPORT_KEYS.SALESMAN_ACTIVITY,     label: "Salesman Activity",     icon: EnvironmentOutlined },
   { key: "customer-sales-variance", reportKey: REPORT_KEYS.CUSTOMER_SALES_VARIANCE, label: "Customer Sales Variance", icon: FallOutlined },
+  { key: "payment-health",        reportKey: REPORT_KEYS.PAYMENT_HEALTH,        label: "Payment Health",        icon: SafetyCertificateOutlined },
 ];
 
 // Reconcile raw prefs from the backend against the current catalog:

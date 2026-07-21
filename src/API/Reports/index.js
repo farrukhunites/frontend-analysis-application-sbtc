@@ -191,6 +191,27 @@ export const getCustomerSalesVariance = ({ month, fromMonth, toMonth, unitType, 
     .then((r) => r.data)
     .catch((err) => ({ error: err.response?.data || err.message }));
 
+export const getPaymentHealthReport = ({
+  valueType, branchCodes, channels,
+  minScore, maxScore, salesCategory, riskCategory, includeZero,
+}) =>
+  axios
+    .get(`${process.env.REACT_APP_BACKEND_URL}reports/payment-health/`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+      params: {
+        value_type:       valueType,
+        "branch_codes[]": branchCodes?.length ? branchCodes : undefined,
+        "channels[]":     channels?.length ? channels : undefined,
+        min_score:        minScore != null ? minScore : undefined,
+        max_score:        maxScore != null ? maxScore : undefined,
+        sales_category:   salesCategory || undefined,
+        risk_category:    riskCategory  || undefined,
+        include_zero:     includeZero ? 1 : undefined,
+      },
+    })
+    .then((r) => r.data)
+    .catch((err) => ({ error: err.response?.data || err.message }));
+
 export const exportRawSalesCsv = ({ startDate, endDate, branchCodes, productCodes, onDownloadProgress }) =>
   axios
     .get(`${process.env.REACT_APP_BACKEND_URL}reports/raw-sales/`, {

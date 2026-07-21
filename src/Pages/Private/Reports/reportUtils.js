@@ -86,6 +86,7 @@ export const exportRowsToExcel = async ({
         return acc;
       }, {})
     );
+    const isEven = row.number % 2 === 0;
     columns.forEach((c, i) => {
       const cell = row.getCell(i + 1);
       cell.alignment = {
@@ -94,12 +95,18 @@ export const exportRowsToExcel = async ({
       };
       if (c.type === "number") cell.numFmt = c.format || "#,##0";
       cell.font = { size: 11, color: { argb: "FF1E293B" } };
-    });
-    if (row.number % 2 === 0) {
-      row.eachCell((cell) => {
+      if (isEven) {
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: GRAY } };
-      });
-    }
+      }
+      // Per-cell override: { fill?: argb, font?: argb, bold?: bool }
+      if (typeof c.cellStyle === "function") {
+        const s = c.cellStyle(r);
+        if (s?.fill) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: s.fill } };
+        if (s?.font || s?.bold) {
+          cell.font = { size: 11, color: { argb: s.font || "FF1E293B" }, bold: !!s.bold };
+        }
+      }
+    });
   });
 
   ws.autoFilter = {
