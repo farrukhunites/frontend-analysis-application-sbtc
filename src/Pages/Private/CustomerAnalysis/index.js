@@ -11,6 +11,7 @@ import {
   FileTextOutlined,
   SwapOutlined,
   EnvironmentOutlined,
+  SafetyCertificateOutlined,
 } from "@ant-design/icons";
 import { Collapse, Empty, message, Modal, Segmented, Select, Skeleton, Table, Tag } from "antd";
 import L from "leaflet";
@@ -54,6 +55,7 @@ const CustomerAnalysis = () => {
   const [rankModal, setRankModal] = useState({ open: false, scope: null });
   const [returnModal, setReturnModal] = useState({ open: false, scope: "all", loading: false, results: [], totalQty: 0 });
   const [locationModal, setLocationModal] = useState(false);
+  const [paymentHealthModal, setPaymentHealthModal] = useState(false);
 
   const [searchParams] = useSearchParams();
   const locationState = useLocation().state;
@@ -289,6 +291,15 @@ const CustomerAnalysis = () => {
   const ranking = customerData?.ranking || {};
   const cadence = customerData?.purchase_cadence || {};
   const orderQuality = customerData?.order_quality || {};
+  const paymentHealth = customerData?.payment_health || null;
+  const phScore = paymentHealth?.score ?? null;
+  const phMax = paymentHealth?.max_score ?? 6;
+  const phColor =
+    phScore == null ? "#94A3B8"
+    : phScore >= 5 ? "#16A34A"
+    : phScore >= 3 ? "#F59E0B"
+    : phScore >= 1 ? "#EA580C"
+    :                "#DC2626";
   const skuMix = customerData?.sku_mix || [];
   const schemeHistory = customerData?.scheme_history || [];
 
@@ -652,6 +663,34 @@ const CustomerAnalysis = () => {
               </div>
             </div>
           </div>
+
+          {/* ── Payment Health Score ─────────────────────────────────── */}
+          <div
+            className={`ca-rank-card ${paymentHealth ? "ca-rank-card--clickable" : ""}`}
+            onClick={() => paymentHealth && setPaymentHealthModal(true)}
+            title={paymentHealth ? "Click to see the score breakdown" : ""}
+          >
+            <div className="ca-rank-icon" style={{ background: `${phColor}18`, color: phColor }}>
+              <SafetyCertificateOutlined />
+            </div>
+            <div className="ca-rank-body">
+              <div className="ca-rank-label">Payment Health</div>
+              <div className="ca-rank-value">
+                {phScore != null ? (
+                  <>
+                    <span className="ca-rank-num" style={{ color: phColor }}>
+                      {phScore}<span style={{ fontSize: 13, color: "#94A3B8" }}> / {phMax}</span>
+                    </span>
+                    <span className="ca-rank-total">
+                      Sales <b>{paymentHealth.sales_category}</b> · Risk <b>{paymentHealth.risk_category}</b>
+                    </span>
+                  </>
+                ) : (
+                  <span className="ca-rank-num" style={{ fontSize: 14, color: "#94A3B8" }}>—</span>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -820,6 +859,14 @@ const CustomerAnalysis = () => {
         onClose={() => setLocationModal(false)}
         customer={customer}
       />
+
+      {/* ── Payment Health breakdown modal ────────────────────────────── */}
+      <PaymentHealthModal
+        open={paymentHealthModal}
+        onClose={() => setPaymentHealthModal(false)}
+        paymentHealth={paymentHealth}
+        customerName={customer.name}
+      />
     </div>
   );
 };
@@ -880,6 +927,173 @@ const CustomerRankingModal = ({ state, onClose, ranking, selectedCode, unitType,
         rowClassName={(r) => r.customer_code === selectedCode ? "ranking-row-selected" : ""}
         scroll={{ y: "55vh" }}
       />
+    </Modal>
+  );
+};
+
+const PaymentHealthModal = ({ open, onClose, paymentHealth, customerName }) => {
+  if (!paymentHealth) {
+    return (
+      <Modal open={open} onCancel={onClose} footer={null} width={640} title="Payment Health" destroyOnClose>
+        <Empty description="No payment health data available" />
+      </Modal>
+    );
+  }
+
+  const {
+    score, max_score, sales_type_used,
+    overdue_balance, monthly_avg_sales, ytd_sales_value, months_elapsed,
+    risk_pct, sales_category, sales_category_score,
+    risk_category, risk_category_score,
+  } = paymentHealth;
+
+  const scoreColor =
+    score >= 5 ? "#16A34A"
+    : score >= 3 ? "#F59E0B"
+    : score >= 1 ? "#EA580C"
+    :              "#DC2626";
+
+  const catColor = (c) => c === "A" ? "#16A34A" : c === "B" ? "#3B82F6" : c === "C" ? "#F59E0B" : "#DC2626";
+  const scoreForCat = (c) => ({ A: 3, B: 2, C: 1, D: -1 })[c] ?? 0;
+
+  const fmtSar = (v) => (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+      {Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+      <RiyalIcon width={11} height={11} color="currentColor" />
+    </span>
+  );
+
+  const Row = ({ label, value, hint }) => (
+    <div style={{
+      display: "flex", justifyContent: "space-between", alignItems: "flex-start",
+      padding: "10px 0", borderBottom: "1px dashed #E2E8F0",
+    }}>
+      <div>
+        <div style={{ fontSize: 12, color: "#475569", fontWeight: 500 }}>{label}</div>
+        {hint && <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>{hint}</div>}
+      </div>
+      <div style={{ fontSize: 14, fontWeight: 600, color: "#0F172A", textAlign: "right" }}>{value}</div>
+    </div>
+  );
+
+  return (
+    <Modal
+      open={open}
+      onCancel={onClose}
+      footer={null}
+      width={640}
+      title={
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>Payment Health Breakdown</div>
+          <div style={{ fontSize: 12, color: "#64748B", fontWeight: 400 }}>{customerName}</div>
+        </div>
+      }
+      destroyOnClose
+    >
+      {/* Score summary */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 20,
+        padding: 16, background: `${scoreColor}0D`, borderRadius: 8,
+        border: `1px solid ${scoreColor}33`, marginBottom: 16,
+      }}>
+        <div style={{
+          width: 90, height: 90, borderRadius: "50%",
+          background: scoreColor, color: "white",
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          flexShrink: 0,
+        }}>
+          <div style={{ fontSize: 32, fontWeight: 700, lineHeight: 1 }}>{score}</div>
+          <div style={{ fontSize: 11, opacity: 0.9 }}>of {max_score}</div>
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 13, color: "#334155", marginBottom: 6 }}>
+            Composite score = <b>Sales Category</b> ({sales_category_score}) + <b>Risk Category</b> ({risk_category_score})
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Tag color={catColor(sales_category) === "#16A34A" ? "green" : catColor(sales_category) === "#3B82F6" ? "blue" : catColor(sales_category) === "#F59E0B" ? "orange" : "red"}>
+              Sales {sales_category} · +{sales_category_score}
+            </Tag>
+            <Tag color={catColor(risk_category) === "#16A34A" ? "green" : catColor(risk_category) === "#3B82F6" ? "blue" : catColor(risk_category) === "#F59E0B" ? "orange" : "red"}>
+              Risk {risk_category} · {risk_category_score > 0 ? "+" : ""}{risk_category_score}
+            </Tag>
+          </div>
+        </div>
+      </div>
+
+      {/* Inputs */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
+          Inputs
+        </div>
+        <Row
+          label="Overdue Balance"
+          value={<span style={{ color: overdue_balance > 0 ? "#DC2626" : "#0F172A" }}>{fmtSar(overdue_balance)}</span>}
+          hint="Amount past due date (from ERP)"
+        />
+        <Row
+          label="Monthly Avg Sales"
+          value={fmtSar(monthly_avg_sales)}
+          hint={`YTD ${sales_type_used} sales / ${months_elapsed} month${months_elapsed === 1 ? "" : "s"} · all products`}
+        />
+        <Row
+          label="YTD Total Sales"
+          value={fmtSar(ytd_sales_value)}
+          hint={`${sales_type_used} value, all allowed products`}
+        />
+      </div>
+
+      {/* Categorization */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
+          Categorization
+        </div>
+        <Row
+          label="Sales Category"
+          value={
+            <span>
+              <Tag color={sales_category === "A" ? "green" : sales_category === "B" ? "blue" : "orange"} style={{ margin: 0 }}>
+                {sales_category}
+              </Tag>
+              <span style={{ marginLeft: 8, color: "#64748B" }}>+{sales_category_score} pts</span>
+            </span>
+          }
+          hint="A: ≥ 100,000  ·  B: ≥ 25,000  ·  C: below 25,000  (monthly avg)"
+        />
+        <Row
+          label="Risk %"
+          value={
+            <span style={{ color: risk_pct == null ? "#94A3B8" : risk_pct > 70 ? "#DC2626" : risk_pct > 20 ? "#F59E0B" : "#16A34A" }}>
+              {risk_pct == null ? "—" : `${risk_pct}%`}
+            </span>
+          }
+          hint="Risk % = (Overdue / Monthly Avg Sales) − 1"
+        />
+        <Row
+          label="Risk Category"
+          value={
+            <span>
+              <Tag color={risk_category === "A" ? "green" : risk_category === "B" ? "blue" : risk_category === "C" ? "orange" : "red"} style={{ margin: 0 }}>
+                {risk_category}
+              </Tag>
+              <span style={{ marginLeft: 8, color: "#64748B" }}>
+                {risk_category_score > 0 ? "+" : ""}{risk_category_score} pts
+              </span>
+            </span>
+          }
+          hint="A: ≤ 20%  ·  B: ≤ 70%  ·  C: above 70%  (D reserved for no-sales edge cases)"
+        />
+      </div>
+
+      {/* Legend */}
+      <div style={{
+        background: "#F8FAFC", padding: 12, borderRadius: 6,
+        fontSize: 11, color: "#64748B", lineHeight: 1.6,
+      }}>
+        <b style={{ color: "#334155" }}>Scoring:</b>{" "}
+        A = +{scoreForCat("A")},&nbsp; B = +{scoreForCat("B")},&nbsp; C = +{scoreForCat("C")},&nbsp; D = {scoreForCat("D")}
+        <br />
+        <b style={{ color: "#334155" }}>Sales type:</b> uses the current navbar selection ({sales_type_used}), across all allowed products.
+      </div>
     </Modal>
   );
 };
