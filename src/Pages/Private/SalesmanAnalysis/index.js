@@ -844,8 +844,15 @@ const ByProductModal = ({ state, onClose, rows, loading, data, unitType, isValue
 };
 
 const PaymentPendingModal = ({ open, onClose, data, onPickCustomer }) => {
-  const list = data?.payment_pending_list || [];
-  const total = data?.payment_pending_total || 0;
+  const list           = data?.payment_pending_list || [];
+  const total          = data?.payment_pending_total || 0;
+  const overdueTotal   = data?.payment_pending_overdue_total || 0;
+  const notYetDueTotal = data?.payment_pending_not_yet_due_total || 0;
+
+  const [expandedKeys, setExpandedKeys] = useState([]);
+  const allKeys = list.map((r) => r.customer_code);
+  const allExpanded = allKeys.length > 0 && expandedKeys.length === allKeys.length;
+  const toggleAll = () => setExpandedKeys(allExpanded ? [] : allKeys);
 
   const columns = [
     { title: "#", width: 50, align: "center",
@@ -868,11 +875,24 @@ const PaymentPendingModal = ({ open, onClose, data, onPickCustomer }) => {
       render: (v) => v
         ? <span style={{ fontSize: 12 }}>{new Date(v).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
         : <span style={{ color: "#94A3B8" }}>-</span> },
-    { title: "Balance", dataIndex: "balance", align: "right", width: 140,
+    { title: "Total Due", dataIndex: "balance", align: "right", width: 140,
       defaultSortOrder: "descend",
       sorter: (a, b) => (a.balance || 0) - (b.balance || 0),
       render: (v) => <b style={{ color: "#F59E0B" }}>{fmtNum(v)}</b> },
   ];
+
+  const expandedRowRender = (r) => (
+    <div style={{ display: "flex", gap: 24, padding: "4px 8px", fontSize: 12 }}>
+      <div>
+        <span style={{ color: "#64748B" }}>Overdue: </span>
+        <b style={{ color: "#DC2626" }}>{fmtNum(r.balance_overdue || 0)}</b>
+      </div>
+      <div>
+        <span style={{ color: "#64748B" }}>Not yet due: </span>
+        <b style={{ color: "#0F766E" }}>{fmtNum(r.balance_not_yet_due || 0)}</b>
+      </div>
+    </div>
+  );
 
   return (
     <Modal
@@ -881,13 +901,38 @@ const PaymentPendingModal = ({ open, onClose, data, onPickCustomer }) => {
       footer={null}
       width={820}
       title={
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>
-            Payment Pending — {data?.salesman_name || ""}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, paddingRight: 24 }}>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 600 }}>
+              Payment Pending — {data?.salesman_name || ""}
+            </div>
+            <div style={{ fontSize: 12, color: "#64748B", fontWeight: 400 }}>
+              Total <b style={{ color: "#F59E0B" }}>{fmtNum(total)}</b>
+              {"  ("}
+              Overdue <b style={{ color: "#DC2626" }}>{fmtNum(overdueTotal)}</b>
+              {" · "}
+              Not yet due <b style={{ color: "#0F766E" }}>{fmtNum(notYetDueTotal)}</b>
+              {") "}
+              across {list.length} customer{list.length !== 1 ? "s" : ""}
+            </div>
           </div>
-          <div style={{ fontSize: 12, color: "#64748B", fontWeight: 400 }}>
-            Total <b style={{ color: "#F59E0B" }}>{fmtNum(total)}</b> across {list.length} customer{list.length !== 1 ? "s" : ""}
-          </div>
+          {list.length > 0 && (
+            <span
+              onClick={toggleAll}
+              style={{
+                fontSize: 12,
+                fontWeight: 500,
+                color: "#3B82F6",
+                cursor: "pointer",
+                userSelect: "none",
+                whiteSpace: "nowrap",
+                marginTop: 2,
+              }}
+              title={allExpanded ? "Collapse all breakdowns" : "Expand all breakdowns"}
+            >
+              {allExpanded ? "− Collapse all" : "+ Expand all"}
+            </span>
+          )}
         </div>
       }
       destroyOnClose
@@ -903,6 +948,11 @@ const PaymentPendingModal = ({ open, onClose, data, onPickCustomer }) => {
           dataSource={list}
           pagination={{ pageSize: 15, size: "small", showSizeChanger: false }}
           scroll={{ y: 420 }}
+          expandable={{
+            expandedRowRender,
+            expandedRowKeys: expandedKeys,
+            onExpandedRowsChange: (keys) => setExpandedKeys(keys),
+          }}
         />
       )}
     </Modal>

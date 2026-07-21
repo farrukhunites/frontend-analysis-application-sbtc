@@ -252,7 +252,9 @@ const CustomerAnalysis = () => {
     branchContributionYtd:  customerData?.branch_contribution_ytd_percent ?? null,
     channelContributionMtd: customerData?.channel_contribution_mtd_percent ?? null,
     channelContributionYtd: customerData?.channel_contribution_ytd_percent ?? null,
-    paymentPending:   customerData?.payment_pending ?? 0,
+    paymentPending:           customerData?.payment_pending ?? 0,
+    paymentPendingOverdue:    customerData?.payment_pending_overdue ?? 0,
+    paymentPendingNotYetDue:  customerData?.payment_pending_not_yet_due ?? 0,
     lastPaymentDate:  customerData?.last_payment_date || null,
     assignedSalesman:    customerData?.assigned_salesman || "-",
     assignedSalesmanCd:  customerData?.assigned_salesman_cd || null,
@@ -316,11 +318,18 @@ const CustomerAnalysis = () => {
       icon: <SlidersOutlined />,
     },
     {
-      title: "Payment Pending (Overdue)",
+      title: "Total Due",
       value: (
-        <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <RiyalIcon /> {customer.paymentPending?.toLocaleString()}
-        </span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <RiyalIcon /> {customer.paymentPending?.toLocaleString()}
+          </span>
+          <span style={{ fontSize: 11, color: "#64748B", fontWeight: 400 }}>
+            Overdue <b style={{ color: "#DC2626" }}>{customer.paymentPendingOverdue?.toLocaleString()}</b>
+            {"  ·  "}
+            Not yet due <b style={{ color: "#0F766E" }}>{customer.paymentPendingNotYetDue?.toLocaleString()}</b>
+          </span>
+        </div>
       ),
       icon: <DollarOutlined />,
     },
