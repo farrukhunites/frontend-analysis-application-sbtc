@@ -1,5 +1,5 @@
 import { Modal, Skeleton, Empty, Table, Tag, Button } from "antd";
-import { DownloadOutlined } from "@ant-design/icons";
+import { DownloadOutlined, EnvironmentOutlined } from "@ant-design/icons";
 import { openCustomerAnalysis, openSalesmanAnalysis, exportRowsToExcel } from "./reportUtils";
 import RiyalIcon from "../../../Utils/RiyalIcon";
 import "./reports.css";
@@ -86,6 +86,31 @@ const ChannelCoverageCustomersModal = ({ state, onClose, unitType, valueType, is
         </div>
       ) : <span style={{ color: "#CBD5E1" }}>-</span>,
     },
+    {
+      title: "Salesman Mobile",
+      dataIndex: "salesman_mobile",
+      width: 140,
+      render: (v) => v
+        ? <a href={`tel:${v}`} style={{ fontSize: 12 }}>{v}</a>
+        : <span style={{ color: "#CBD5E1" }}>-</span>,
+    },
+    {
+      title: "Coordinates",
+      dataIndex: "latitude",
+      width: 150,
+      render: (_, r) => (r.latitude != null && r.longitude != null) ? (
+        <a
+          href={`https://www.google.com/maps?q=${r.latitude},${r.longitude}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Open in Google Maps"
+          style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11 }}
+        >
+          <EnvironmentOutlined />
+          {Number(r.latitude).toFixed(5)}, {Number(r.longitude).toFixed(5)}
+        </a>
+      ) : <span style={{ color: "#CBD5E1" }}>-</span>,
+    },
     showYtd && {
       title: <span>YTD {valueLabel} ({unitLabelEl})</span>,
       dataIndex: "ytd_value",
@@ -117,11 +142,14 @@ const ChannelCoverageCustomersModal = ({ state, onClose, unitType, valueType, is
 
   const handleExport = () => {
     const cols = [
-      { header: "Customer Code", key: "customer_code", width: 16 },
-      { header: "Customer Name", key: "customer_name", width: 38 },
-      { header: "Channel",       key: "channel",       width: 12 },
-      { header: "Salesman Code", key: "salesman_cd",   width: 14 },
-      { header: "Salesman Name", key: "salesman_nm",   width: 26 },
+      { header: "Customer Code",   key: "customer_code",   width: 16 },
+      { header: "Customer Name",   key: "customer_name",   width: 38 },
+      { header: "Channel",         key: "channel",         width: 12 },
+      { header: "Salesman Code",   key: "salesman_cd",     width: 14 },
+      { header: "Salesman Name",   key: "salesman_nm",     width: 26 },
+      { header: "Salesman Mobile", key: "salesman_mobile", width: 18 },
+      { header: "Latitude",        key: "latitude",        width: 14 },
+      { header: "Longitude",       key: "longitude",       width: 14 },
       ...(showYtd
         ? [{
             header: `YTD ${valueLabel} (${excelUnitLabel})`,
