@@ -6,6 +6,7 @@ import {
   CloseCircleFilled, DownloadOutlined, SearchOutlined, SafetyCertificateOutlined,
 } from "@ant-design/icons";
 import { UnitValueContext } from "../../../Contexts/UnitValueContext";
+import { UserContext } from "../../../App";
 import { getAllBranches } from "../../../API/Branches";
 import { getAllChannels } from "../../../API/Channels";
 import { getPaymentHealthReport } from "../../../API/Reports";
@@ -72,6 +73,7 @@ const textSearchProps = (getText, placeholder) => ({
 
 const PaymentHealthReport = () => {
   const { valueType } = useContext(UnitValueContext);
+  const { userData } = useContext(UserContext);
 
   const [branches, setBranches] = useState([]);
   const [channels, setChannels] = useState([]);
@@ -89,6 +91,26 @@ const PaymentHealthReport = () => {
     getAllBranches().then((r) => setBranches(r?.results || []));
     getAllChannels().then((r) => setChannels(r?.results || []));
   }, []);
+
+  // Client-side ACL: only surface branches/channels the user is allowed to see.
+  // Empty allowed_* on userData (admin case) = no restriction.
+  const allowedBranchCodes = useMemo(() => {
+    const list = userData?.allowed_branches;
+    return Array.isArray(list) && list.length ? new Set(list) : null;
+  }, [userData]);
+  const allowedChannelNames = useMemo(() => {
+    const list = userData?.allowed_channels;
+    return Array.isArray(list) && list.length ? new Set(list) : null;
+  }, [userData]);
+
+  const visibleBranches = useMemo(
+    () => (allowedBranchCodes ? branches.filter((b) => allowedBranchCodes.has(b.code)) : branches),
+    [branches, allowedBranchCodes],
+  );
+  const visibleChannels = useMemo(
+    () => (allowedChannelNames ? channels.filter((c) => allowedChannelNames.has(c.name)) : channels),
+    [channels, allowedChannelNames],
+  );
 
   useEffect(() => {
     setLoading(true);
@@ -290,7 +312,7 @@ const PaymentHealthReport = () => {
             placeholder="All branches"
             value={selectedBranchCodes} onChange={setSelectedBranchCodes}
             style={{ minWidth: 200 }} maxTagCount="responsive"
-            options={branches.map((b) => ({ label: b.name, value: b.code }))}
+            options={visibleBranches.map((b) => ({ label: b.name, value: b.code }))}
           />
         </Space>
         <Space>
@@ -300,7 +322,7 @@ const PaymentHealthReport = () => {
             placeholder="All channels"
             value={selectedChannels} onChange={setSelectedChannels}
             style={{ minWidth: 200 }} maxTagCount="responsive"
-            options={channels.map((c) => ({ label: c.name, value: c.name }))}
+            options={visibleChannels.map((c) => ({ label: c.name, value: c.name }))}
           />
         </Space>
         <Space>
